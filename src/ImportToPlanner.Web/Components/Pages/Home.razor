@@ -6,8 +6,8 @@
 <PageTitle>Import To Planner</PageTitle>
 
 <FluentStack Orientation="Orientation.Vertical" VerticalGap="16" class="import-grid">
-	<section>
-		<h2>Import Input</h2>
+	<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+		<FluentLabel>Import Input</FluentLabel>
 
 		<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
 			<FluentSelect Items="@groups"
@@ -18,11 +18,12 @@
 
 			<FluentTextField @bind-Value="planName" Label="Plan Name" Required="true" Maxlength="200" />
 
-			<div class="field-row">
-				<label for="file">CSV File</label>
-				<InputFile id="file" OnChange="OnFileChangedAsync" accept=".csv,text/csv" />
-				<small>@selectedFileName</small>
-			</div>
+			<FluentLabel>CSV File</FluentLabel>
+			<FluentInputFile OnInputFileChange="OnFileChangedAsync"
+							 Accept=".csv,text/csv"
+							 MaximumFileCount="1"
+							 DragDropZoneVisible="false" />
+			<FluentLabel>@selectedFileName</FluentLabel>
 
 			<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
 				<FluentButton Appearance="Appearance.Accent" Disabled="@isBusy" OnClick="@BuildPreviewAsync">Validate And Preview</FluentButton>
@@ -32,44 +33,44 @@
 
 		@if (!string.IsNullOrWhiteSpace(statusMessage))
 		{
-			<p class="status-message">@statusMessage</p>
+			<FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
 		}
 
 		@if (parseErrors.Count > 0)
 		{
-			<h3>Validation Errors</h3>
+			<FluentLabel>Validation Errors</FluentLabel>
 			<FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
 				<PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
 				<PropertyColumn Property="@(error => error.Field)" Title="Field" />
 				<PropertyColumn Property="@(error => error.Message)" Title="Message" />
 			</FluentDataGrid>
 		}
-	</section>
+	</FluentStack>
 
-	<section>
-		<h2>Dry-Run Preview</h2>
+	<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+		<FluentLabel>Dry-Run Preview</FluentLabel>
 
 		@if (preview is null)
 		{
-			<p>No preview generated yet.</p>
+			<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">No preview generated yet.</FluentMessageBar>
 		}
 		else
 		{
-			<p>Plan action: <strong>@preview.PlanAction</strong></p>
+			<FluentLabel>Plan action: @preview.PlanAction</FluentLabel>
 
-			<h3>Bucket Actions</h3>
+			<FluentLabel>Bucket Actions</FluentLabel>
 			<FluentDataGrid Items="@preview.BucketActions.AsQueryable()" TGridItem="KeyValuePair<string, PlannedEntityAction>">
 				<PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
 				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
 			</FluentDataGrid>
 
-			<h3>Goal Label Actions</h3>
+			<FluentLabel>Goal Label Actions</FluentLabel>
 			<FluentDataGrid Items="@preview.GoalActions.AsQueryable()" TGridItem="KeyValuePair<string, PlannedEntityAction>">
 				<PropertyColumn Property="@(action => action.Key)" Title="Goal" />
 				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
 			</FluentDataGrid>
 
-			<h3>Task Actions</h3>
+			<FluentLabel>Task Actions</FluentLabel>
 			<FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
 				<PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
 				<PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
@@ -79,31 +80,31 @@
 				<PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
 			</FluentDataGrid>
 		}
-	</section>
+	</FluentStack>
 
-	<section>
-		<h2>Execution Report</h2>
+	<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+		<FluentLabel>Execution Report</FluentLabel>
 
 		@if (executionResult is null)
 		{
-			<p>No execution run yet.</p>
+			<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">No execution run yet.</FluentMessageBar>
 		}
 		else
 		{
-			<h3>Created</h3>
+			<FluentLabel>Created</FluentLabel>
 			<FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
 				<PropertyColumn Property="@(item => item)" Title="Item" />
 			</FluentDataGrid>
 
-			<h3>Reused Or Skipped</h3>
+			<FluentLabel>Reused Or Skipped</FluentLabel>
 			<FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
 				<PropertyColumn Property="@(item => item)" Title="Item" />
 			</FluentDataGrid>
 
-			<h3>Errors</h3>
+			<FluentLabel>Errors</FluentLabel>
 			@if (executionResult.Errors.Count == 0)
 			{
-				<p>None</p>
+				<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
 			}
 			else
 			{
@@ -112,7 +113,7 @@
 				</FluentDataGrid>
 			}
 		}
-	</section>
+	</FluentStack>
 </FluentStack>
 
 @code {
@@ -131,6 +132,11 @@
 	private ImportRequest? currentRequest;
 
 	private bool canExecute => !isBusy && preview is not null && currentRequest is not null;
+	private MessageIntent StatusMessageIntent => parseErrors.Count > 0
+		? MessageIntent.Error
+		: executionResult is not null && executionResult.Errors.Count > 0
+			? MessageIntent.Warning
+			: MessageIntent.Success;
 
 	protected override async Task OnInitializedAsync()
 	{
