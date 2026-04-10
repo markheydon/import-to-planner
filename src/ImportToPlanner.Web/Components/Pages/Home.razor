@@ -1,0 +1,287 @@
+﻿@page "/"
+@inject ICsvImportParser CsvImportParser
+@inject IImportPlannerOrchestrator ImportPlannerOrchestrator
+@inject IPlannerGateway PlannerGateway
+
+<PageTitle>Import To Planner</PageTitle>
+
+<div class="import-grid">
+	<section>
+		<h2>Import Input</h2>
+
+		<div class="field-row">
+			<label for="group">Group</label>
+			<select id="group" @bind="selectedGroupId">
+				<option value="">Select a group</option>
+				@foreach (var group in groups)
+				{
+					<option value="@group.Id">@group.DisplayName (@group.Id)</option>
+				}
+			</select>
+		</div>
+
+		<div class="field-row">
+			<label for="plan">Plan Name</label>
+			<input id="plan" type="text" @bind="planName" maxlength="200" />
+		</div>
+
+		<div class="field-row">
+			<label for="file">CSV File</label>
+			<InputFile id="file" OnChange="OnFileChangedAsync" accept=".csv,text/csv" />
+			<small>@selectedFileName</small>
+		</div>
+
+		<div class="actions-row">
+			<button @onclick="BuildPreviewAsync" disabled="@isBusy">Validate And Preview</button>
+			<button @onclick="ExecuteAsync" disabled="@(!canExecute)">Confirm And Execute</button>
+		</div>
+
+		@if (!string.IsNullOrWhiteSpace(statusMessage))
+		{
+			<p class="status-message">@statusMessage</p>
+		}
+
+		@if (parseErrors.Count > 0)
+		{
+			<h3>Validation Errors</h3>
+			<ul>
+				@foreach (var error in parseErrors)
+				{
+					<li>Row @error.RowNumber, @error.Field: @error.Message</li>
+				}
+			</ul>
+		}
+	</section>
+
+	<section>
+		<h2>Dry-Run Preview</h2>
+
+		@if (preview is null)
+		{
+			<p>No preview generated yet.</p>
+		}
+		else
+		{
+			<p>Plan action: <strong>@preview.PlanAction</strong></p>
+
+			<h3>Bucket Actions</h3>
+			<ul>
+				@foreach (var action in preview.BucketActions)
+				{
+					<li>@action.Key: @action.Value</li>
+				}
+			</ul>
+
+			<h3>Goal Label Actions</h3>
+			<ul>
+				@foreach (var action in preview.GoalActions)
+				{
+					<li>@action.Key: @action.Value</li>
+				}
+			</ul>
+
+			<h3>Task Actions</h3>
+			<table>
+				<thead>
+					<tr>
+						<th>Row</th>
+						<th>Task</th>
+						<th>Bucket</th>
+						<th>Goal</th>
+						<th>Action</th>
+						<th>Reason</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var task in preview.TaskActions)
+					{
+						<tr>
+							<td>@task.RowNumber</td>
+							<td>@task.TaskName</td>
+							<td>@task.Bucket</td>
+							<td>@task.Goal</td>
+							<td>@task.Action</td>
+							<td>@task.Reason</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		}
+	</section>
+
+	<section>
+		<h2>Execution Report</h2>
+
+		@if (executionResult is null)
+		{
+			<p>No execution run yet.</p>
+		}
+		else
+		{
+			<h3>Created</h3>
+			<ul>
+				@foreach (var created in executionResult.Created)
+				{
+					<li>@created</li>
+				}
+			</ul>
+
+			<h3>Reused Or Skipped</h3>
+			<ul>
+				@foreach (var item in executionResult.ReusedOrSkipped)
+				{
+					<li>@item</li>
+				}
+			</ul>
+
+			<h3>Errors</h3>
+			@if (executionResult.Errors.Count == 0)
+			{
+				<p>None</p>
+			}
+			else
+			{
+				<ul>
+					@foreach (var error in executionResult.Errors)
+					{
+						<li>@error</li>
+					}
+				</ul>
+			}
+		}
+	</section>
+</div>
+
+@code {
+	private readonly List<PlannerGroup> groups = [];
+	private readonly List<ImportValidationError> parseErrors = [];
+
+	private string selectedGroupId = string.Empty;
+	private string planName = string.Empty;
+	private string csvContent = string.Empty;
+	private string selectedFileName = "No file selected.";
+	private string? statusMessage;
+	private bool isBusy;
+
+	private ImportPlanPreview? preview;
+	private ImportExecutionResult? executionResult;
+	private ImportRequest? currentRequest;
+
+	private bool canExecute => !isBusy && preview is not null && currentRequest is not null;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var loadedGroups = await PlannerGateway.GetAvailableGroupsAsync(CancellationToken.None);
+		groups.AddRange(loadedGroups);
+	}
+
+	private async Task OnFileChangedAsync(InputFileChangeEventArgs args)
+	{
+		parseErrors.Clear();
+		preview = null;
+		executionResult = null;
+
+		var file = args.File;
+		selectedFileName = file.Name;
+
+		await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+		using var reader = new StreamReader(stream);
+		csvContent = await reader.ReadToEndAsync();
+
+		statusMessage = "CSV file loaded. Click Validate And Preview.";
+	}
+
+	private async Task BuildPreviewAsync()
+	{
+		if (isBusy)
+		{
+			return;
+		}
+
+		parseErrors.Clear();
+		preview = null;
+		executionResult = null;
+		statusMessage = null;
+
+		if (string.IsNullOrWhiteSpace(selectedGroupId))
+		{
+			parseErrors.Add(new ImportValidationError(0, "Group", "A group must be selected."));
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(planName))
+		{
+			parseErrors.Add(new ImportValidationError(0, "Plan Name", "Plan name is required."));
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(csvContent))
+		{
+			parseErrors.Add(new ImportValidationError(0, "File", "Upload a CSV file first."));
+			return;
+		}
+
+		isBusy = true;
+		try
+		{
+			var parseResult = await CsvImportParser.ParseAsync(csvContent, CancellationToken.None);
+			parseErrors.AddRange(parseResult.ValidationErrors);
+
+			if (parseResult.HasErrors)
+			{
+				statusMessage = "Validation failed. Fix the reported issues and retry.";
+				return;
+			}
+
+			currentRequest = new ImportRequest(selectedGroupId.Trim(), planName.Trim(), parseResult.Rows);
+			preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
+			statusMessage = "Preview generated. Review actions, then confirm execution.";
+		}
+		catch (Exception ex)
+		{
+			parseErrors.Add(new ImportValidationError(0, "System", ex.Message));
+			statusMessage = "Preview generation failed.";
+		}
+		finally
+		{
+			isBusy = false;
+		}
+	}
+
+	private async Task ExecuteAsync()
+	{
+		if (!canExecute)
+		{
+			return;
+		}
+
+		isBusy = true;
+		statusMessage = null;
+		try
+		{
+			executionResult = await ImportPlannerOrchestrator.ExecuteAsync(
+				currentRequest!,
+				preview!,
+				CancellationToken.None);
+
+			statusMessage = executionResult.Errors.Count == 0
+				? "Execution completed successfully."
+				: "Execution completed with errors.";
+		}
+		catch (Exception ex)
+		{
+			executionResult = new ImportExecutionResult
+			{
+				Created = [],
+				ReusedOrSkipped = [],
+				Errors = [$"Execution failed: {ex.Message}"],
+			};
+
+			statusMessage = "Execution failed.";
+		}
+		finally
+		{
+			isBusy = false;
+		}
+	}
+}
