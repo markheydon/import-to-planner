@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support and usage questions
+    url: https://github.com/markheydon/import-to-planner/blob/main/SUPPORT.md
+    about: Read the support guidance before opening an issue for general questions or usage help.
+  - name: Security vulnerability disclosure
+    url: https://github.com/markheydon/import-to-planner/security/advisories/new
+    about: Report security vulnerabilities privately instead of opening a public issue.
