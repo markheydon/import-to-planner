@@ -1,9 +1,8 @@
----
-description: 'Blazor and MudBlazor guidance for Razor UI work, designed to coexist with task-specific skills.'
+description: 'Blazor and Fluent UI guidance for Razor UI work, designed to coexist with task-specific skills.'
 applyTo: '**/*.razor, **/*.razor.cs, **/*.razor.css'
 ---
 
-# Blazor + MudBlazor Instructions
+# Blazor + Fluent UI Instructions
 
 Use this file as baseline guidance for Blazor UI work in Razor components.
 
@@ -28,10 +27,10 @@ Use this file as baseline guidance for Blazor UI work in Razor components.
 - Prefer explicit parameters over hidden coupling.
 - Use lifecycle methods intentionally (`OnInitializedAsync`, `OnParametersSetAsync`) and avoid fire-and-forget tasks.
 
-## MudBlazor Usage
+## Fluent UI Usage
 
-- Prefer MudBlazor components and parameters before custom CSS.
-- Prefer composition with MudBlazor layout primitives and utility classes.
+- Prefer Fluent UI Blazor components and parameters before custom CSS.
+- Prefer composition with Fluent UI layout primitives and utility classes.
 - Keep custom `.razor.css` minimal and use it only when component options are insufficient.
 - Ensure required providers are present in the main layout when using dialogs/popovers/snackbars.
 
@@ -41,7 +40,7 @@ When guidance conflicts, apply this order:
 
 1. User request
 2. Repository conventions
-3. Active task-specific skill (for example: MudBlazor, async, docs, or test-framework skills)
+3. Active task-specific skill (for example: Fluent UI, async, docs, or test-framework skills)
 4. This instruction file
 5. General Blazor/.NET defaults
 

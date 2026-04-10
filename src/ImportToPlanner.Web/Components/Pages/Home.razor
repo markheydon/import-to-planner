@@ -5,36 +5,30 @@
 
 <PageTitle>Import To Planner</PageTitle>
 
-<div class="import-grid">
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="16" class="import-grid">
 	<section>
 		<h2>Import Input</h2>
 
-		<div class="field-row">
-			<label for="group">Group</label>
-			<select id="group" @bind="selectedGroupId">
-				<option value="">Select a group</option>
-				@foreach (var group in groups)
-				{
-					<option value="@group.Id">@group.DisplayName (@group.Id)</option>
-				}
-			</select>
-		</div>
+		<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+			<FluentSelect Items="@groups"
+						  OptionText="@(group => group?.DisplayName ?? string.Empty)"
+						  OptionValue="@(group => group?.Id ?? string.Empty)"
+						  @bind-SelectedOption="selectedGroup"
+						  Label="Group" />
 
-		<div class="field-row">
-			<label for="plan">Plan Name</label>
-			<input id="plan" type="text" @bind="planName" maxlength="200" />
-		</div>
+			<FluentTextField @bind-Value="planName" Label="Plan Name" Required="true" Maxlength="200" />
 
-		<div class="field-row">
-			<label for="file">CSV File</label>
-			<InputFile id="file" OnChange="OnFileChangedAsync" accept=".csv,text/csv" />
-			<small>@selectedFileName</small>
-		</div>
+			<div class="field-row">
+				<label for="file">CSV File</label>
+				<InputFile id="file" OnChange="OnFileChangedAsync" accept=".csv,text/csv" />
+				<small>@selectedFileName</small>
+			</div>
 
-		<div class="actions-row">
-			<button @onclick="BuildPreviewAsync" disabled="@isBusy">Validate And Preview</button>
-			<button @onclick="ExecuteAsync" disabled="@(!canExecute)">Confirm And Execute</button>
-		</div>
+			<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+				<FluentButton Appearance="Appearance.Accent" Disabled="@isBusy" OnClick="@BuildPreviewAsync">Validate And Preview</FluentButton>
+				<FluentButton Appearance="Appearance.Neutral" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">Confirm And Execute</FluentButton>
+			</FluentStack>
+		</FluentStack>
 
 		@if (!string.IsNullOrWhiteSpace(statusMessage))
 		{
@@ -44,12 +38,11 @@
 		@if (parseErrors.Count > 0)
 		{
 			<h3>Validation Errors</h3>
-			<ul>
-				@foreach (var error in parseErrors)
-				{
-					<li>Row @error.RowNumber, @error.Field: @error.Message</li>
-				}
-			</ul>
+			<FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
+				<PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
+				<PropertyColumn Property="@(error => error.Field)" Title="Field" />
+				<PropertyColumn Property="@(error => error.Message)" Title="Message" />
+			</FluentDataGrid>
 		}
 	</section>
 
@@ -65,47 +58,26 @@
 			<p>Plan action: <strong>@preview.PlanAction</strong></p>
 
 			<h3>Bucket Actions</h3>
-			<ul>
-				@foreach (var action in preview.BucketActions)
-				{
-					<li>@action.Key: @action.Value</li>
-				}
-			</ul>
+			<FluentDataGrid Items="@preview.BucketActions.AsQueryable()" TGridItem="KeyValuePair<string, PlannedEntityAction>">
+				<PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
+				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
+			</FluentDataGrid>
 
 			<h3>Goal Label Actions</h3>
-			<ul>
-				@foreach (var action in preview.GoalActions)
-				{
-					<li>@action.Key: @action.Value</li>
-				}
-			</ul>
+			<FluentDataGrid Items="@preview.GoalActions.AsQueryable()" TGridItem="KeyValuePair<string, PlannedEntityAction>">
+				<PropertyColumn Property="@(action => action.Key)" Title="Goal" />
+				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
+			</FluentDataGrid>
 
 			<h3>Task Actions</h3>
-			<table>
-				<thead>
-					<tr>
-						<th>Row</th>
-						<th>Task</th>
-						<th>Bucket</th>
-						<th>Goal</th>
-						<th>Action</th>
-						<th>Reason</th>
-					</tr>
-				</thead>
-				<tbody>
-					@foreach (var task in preview.TaskActions)
-					{
-						<tr>
-							<td>@task.RowNumber</td>
-							<td>@task.TaskName</td>
-							<td>@task.Bucket</td>
-							<td>@task.Goal</td>
-							<td>@task.Action</td>
-							<td>@task.Reason</td>
-						</tr>
-					}
-				</tbody>
-			</table>
+			<FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
+				<PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
+				<PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
+				<PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
+				<PropertyColumn Property="@(task => task.Goal)" Title="Goal" />
+				<PropertyColumn Property="@(task => task.Action)" Title="Action" />
+				<PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
+			</FluentDataGrid>
 		}
 	</section>
 
@@ -119,20 +91,14 @@
 		else
 		{
 			<h3>Created</h3>
-			<ul>
-				@foreach (var created in executionResult.Created)
-				{
-					<li>@created</li>
-				}
-			</ul>
+			<FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
+				<PropertyColumn Property="@(item => item)" Title="Item" />
+			</FluentDataGrid>
 
 			<h3>Reused Or Skipped</h3>
-			<ul>
-				@foreach (var item in executionResult.ReusedOrSkipped)
-				{
-					<li>@item</li>
-				}
-			</ul>
+			<FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
+				<PropertyColumn Property="@(item => item)" Title="Item" />
+			</FluentDataGrid>
 
 			<h3>Errors</h3>
 			@if (executionResult.Errors.Count == 0)
@@ -141,22 +107,19 @@
 			}
 			else
 			{
-				<ul>
-					@foreach (var error in executionResult.Errors)
-					{
-						<li>@error</li>
-					}
-				</ul>
+				<FluentDataGrid Items="@executionResult.Errors.AsQueryable()" TGridItem="string">
+					<PropertyColumn Property="@(item => item)" Title="Error" />
+				</FluentDataGrid>
 			}
 		}
 	</section>
-</div>
+</FluentStack>
 
 @code {
 	private readonly List<PlannerGroup> groups = [];
 	private readonly List<ImportValidationError> parseErrors = [];
 
-	private string selectedGroupId = string.Empty;
+	private PlannerGroup? selectedGroup;
 	private string planName = string.Empty;
 	private string csvContent = string.Empty;
 	private string selectedFileName = "No file selected.";
@@ -203,7 +166,7 @@
 		executionResult = null;
 		statusMessage = null;
 
-		if (string.IsNullOrWhiteSpace(selectedGroupId))
+		if (selectedGroup is null)
 		{
 			parseErrors.Add(new ImportValidationError(0, "Group", "A group must be selected."));
 			return;
@@ -233,7 +196,7 @@
 				return;
 			}
 
-			currentRequest = new ImportRequest(selectedGroupId.Trim(), planName.Trim(), parseResult.Rows);
+			currentRequest = new ImportRequest(selectedGroup.Id, planName.Trim(), parseResult.Rows);
 			preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
 			statusMessage = "Preview generated. Review actions, then confirm execution.";
 		}
