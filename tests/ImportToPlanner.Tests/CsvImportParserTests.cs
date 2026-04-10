@@ -39,4 +39,20 @@ public sealed class CsvImportParserTests
         Assert.Single(result.Rows);
         Assert.Equal(expected, result.Rows[0].Priority);
     }
+
+    [Fact]
+    public async Task ParseAsync_WithCaseInsensitiveHeaders_ParsesSuccessfully()
+    {
+        // Arrange
+        const string csv = "task name,description,priority,bucket,goal\nTask A,Desc,5,Ops,Goal A";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Equal("Task A", result.Rows[0].TaskName);
+    }
 }

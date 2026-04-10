@@ -55,6 +55,50 @@ public sealed class ImportPlannerOrchestratorTests
         Assert.Contains(result.ReusedOrSkipped, line => line.Contains("Task A", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task BuildPreviewAsync_WithMissingBucket_UsesGeneralBucket()
+    {
+        // Arrange
+        var gateway = new FakePlannerGateway();
+        var orchestrator = new ImportPlannerOrchestrator(gateway);
+        var request = new ImportRequest(
+            "group-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, null, null)]);
+
+        // Act
+        var preview = await orchestrator.BuildPreviewAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(preview.BucketActions, bucket =>
+            string.Equals(bucket.Key, "General", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(preview.TaskActions, task =>
+            string.Equals(task.Bucket, "General", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task BuildPreviewAsync_WithOnlySkippedTasks_DoesNotPlanBucketCreation()
+    {
+        // Arrange
+        var gateway = new FakePlannerGateway();
+        var plan = await gateway.CreatePlanAsync("group-a", "Plan A", CancellationToken.None);
+        var existingBucket = await gateway.CreateBucketAsync(plan.Id, "Ops", CancellationToken.None);
+        await gateway.CreateTaskAsync(plan.Id, existingBucket.Id, "Task A", null, null, null, CancellationToken.None);
+
+        var orchestrator = new ImportPlannerOrchestrator(gateway);
+        var request = new ImportRequest(
+            "group-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "New Bucket", null)]);
+
+        // Act
+        var preview = await orchestrator.BuildPreviewAsync(request, CancellationToken.None);
+
+        // Assert
+        Assert.Empty(preview.BucketActions);
+        Assert.Contains(preview.TaskActions, task => task.Action == PlannedEntityAction.Skip);
+    }
+
     private sealed class FakePlannerGateway : IPlannerGateway
     {
         private readonly List<PlannerPlan> plans = [];

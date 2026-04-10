@@ -11,14 +11,20 @@ namespace ImportToPlanner.Application.Services;
 /// </summary>
 public sealed class CsvImportParser : ICsvImportParser
 {
-    private static readonly HashSet<string> SupportedHeaders =
-    [
+    private const string TaskNameHeader = "task name";
+    private const string DescriptionHeader = "description";
+    private const string PriorityHeader = "priority";
+    private const string BucketHeader = "bucket";
+    private const string GoalHeader = "goal";
+
+    private static readonly HashSet<string> SupportedHeaders = new(StringComparer.OrdinalIgnoreCase)
+    {
         "Task Name",
         "Description",
         "Priority",
         "Bucket",
         "Goal",
-    ];
+    };
 
     /// <inheritdoc/>
     public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken)
@@ -37,6 +43,7 @@ public sealed class CsvImportParser : ICsvImportParser
             TrimOptions = TrimOptions.Trim,
             MissingFieldFound = null,
             HeaderValidated = null,
+            PrepareHeaderForMatch = args => args.Header?.Trim().ToLowerInvariant() ?? string.Empty,
         };
 
         using var csv = new CsvReader(reader, config);
@@ -56,11 +63,11 @@ public sealed class CsvImportParser : ICsvImportParser
             cancellationToken.ThrowIfCancellationRequested();
 
             var rowNumber = csv.Parser.Row;
-            var taskName = csv.GetField("Task Name")?.Trim();
-            var description = Normalize(csv.GetField("Description"));
-            var priorityText = Normalize(csv.GetField("Priority"));
-            var bucket = Normalize(csv.GetField("Bucket"));
-            var goal = Normalize(csv.GetField("Goal"));
+            var taskName = csv.GetField(TaskNameHeader)?.Trim();
+            var description = Normalize(csv.GetField(DescriptionHeader));
+            var priorityText = Normalize(csv.GetField(PriorityHeader));
+            var bucket = Normalize(csv.GetField(BucketHeader));
+            var goal = Normalize(csv.GetField(GoalHeader));
 
             if (string.IsNullOrWhiteSpace(taskName))
             {

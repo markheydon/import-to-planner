@@ -2,6 +2,7 @@
 @inject ICsvImportParser CsvImportParser
 @inject IImportPlannerOrchestrator ImportPlannerOrchestrator
 @inject IPlannerGateway PlannerGateway
+@inject ILogger<Home> Logger
 
 <PageTitle>Import To Planner</PageTitle>
 
@@ -134,9 +135,11 @@
 	private bool canExecute => !isBusy && preview is not null && currentRequest is not null;
 	private MessageIntent StatusMessageIntent => parseErrors.Count > 0
 		? MessageIntent.Error
-		: executionResult is not null && executionResult.Errors.Count > 0
-			? MessageIntent.Warning
-			: MessageIntent.Success;
+		: executionResult is null
+			? MessageIntent.Info
+			: executionResult.Errors.Count > 0
+				? MessageIntent.Warning
+				: MessageIntent.Success;
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -208,7 +211,8 @@
 		}
 		catch (Exception ex)
 		{
-			parseErrors.Add(new ImportValidationError(0, "System", ex.Message));
+			Logger.LogError(ex, "Preview generation failed.");
+			parseErrors.Add(new ImportValidationError(0, "System", "Preview generation failed due to an unexpected system error."));
 			statusMessage = "Preview generation failed.";
 		}
 		finally
@@ -239,11 +243,12 @@
 		}
 		catch (Exception ex)
 		{
+			Logger.LogError(ex, "Execution failed.");
 			executionResult = new ImportExecutionResult
 			{
 				Created = [],
 				ReusedOrSkipped = [],
-				Errors = [$"Execution failed: {ex.Message}"],
+				Errors = ["Execution failed due to an unexpected system error. Check logs and retry."],
 			};
 
 			statusMessage = "Execution failed.";

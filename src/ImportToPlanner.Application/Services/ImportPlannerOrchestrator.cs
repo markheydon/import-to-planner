@@ -45,7 +45,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         foreach (var row in request.Rows)
         {
             var resolvedBucket = string.IsNullOrWhiteSpace(row.Bucket)
-                ? ResolveDefaultBucketName(existingBuckets)
+                ? ResolveDefaultBucketName()
                 : row.Bucket!;
 
             if (!csvSeenTaskNames.Add(row.TaskName))
@@ -83,6 +83,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         }
 
         var requiredBuckets = taskActions
+            .Where(task => task.Action == PlannedEntityAction.Create)
             .Select(task => task.Bucket)
             .Where(bucket => !string.IsNullOrWhiteSpace(bucket))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -257,17 +258,9 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         };
     }
 
-    private static string ResolveDefaultBucketName(IReadOnlyCollection<PlannerBucket> existingBuckets)
+    private static string ResolveDefaultBucketName()
     {
-        if (existingBuckets.Count == 0)
-        {
-            return DefaultBucketName;
-        }
-
-        return existingBuckets
-            .OrderBy(bucket => bucket.Name, StringComparer.OrdinalIgnoreCase)
-            .First()
-            .Name;
+        return DefaultBucketName;
     }
 
     private static void ValidateRequest(ImportRequest request)
