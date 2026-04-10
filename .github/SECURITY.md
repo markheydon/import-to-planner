@@ -10,17 +10,17 @@ This allows the details to remain private until a fix is in place.
 
 To help investigate the issue, please provide as much of the following as possible:
 
-- A description of the vulnerability and its potential impact
-- Steps to reproduce the issue
-- Any relevant code, configuration, or environment details
+- A description of the vulnerability and its potential impact.
+- Steps to reproduce the issue.
+- Any relevant code, configuration, or environment details.
 
 ## Response
 
 This is a solo project maintained in spare time. I will endeavour to:
 
-- Acknowledge your report as soon as reasonably possible
-- Keep you informed of progress towards a fix
-- Credit you in any disclosure (unless you prefer to remain anonymous)
+- Acknowledge your report as soon as reasonably possible.
+- Keep you informed of progress towards a fix.
+- Credit you in any disclosure (unless you prefer to remain anonymous).
 
 There are no guaranteed SLAs, but all legitimate reports will be taken seriously and handled with care.
 
@@ -28,11 +28,11 @@ There are no guaranteed SLAs, but all legitimate reports will be taken seriously
 
 This project is a single-use Blazor utility for importing tasks into Microsoft Planner. Security concerns most relevant to this project include:
 
-- Handling of Microsoft Graph tokens or credentials
-- CSV parsing vulnerabilities (e.g. injection, path traversal)
-- Any unintended data exposure or transmission
+- Handling of Microsoft Graph tokens or credentials.
+- CSV parsing vulnerabilities (e.g. injection, path traversal).
+- Any unintended data exposure or transmission.
 
 ## Out of Scope
 
-- Vulnerabilities in third-party dependencies (please report those upstream)
-- Issues only reproducible in unsupported or unofficial builds
+- Vulnerabilities in third-party dependencies (please report those upstream).
+- Issues only reproducible in unsupported or unofficial builds.

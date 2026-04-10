@@ -10,10 +10,10 @@ Import To Planner is a **solo spare-time project**. There are no guaranteed resp
 
 If you have found a bug, please [open a GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new/choose) using the **Bug Report** template. Include as much detail as possible:
 
-- Steps to reproduce the problem
-- Expected vs actual behaviour
-- .NET SDK version and operating system
-- A sample CSV file that demonstrates the issue (redact any sensitive data)
+- Steps to reproduce the problem.
+- Expected vs actual behaviour.
+- .NET SDK version and operating system.
+- A sample CSV file that demonstrates the issue (redact any sensitive data).
 
 ---
 

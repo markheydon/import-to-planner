@@ -1,6 +1,6 @@
 # Contributing to Import To Planner
 
-Thank you for your interest in contributing! This is a solo-maintained project, so contributions are welcome but will be reviewed carefully to ensure they fit the project's goals and standards.
+Thank you for your interest in contributing! This is a solo-maintained project, massively helped by GitHub Copilot! Contributions are welcome but will be reviewed carefully to ensure they fit the project's goals and standards.
 
 ---
 
@@ -8,9 +8,9 @@ Thank you for your interest in contributing! This is a solo-maintained project, 
 
 ### Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- A **Microsoft 365 account** with access to Microsoft Planner and the Microsoft Graph API (required to test real Graph functionality)
-- An **Entra ID app registration** with the appropriate delegated permissions if you are working on auth or Graph integration
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+- A **Microsoft 365 account** with access to Microsoft Planner and the Microsoft Graph API (required to test real Graph functionality).
+- An **Entra ID app registration** with the appropriate delegated permissions if you are working on auth or Graph integration.
 
 ### Building and running tests
 
@@ -32,27 +32,27 @@ dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 
 Please use [GitHub Issues](https://github.com/markheydon/import-to-planner/issues/new/choose) and select the **Bug Report** template. Include as much detail as possible:
 
-- Steps to reproduce
-- Expected vs actual behaviour
-- .NET SDK version and operating system
-- Any relevant CSV input (redact any sensitive data)
+- Steps to reproduce.
+- Expected vs actual behaviour.
+- .NET SDK version and operating system.
+- Any relevant CSV input (redact any sensitive data).
 
 ---
 
 ## Suggesting Features
 
-Open a [GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new/choose) using the **Feature Request** template. Describe the use case clearly — feature requests are evaluated against the project's single-use utility scope.
+Open a [GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new/choose) using the **Feature Request** template. Describe the use case clearly - feature requests are evaluated against the project's single-use utility scope.
 
 ---
 
 ## Pull Request Process
 
 1. **Fork** the repository and create your branch from `main`.
-2. **Target `main`** — all PRs must target the `main` branch.
-3. **Linear history only** — squash or rebase your commits before opening a PR. Merge commits are not permitted (enforced by the branch ruleset).
-4. **Keep PRs focused and small** — one logical change per PR makes review faster and safer.
-5. **All CI checks must pass** — the `Build and Test` workflow must be green before a PR can merge.
-6. **Copilot code review** — an automated Copilot review will be requested on every PR. Address any findings before requesting a human review.
+2. **Target `main`** - all PRs must target the `main` branch.
+3. **Linear history only** - squash or rebase your commits before opening a PR. Merge commits are not permitted (enforced by the branch ruleset).
+4. **Keep PRs focused and small** - one logical change per PR makes review faster and safer.
+5. **All CI checks must pass** - the `Build and Test` workflow must be green before a PR can merge.
+6. **Copilot code review** - an automated Copilot review will be requested on every PR. Address any findings before requesting a human review.
 7. Open the PR and fill in the description clearly explaining what the change does and why.
 
 ---
@@ -77,7 +77,7 @@ This project follows a strict layered clean architecture. Respect the existing l
 | `ImportToPlanner.Infrastructure.Graph` | Infrastructure | Microsoft Graph implementation details |
 | `ImportToPlanner.Web` | Presentation | Blazor UI delivery only |
 
-- **No business logic in `ImportToPlanner.Web`** — UI components should delegate to application services.
+- **No business logic in `ImportToPlanner.Web`** - UI components should delegate to application services.
 - Dependencies must point inward: `Web` → `Application` ← `Infrastructure.Graph`; `Application` → `Domain`.
 - Do not place framework, Graph SDK, or EF/ORM concerns inside `Application` or `Domain`.
 
@@ -91,8 +91,8 @@ This project follows a strict layered clean architecture. Respect the existing l
 
 ## What Not to Contribute
 
-- **Changes to authentication or token handling** — this is a security-sensitive area. Please open an issue to discuss the change before writing any code.
-- Large-scale refactors that go beyond the requested change — keep PRs focused.
+- **Changes to authentication or token handling** - this is a security-sensitive area. Please open an issue to discuss the change before writing any code.
+- Large-scale refactors that go beyond the requested change - keep PRs focused.
 
 ---
 
