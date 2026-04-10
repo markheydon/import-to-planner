@@ -1,0 +1,30 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-type: "all"
+    groups:
+      microsoft-identity-and-graph:
+        patterns:
+          - "Microsoft.Graph"
+          - "Microsoft.Identity.Web*"
+      fluentui-packages:
+        patterns:
+          - "Microsoft.FluentUI.AspNetCore.Components*"
+      test-packages:
+        patterns:
+          - "coverlet.collector"
+          - "Microsoft.NET.Test.Sdk"
+          - "xunit"
+          - "xunit.*"
+    commit-message:
+      prefix: "[dependabot]"
+    assignees:
+      - "markheydon"

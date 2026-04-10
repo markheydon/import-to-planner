@@ -1,5 +1,5 @@
 ---
-name: dotnet-best-practices
+name: dotnet-best-practices-repo
 description: 'Apply practical, repository-aligned .NET/C# engineering practices without forcing framework-specific or architecture-specific choices.'
 ---
 

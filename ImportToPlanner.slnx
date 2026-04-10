@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ImportToPlanner.Application/ImportToPlanner.Application.csproj" />
+    <Project Path="src/ImportToPlanner.Domain/ImportToPlanner.Domain.csproj" />
+    <Project Path="src/ImportToPlanner.Infrastructure.Graph/ImportToPlanner.Infrastructure.Graph.csproj" />
+    <Project Path="src/ImportToPlanner.Web/ImportToPlanner.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj" />
+  </Folder>
+</Solution>

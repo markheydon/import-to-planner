@@ -1,0 +1,261 @@
+﻿@page "/"
+@inject ICsvImportParser CsvImportParser
+@inject IImportPlannerOrchestrator ImportPlannerOrchestrator
+@inject IPlannerGateway PlannerGateway
+@inject ILogger<Home> Logger
+
+<PageTitle>Import To Planner</PageTitle>
+
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="16" class="import-grid">
+	<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+		<FluentLabel>Import Input</FluentLabel>
+
+		<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+			<FluentSelect Items="@groups"
+						  OptionText="@(group => group?.DisplayName ?? string.Empty)"
+						  OptionValue="@(group => group?.Id ?? string.Empty)"
+						  @bind-SelectedOption="selectedGroup"
+						  Label="Group" />
+
+			<FluentTextField @bind-Value="planName" Label="Plan Name" Required="true" Maxlength="200" />
+
+			<FluentLabel>CSV File</FluentLabel>
+			<FluentInputFile OnInputFileChange="OnFileChangedAsync"
+							 Accept=".csv,text/csv"
+							 MaximumFileCount="1"
+							 DragDropZoneVisible="false" />
+			<FluentLabel>@selectedFileName</FluentLabel>
+
+			<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+				<FluentButton Appearance="Appearance.Accent" Disabled="@isBusy" OnClick="@BuildPreviewAsync">Validate And Preview</FluentButton>
+				<FluentButton Appearance="Appearance.Neutral" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">Confirm And Execute</FluentButton>
+			</FluentStack>
+		</FluentStack>
+
+		@if (!string.IsNullOrWhiteSpace(statusMessage))
+		{
+			<FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
+		}
+
+		@if (parseErrors.Count > 0)
+		{
+			<FluentLabel>Validation Errors</FluentLabel>
+			<FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
+				<PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
+				<PropertyColumn Property="@(error => error.Field)" Title="Field" />
+				<PropertyColumn Property="@(error => error.Message)" Title="Message" />
+			</FluentDataGrid>
+		}
+	</FluentStack>
+
+	<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+		<FluentLabel>Dry-Run Preview</FluentLabel>
+
+		@if (preview is null)
+		{
+			<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">No preview generated yet.</FluentMessageBar>
+		}
+		else
+		{
+			<FluentLabel>Plan action: @preview.PlanAction</FluentLabel>
+
+			<FluentLabel>Bucket Actions</FluentLabel>
+			<FluentDataGrid Items="@preview.BucketActions.AsQueryable()" TGridItem="KeyValuePair<string, PlannedEntityAction>">
+				<PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
+				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
+			</FluentDataGrid>
+
+			<FluentLabel>Goal Label Actions</FluentLabel>
+			<FluentDataGrid Items="@preview.GoalActions.AsQueryable()" TGridItem="KeyValuePair<string, PlannedEntityAction>">
+				<PropertyColumn Property="@(action => action.Key)" Title="Goal" />
+				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
+			</FluentDataGrid>
+
+			<FluentLabel>Task Actions</FluentLabel>
+			<FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
+				<PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
+				<PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
+				<PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
+				<PropertyColumn Property="@(task => task.Goal)" Title="Goal" />
+				<PropertyColumn Property="@(task => task.Action)" Title="Action" />
+				<PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
+			</FluentDataGrid>
+		}
+	</FluentStack>
+
+	<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+		<FluentLabel>Execution Report</FluentLabel>
+
+		@if (executionResult is null)
+		{
+			<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">No execution run yet.</FluentMessageBar>
+		}
+		else
+		{
+			<FluentLabel>Created</FluentLabel>
+			<FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
+				<PropertyColumn Property="@(item => item)" Title="Item" />
+			</FluentDataGrid>
+
+			<FluentLabel>Reused Or Skipped</FluentLabel>
+			<FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
+				<PropertyColumn Property="@(item => item)" Title="Item" />
+			</FluentDataGrid>
+
+			<FluentLabel>Errors</FluentLabel>
+			@if (executionResult.Errors.Count == 0)
+			{
+				<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
+			}
+			else
+			{
+				<FluentDataGrid Items="@executionResult.Errors.AsQueryable()" TGridItem="string">
+					<PropertyColumn Property="@(item => item)" Title="Error" />
+				</FluentDataGrid>
+			}
+		}
+	</FluentStack>
+</FluentStack>
+
+@code {
+	private readonly List<PlannerGroup> groups = [];
+	private readonly List<ImportValidationError> parseErrors = [];
+
+	private PlannerGroup? selectedGroup;
+	private string planName = string.Empty;
+	private string csvContent = string.Empty;
+	private string selectedFileName = "No file selected.";
+	private string? statusMessage;
+	private bool isBusy;
+
+	private ImportPlanPreview? preview;
+	private ImportExecutionResult? executionResult;
+	private ImportRequest? currentRequest;
+
+	private bool canExecute => !isBusy && preview is not null && currentRequest is not null;
+	private MessageIntent StatusMessageIntent => parseErrors.Count > 0
+		? MessageIntent.Error
+		: executionResult is null
+			? MessageIntent.Info
+			: executionResult.Errors.Count > 0
+				? MessageIntent.Warning
+				: MessageIntent.Success;
+
+	protected override async Task OnInitializedAsync()
+	{
+		var loadedGroups = await PlannerGateway.GetAvailableGroupsAsync(CancellationToken.None);
+		groups.AddRange(loadedGroups);
+	}
+
+	private async Task OnFileChangedAsync(InputFileChangeEventArgs args)
+	{
+		parseErrors.Clear();
+		preview = null;
+		executionResult = null;
+
+		var file = args.File;
+		selectedFileName = file.Name;
+
+		await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+		using var reader = new StreamReader(stream);
+		csvContent = await reader.ReadToEndAsync();
+
+		statusMessage = "CSV file loaded. Click Validate And Preview.";
+	}
+
+	private async Task BuildPreviewAsync()
+	{
+		if (isBusy)
+		{
+			return;
+		}
+
+		parseErrors.Clear();
+		preview = null;
+		executionResult = null;
+		statusMessage = null;
+
+		if (selectedGroup is null)
+		{
+			parseErrors.Add(new ImportValidationError(0, "Group", "A group must be selected."));
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(planName))
+		{
+			parseErrors.Add(new ImportValidationError(0, "Plan Name", "Plan name is required."));
+			return;
+		}
+
+		if (string.IsNullOrWhiteSpace(csvContent))
+		{
+			parseErrors.Add(new ImportValidationError(0, "File", "Upload a CSV file first."));
+			return;
+		}
+
+		isBusy = true;
+		try
+		{
+			var parseResult = await CsvImportParser.ParseAsync(csvContent, CancellationToken.None);
+			parseErrors.AddRange(parseResult.ValidationErrors);
+
+			if (parseResult.HasErrors)
+			{
+				statusMessage = "Validation failed. Fix the reported issues and retry.";
+				return;
+			}
+
+			currentRequest = new ImportRequest(selectedGroup.Id, planName.Trim(), parseResult.Rows);
+			preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
+			statusMessage = "Preview generated. Review actions, then confirm execution.";
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Preview generation failed.");
+			parseErrors.Add(new ImportValidationError(0, "System", "Preview generation failed due to an unexpected system error."));
+			statusMessage = "Preview generation failed.";
+		}
+		finally
+		{
+			isBusy = false;
+		}
+	}
+
+	private async Task ExecuteAsync()
+	{
+		if (!canExecute)
+		{
+			return;
+		}
+
+		isBusy = true;
+		statusMessage = null;
+		try
+		{
+			executionResult = await ImportPlannerOrchestrator.ExecuteAsync(
+				currentRequest!,
+				preview!,
+				CancellationToken.None);
+
+			statusMessage = executionResult.Errors.Count == 0
+				? "Execution completed successfully."
+				: "Execution completed with errors.";
+		}
+		catch (Exception ex)
+		{
+			Logger.LogError(ex, "Execution failed.");
+			executionResult = new ImportExecutionResult
+			{
+				Created = [],
+				ReusedOrSkipped = [],
+				Errors = ["Execution failed due to an unexpected system error. Check logs and retry."],
+			};
+
+			statusMessage = "Execution failed.";
+		}
+		finally
+		{
+			isBusy = false;
+		}
+	}
+}

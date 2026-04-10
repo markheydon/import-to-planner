@@ -20,7 +20,7 @@ Use this file as baseline guidance for C# and project-file work that should foll
 - Reuse existing abstractions before introducing new ones.
 - Do not change SDK, target framework, or generated files unless explicitly requested.
 - Do not perform opportunistic refactors outside the requested scope.
-- This file applies to `*.razor.cs`, but Blazor component-facing decisions in those files are governed first by `blazor-mudblazor.instructions.md`.
+- This file applies to `*.razor.cs`, but Blazor component-facing decisions in those files are governed first by the Blazor UI instruction file (`blazor-fluentui.instructions.md`, Fluent UI oriented).
 - In `*.razor.cs`, apply these Clean Architecture rules primarily to non-UI policy boundaries and dependency direction.
 
 ## C# Version and Language Features
@@ -76,4 +76,4 @@ When guidance conflicts, apply this order:
 3. This instruction file
 4. General C#/.NET defaults
 
-For `*.razor.cs`, Blazor component-facing concerns are governed first by `blazor-mudblazor.instructions.md`, while Clean Architecture governs non-UI policy boundaries and dependency direction.
+For `*.razor.cs`, Blazor component-facing concerns are governed first by `blazor-fluentui.instructions.md` (Fluent UI oriented), while Clean Architecture governs non-UI policy boundaries and dependency direction.
