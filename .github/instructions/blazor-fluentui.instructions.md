@@ -1,3 +1,4 @@
+---
 description: 'Blazor and Fluent UI guidance for Razor UI work, designed to coexist with task-specific skills.'
 applyTo: '**/*.razor, **/*.razor.cs, **/*.razor.css'
 ---
@@ -44,4 +45,4 @@ When guidance conflicts, apply this order:
 4. This instruction file
 5. General Blazor/.NET defaults
 
-For `*.razor.cs`, Blazor component-facing concerns are governed first by `blazor-mudblazor.instructions.md`, while Clean Architecture governs non-UI policy boundaries and dependency direction.
+For `*.razor.cs`, Blazor component-facing concerns are governed first by `blazor-fluentui.instructions.md`, while Clean Architecture governs non-UI policy boundaries and dependency direction.
