@@ -23,6 +23,8 @@ public sealed class CsvImportParser : ICsvImportParser
     /// <inheritdoc/>
     public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (string.IsNullOrWhiteSpace(csvContent))
         {
             return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV file is empty.")]));

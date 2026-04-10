@@ -22,12 +22,17 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     /// <inheritdoc/>
     public Task<IReadOnlyList<PlannerGroup>> GetAvailableGroupsAsync(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(Groups);
     }
 
     /// <inheritdoc/>
     public Task<PlannerPlan?> FindPlanByNameAsync(string groupId, string planName, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(groupId, nameof(groupId));
+        ValidateRequired(planName, nameof(planName));
+
         if (!plansByGroup.TryGetValue(groupId, out var plans))
         {
             return Task.FromResult<PlannerPlan?>(null);
@@ -40,6 +45,10 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     /// <inheritdoc/>
     public Task<PlannerPlan> CreatePlanAsync(string groupId, string planName, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(groupId, nameof(groupId));
+        ValidateRequired(planName, nameof(planName));
+
         if (!plansByGroup.TryGetValue(groupId, out var plans))
         {
             plans = [];
@@ -65,6 +74,9 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     /// <inheritdoc/>
     public Task<IReadOnlyList<PlannerBucket>> GetBucketsAsync(string planId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(planId, nameof(planId));
+
         if (!bucketsByPlan.TryGetValue(planId, out var buckets))
         {
             return Task.FromResult<IReadOnlyList<PlannerBucket>>([]);
@@ -76,6 +88,10 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     /// <inheritdoc/>
     public Task<PlannerBucket> CreateBucketAsync(string planId, string bucketName, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(planId, nameof(planId));
+        ValidateRequired(bucketName, nameof(bucketName));
+
         if (!bucketsByPlan.TryGetValue(planId, out var buckets))
         {
             buckets = [];
@@ -96,6 +112,9 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     /// <inheritdoc/>
     public Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(planId, nameof(planId));
+
         if (!tasksByPlan.TryGetValue(planId, out var tasks))
         {
             return Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>([]);
@@ -107,6 +126,9 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     /// <inheritdoc/>
     public Task<IReadOnlySet<string>> GetGoalsAsync(string planId, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(planId, nameof(planId));
+
         if (!goalsByPlan.TryGetValue(planId, out var goals))
         {
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
@@ -121,6 +143,10 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         IReadOnlyCollection<string> goals,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(planId, nameof(planId));
+        ArgumentNullException.ThrowIfNull(goals);
+
         if (!goalsByPlan.TryGetValue(planId, out var existing))
         {
             existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -130,6 +156,8 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         var created = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var goal in goals)
         {
+            ValidateRequired(goal, nameof(goals));
+
             if (existing.Add(goal))
             {
                 created.Add(goal);
@@ -149,6 +177,11 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         string? goal,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(planId, nameof(planId));
+        ValidateRequired(bucketId, nameof(bucketId));
+        ValidateRequired(taskName, nameof(taskName));
+
         if (!tasksByPlan.TryGetValue(planId, out var tasks))
         {
             tasks = [];
@@ -164,5 +197,13 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         var task = new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId);
         tasks.Add(task);
         return Task.FromResult(task);
+    }
+
+    private static void ValidateRequired(string value, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new ArgumentException("A non-empty value is required.", parameterName);
+        }
     }
 }

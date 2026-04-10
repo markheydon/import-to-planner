@@ -130,6 +130,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         CancellationToken cancellationToken)
     {
         ValidateRequest(request);
+        ArgumentNullException.ThrowIfNull(preview);
 
         if (!string.Equals(request.GroupId, preview.GroupId, StringComparison.Ordinal) ||
             !string.Equals(request.PlanName, preview.PlanName, StringComparison.Ordinal))
@@ -271,6 +272,8 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
 
     private static void ValidateRequest(ImportRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         if (string.IsNullOrWhiteSpace(request.GroupId))
         {
             throw new ArgumentException("Group is required.", nameof(request));
