@@ -201,11 +201,11 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             {
                 if (createdGoals.Contains(goal))
                 {
-                    created.Add($"Goal label: {goal}");
+                    created.Add($"Goal name: {goal}");
                 }
                 else
                 {
-                    reusedOrSkipped.Add($"Goal label: {goal} (reused)");
+                    reusedOrSkipped.Add($"Goal name: {goal} (reused)");
                 }
             }
         }
