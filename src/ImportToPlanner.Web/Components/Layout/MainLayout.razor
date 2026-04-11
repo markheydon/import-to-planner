@@ -40,11 +40,12 @@
 @code {
     private void OnSignInClicked()
     {
-        NavigationManager.NavigateTo("/MicrosoftIdentity/Account/SignIn", forceLoad: true);
+        NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
     }
 
     private void OnSignOutClicked()
     {
-        NavigationManager.NavigateTo("/MicrosoftIdentity/Account/SignOut?returnUrl=/", forceLoad: true);
+        var returnUrl = Uri.EscapeDataString(new Uri(NavigationManager.BaseUri).PathAndQuery);
+        NavigationManager.NavigateTo($"MicrosoftIdentity/Account/SignOut?returnUrl={returnUrl}", forceLoad: true);
     }
 }
