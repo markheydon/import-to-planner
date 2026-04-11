@@ -2,6 +2,9 @@
 @inject ICsvImportParser CsvImportParser
 @inject IImportPlannerOrchestrator ImportPlannerOrchestrator
 @inject IPlannerGateway PlannerGateway
+@inject IConfiguration Configuration
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
 @inject ILogger<Home> Logger
 
 <PageTitle>Import To Planner</PageTitle>
@@ -151,6 +154,18 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		var useGraph = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
+		if (useGraph)
+		{
+			var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+			var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+			if (!isAuthenticated)
+			{
+				NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+				return;
+			}
+		}
+
 		var loadedGroups = await PlannerGateway.GetAvailableGroupsAsync(CancellationToken.None);
 		groups.AddRange(loadedGroups);
 		if (groups.Count > 0)
