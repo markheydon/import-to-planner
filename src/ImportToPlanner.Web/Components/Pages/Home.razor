@@ -12,16 +12,19 @@
 
 		<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
 			<FluentSelect Items="@groups" OptionText="@(group => group?.DisplayName ?? string.Empty)"
-			  OptionSelected="@(group => group?.Id == selectedGroup?.Id)"
+						  OptionSelected="@(group => group?.Id == selectedGroup?.Id)"
 						  SelectedOption="@selectedGroup"
-						  SelectedOptionChanged="@((PlannerGroup? group) => selectedGroup = group)" Label="Group" />
+						  SelectedOptionChanged="@((PlannerGroup? group) => OnSelectedGroupChanged(group))"
+						  Label="Group" />
 
-			<FluentTextField Value="@planName" ValueChanged="@((string? v) => planName = v ?? string.Empty)"
+			<FluentTextField Value="@planName" ValueChanged="@((string? value) => OnPlanNameChanged(value))"
 							 Immediate="true" Label="Plan Name" Required="true" Maxlength="200" />
 
 			<FluentInputFile Id="csv-file-input" AnchorId="csv-file-button" OnInputFileChange="OnFileChangedAsync"
 							 Accept=".csv,text/csv" MaximumFileCount="1" DragDropZoneVisible="false" />
-			<FluentSwitch @bind-Value="ignoreExtraColumns" Label="Ignore extra columns" />
+			<FluentSwitch Value="@ignoreExtraColumns"
+						  ValueChanged="@((bool value) => OnIgnoreExtraColumnsChanged(value))"
+						  Label="Ignore extra columns" />
 			<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
 						 VerticalAlignment="VerticalAlignment.Center">
 				<FluentButton Id="csv-file-button" Appearance="Appearance.Outline">Browse CSV file</FluentButton>
@@ -30,90 +33,92 @@
 
 			<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
 				<FluentButton Appearance="Appearance.Accent" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
-					Validate And Preview</FluentButton>
-					<FluentButton Appearance="Appearance.Neutral" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">Confirm
-						And Execute</FluentButton>
-					</FluentStack>
-				</FluentStack>
-
-				@if (!string.IsNullOrWhiteSpace(statusMessage))
-				{
-					<FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
-				}
-
-				@if (parseErrors.Count > 0)
-				{
-					<FluentLabel Typo="Typography.Header">Validation Errors</FluentLabel>
-					<FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
-						<PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
-						<PropertyColumn Property="@(error => error.Field)" Title="Field" />
-						<PropertyColumn Property="@(error => error.Message)" Title="Message" />
-					</FluentDataGrid>
-				}
+					Validate And Preview
+				</FluentButton>
+				<FluentButton Appearance="Appearance.Neutral" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
+					Confirm And Execute
+				</FluentButton>
 			</FluentStack>
 
-			@if (preview is not null)
+			@if (!string.IsNullOrWhiteSpace(statusMessage))
 			{
-				<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-					<FluentLabel Typo="Typography.PaneHeader">Dry-Run Preview</FluentLabel>
-
-					<FluentLabel Typo="Typography.Subject">Plan action: @preview.PlanAction</FluentLabel>
-
-					<FluentLabel Typo="Typography.Header">Bucket Actions</FluentLabel>
-					<FluentDataGrid Items="@preview.BucketActions.AsQueryable()"
-									TGridItem="KeyValuePair<string, PlannedEntityAction>">
-						<PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
-						<PropertyColumn Property="@(action => action.Value)" Title="Action" />
-					</FluentDataGrid>
-
-					<FluentLabel Typo="Typography.Header">Goal Actions</FluentLabel>
-					<FluentDataGrid Items="@preview.GoalActions.AsQueryable()"
-									TGridItem="KeyValuePair<string, PlannedEntityAction>">
-						<PropertyColumn Property="@(action => action.Key)" Title="Goal" />
-						<PropertyColumn Property="@(action => action.Value)" Title="Action" />
-					</FluentDataGrid>
-
-					<FluentLabel Typo="Typography.Header">Task Actions</FluentLabel>
-					<FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
-						<PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
-						<PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
-						<PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
-						<PropertyColumn Property="@(task => task.Goal)" Title="Goal" />
-						<PropertyColumn Property="@(task => task.Action)" Title="Action" />
-						<PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
-					</FluentDataGrid>
-				</FluentStack>
+				<FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
 			}
 
-			@if (executionResult is not null)
+			@if (parseErrors.Count > 0)
 			{
-				<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-					<FluentLabel Typo="Typography.PaneHeader">Execution Report</FluentLabel>
-
-					<FluentLabel Typo="Typography.Header">Created</FluentLabel>
-					<FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
-						<PropertyColumn Property="@(item => item)" Title="Item" />
-					</FluentDataGrid>
-
-					<FluentLabel Typo="Typography.Header">Reused Or Skipped</FluentLabel>
-					<FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
-						<PropertyColumn Property="@(item => item)" Title="Item" />
-					</FluentDataGrid>
-
-					<FluentLabel Typo="Typography.Header">Errors</FluentLabel>
-					@if (executionResult.Errors.Count == 0)
-					{
-						<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
-					}
-					else
-					{
-						<FluentDataGrid Items="@executionResult.Errors.AsQueryable()" TGridItem="string">
-							<PropertyColumn Property="@(item => item)" Title="Error" />
-						</FluentDataGrid>
-					}
-				</FluentStack>
+				<FluentLabel Typo="Typography.Header">Validation Errors</FluentLabel>
+				<FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
+					<PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
+					<PropertyColumn Property="@(error => error.Field)" Title="Field" />
+					<PropertyColumn Property="@(error => error.Message)" Title="Message" />
+				</FluentDataGrid>
 			}
 		</FluentStack>
+	</FluentStack>
+
+	@if (preview is not null)
+	{
+		<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+			<FluentLabel Typo="Typography.PaneHeader">Dry-Run Preview</FluentLabel>
+
+			<FluentLabel Typo="Typography.Subject">Plan action: @preview.PlanAction</FluentLabel>
+
+			<FluentLabel Typo="Typography.Header">Bucket Actions</FluentLabel>
+			<FluentDataGrid Items="@preview.BucketActions.AsQueryable()"
+							TGridItem="KeyValuePair<string, PlannedEntityAction>">
+				<PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
+				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
+			</FluentDataGrid>
+
+			<FluentLabel Typo="Typography.Header">Goal Actions</FluentLabel>
+			<FluentDataGrid Items="@preview.GoalActions.AsQueryable()"
+							TGridItem="KeyValuePair<string, PlannedEntityAction>">
+				<PropertyColumn Property="@(action => action.Key)" Title="Goal" />
+				<PropertyColumn Property="@(action => action.Value)" Title="Action" />
+			</FluentDataGrid>
+
+			<FluentLabel Typo="Typography.Header">Task Actions</FluentLabel>
+			<FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
+				<PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
+				<PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
+				<PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
+				<PropertyColumn Property="@(task => task.Goal)" Title="Goal" />
+				<PropertyColumn Property="@(task => task.Action)" Title="Action" />
+				<PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
+			</FluentDataGrid>
+		</FluentStack>
+	}
+
+	@if (executionResult is not null)
+	{
+		<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+			<FluentLabel Typo="Typography.PaneHeader">Execution Report</FluentLabel>
+
+			<FluentLabel Typo="Typography.Header">Created</FluentLabel>
+			<FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
+				<PropertyColumn Property="@(item => item)" Title="Item" />
+			</FluentDataGrid>
+
+			<FluentLabel Typo="Typography.Header">Reused Or Skipped</FluentLabel>
+			<FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
+				<PropertyColumn Property="@(item => item)" Title="Item" />
+			</FluentDataGrid>
+
+			<FluentLabel Typo="Typography.Header">Errors</FluentLabel>
+			@if (executionResult.Errors.Count == 0)
+			{
+				<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
+			}
+			else
+			{
+				<FluentDataGrid Items="@executionResult.Errors.AsQueryable()" TGridItem="string">
+					<PropertyColumn Property="@(item => item)" Title="Error" />
+				</FluentDataGrid>
+			}
+		</FluentStack>
+	}
+</FluentStack>
 
 @code {
 	private readonly List<PlannerGroup> groups = [];
@@ -131,7 +136,10 @@
 	private ImportExecutionResult? executionResult;
 	private ImportRequest? currentRequest;
 
-	private bool canValidate => !isBusy && !string.IsNullOrWhiteSpace(planName) && !string.IsNullOrWhiteSpace(csvContent);
+	private bool canValidate => !isBusy
+		&& selectedGroup is not null
+		&& !string.IsNullOrWhiteSpace(planName)
+		&& !string.IsNullOrWhiteSpace(csvContent);
 	private bool canExecute => !isBusy && preview is not null && currentRequest is not null;
 	private MessageIntent StatusMessageIntent => parseErrors.Count > 0
 		? MessageIntent.Error
@@ -153,9 +161,7 @@
 
 	private async Task OnFileChangedAsync(InputFileChangeEventArgs args)
 	{
-		parseErrors.Clear();
-		preview = null;
-		executionResult = null;
+		ResetFlowState();
 
 		var file = args.File;
 		selectedFileName = file.Name;
@@ -165,6 +171,49 @@
 		csvContent = await reader.ReadToEndAsync();
 
 		statusMessage = "CSV file loaded. Click Validate And Preview.";
+	}
+
+	private void OnSelectedGroupChanged(PlannerGroup? group)
+	{
+		if (selectedGroup?.Id == group?.Id)
+		{
+			return;
+		}
+
+		selectedGroup = group;
+		ResetFlowState();
+	}
+
+	private void OnPlanNameChanged(string? value)
+	{
+		var normalizedValue = value ?? string.Empty;
+		if (string.Equals(planName, normalizedValue, StringComparison.Ordinal))
+		{
+			return;
+		}
+
+		planName = normalizedValue;
+		ResetFlowState();
+	}
+
+	private void OnIgnoreExtraColumnsChanged(bool value)
+	{
+		if (ignoreExtraColumns == value)
+		{
+			return;
+		}
+
+		ignoreExtraColumns = value;
+		ResetFlowState();
+	}
+
+	private void ResetFlowState()
+	{
+		parseErrors.Clear();
+		preview = null;
+		currentRequest = null;
+		executionResult = null;
+		statusMessage = null;
 	}
 
 	private async Task BuildPreviewAsync()
