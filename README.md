@@ -36,6 +36,8 @@ The infrastructure currently uses an in-memory `IPlannerGateway` implementation 
 
 The next implementation step is replacing this with real Microsoft Graph delegated calls.
 
+For delegated Entra authentication, this project is tracking certificate credentials (not client secrets) for confidential-client setup.
+
 ## Microsoft Graph Constraints Accounted For
 
 - Planner plans are container-scoped (group-backed plan container expected).
@@ -64,7 +66,7 @@ Prepare release notes,,Low,,Communication
 ## Next Steps
 
 1. Implement real Graph gateway in `src/ImportToPlanner.Infrastructure.Graph`.
-2. Add Entra ID delegated auth in the web app and token acquisition.
+2. Add Entra ID delegated auth in the web app and token acquisition using certificate credentials.
 3. Replace in-memory groups with real user-accessible group lookup.
 4. Add integration tests for Graph error handling and permission failures.
 
