@@ -24,7 +24,7 @@ This repository now includes:
 - Dry-run planning with idempotency rules:
   - Plan create/reuse
   - Bucket create/reuse
-  - Goal label create/reuse
+  - Goal name create/reuse
   - Task create/skip
   - Duplicate task names in CSV are skipped after the first occurrence
 - Confirmation + execution reporting UI

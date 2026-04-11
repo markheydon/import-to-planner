@@ -27,7 +27,7 @@ public sealed class CsvImportParser : ICsvImportParser
     };
 
     /// <inheritdoc/>
-    public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken)
+    public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken, bool ignoreExtraColumns = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -56,7 +56,7 @@ public sealed class CsvImportParser : ICsvImportParser
             return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV header row is missing.")]));
         }
 
-        ValidateHeaders(csv.HeaderRecord, errors);
+        ValidateHeaders(csv.HeaderRecord, errors, ignoreExtraColumns);
 
         while (csv.Read())
         {
@@ -90,7 +90,7 @@ public sealed class CsvImportParser : ICsvImportParser
         return Task.FromResult(new CsvParseResult(rows, errors));
     }
 
-    private static void ValidateHeaders(IEnumerable<string> headers, List<ImportValidationError> errors)
+    private static void ValidateHeaders(IEnumerable<string> headers, List<ImportValidationError> errors, bool ignoreExtraColumns = false)
     {
         var normalized = headers
             .Select(header => header.Trim())
@@ -101,11 +101,14 @@ public sealed class CsvImportParser : ICsvImportParser
             errors.Add(new ImportValidationError(0, "Task Name", "Task Name column is required."));
         }
 
-        foreach (var header in normalized)
+        if (!ignoreExtraColumns)
         {
-            if (!SupportedHeaders.Contains(header))
+            foreach (var header in normalized)
             {
-                errors.Add(new ImportValidationError(0, header, "Unexpected column."));
+                if (!SupportedHeaders.Contains(header))
+                {
+                    errors.Add(new ImportValidationError(0, header, "Unexpected column."));
+                }
             }
         }
     }
