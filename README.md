@@ -54,6 +54,31 @@ dotnet test ImportToPlanner.slnx
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
+## Certificate Credentials (Local Dev, Cross-Platform)
+
+Use certificate credentials via .NET user secrets and keep real values out of tracked files.
+
+Environment guidance:
+
+- Native Windows runtime: `StoreWithThumbprint` or `Path` can work.
+- WSL/Linux/macOS runtime: use `Path` with a `.pfx` file.
+
+If the app process runs in WSL, certificate-store lookup can fail because the runtime cannot use a Windows certificate-store entry from inside Linux. In WSL, prefer file-based certificate loading.
+
+### Recommended for WSL/Linux/macOS
+
+```bash
+dotnet user-secrets set "AzureAd:ClientCertificates:0:SourceType" "Path" --project src/ImportToPlanner.Web
+dotnet user-secrets set "AzureAd:ClientCertificates:0:CertificateDiskPath" "/absolute/path/to/import-to-planner.pfx" --project src/ImportToPlanner.Web
+dotnet user-secrets set "AzureAd:ClientCertificates:0:CertificatePassword" "" --project src/ImportToPlanner.Web
+```
+
+Notes:
+
+- The `.pfx` must include the private key and match the public `.cer` uploaded to Entra app registration.
+- In WSL, use Linux-visible paths (for example `/home/...` or `/mnt/c/...`), not `C:\...`.
+- Never commit `.pfx`, `.key`, certificate passwords, or real tenant/app identifiers.
+
 ## CSV Example
 
 ```csv

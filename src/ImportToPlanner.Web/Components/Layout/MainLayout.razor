@@ -1,4 +1,5 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
 
 <FluentDesignTheme Mode="DesignThemeModes.System" />
 
@@ -6,6 +7,17 @@
     <header class="app-header">
         <h1>CSV to Planner Import</h1>
         <p>Single-use utility for idempotent plan, bucket, goal name, and task creation.</p>
+        <AuthorizeView>
+            <Authorized Context="authState">
+                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
+                    <FluentLabel>@authState.User.Identity?.Name</FluentLabel>
+                    <FluentButton OnClick="OnSignOutClicked" Appearance="Appearance.Neutral">Sign out</FluentButton>
+                </FluentStack>
+            </Authorized>
+            <NotAuthorized>
+                <FluentButton OnClick="OnSignInClicked" Appearance="Appearance.Accent">Sign in</FluentButton>
+            </NotAuthorized>
+        </AuthorizeView>
     </header>
 
     <main class="app-content">
@@ -24,3 +36,16 @@
         <span class="dismiss">x</span>
     </div>
 </div>
+
+@code {
+    private void OnSignInClicked()
+    {
+        NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+    }
+
+    private void OnSignOutClicked()
+    {
+        var returnUrl = Uri.EscapeDataString(new Uri(NavigationManager.BaseUri).PathAndQuery);
+        NavigationManager.NavigateTo($"MicrosoftIdentity/Account/SignOut?returnUrl={returnUrl}", forceLoad: true);
+    }
+}
