@@ -166,6 +166,8 @@
 			}
 		}
 
+		// Guard against duplicate loads: clear before adding to ensure single initialization.
+		groups.Clear();
 		var loadedGroups = await PlannerGateway.GetAvailableGroupsAsync(CancellationToken.None);
 		groups.AddRange(loadedGroups);
 		if (groups.Count > 0)
