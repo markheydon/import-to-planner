@@ -40,7 +40,7 @@ var graphScopes = builder.Configuration.GetSection("DownstreamApis:MicrosoftGrap
 
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
-    .EnableTokenAcquisitionToCallDownstreamApi()
+    .EnableTokenAcquisitionToCallDownstreamApi(graphScopes)
     .AddInMemoryTokenCaches();
 
 builder.Services.AddScoped<GraphServiceClient>(serviceProvider =>

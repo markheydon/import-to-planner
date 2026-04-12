@@ -86,10 +86,28 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             },
             cancellationToken);
 
-        var existing = plansResponse?.Value?.FirstOrDefault(plan =>
-            string.Equals(plan.Title, planName, StringComparison.OrdinalIgnoreCase));
+        while (plansResponse is not null)
+        {
+            var existing = plansResponse.Value?.FirstOrDefault(plan =>
+                string.Equals(plan.Title, planName, StringComparison.OrdinalIgnoreCase));
 
-        return existing is null ? null : MapPlannerPlan(existing, containerId, null);
+            if (existing is not null)
+            {
+                return MapPlannerPlan(existing, containerId, null);
+            }
+
+            if (string.IsNullOrWhiteSpace(plansResponse.OdataNextLink))
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            plansResponse = await graphClient.Planner.Plans
+                .WithUrl(plansResponse.OdataNextLink)
+                .GetAsync(cancellationToken: cancellationToken);
+        }
+
+        return null;
     }
 
     /// <inheritdoc/>
@@ -177,15 +195,28 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             },
             cancellationToken);
 
-        if (tasksResponse?.Value is null)
+        var tasks = new List<PlannerTaskSnapshot>();
+        while (tasksResponse is not null)
         {
-            return [];
+            if (tasksResponse.Value is not null)
+            {
+                tasks.AddRange(tasksResponse.Value
+                    .Where(task => !string.IsNullOrWhiteSpace(task.Id) && !string.IsNullOrWhiteSpace(task.Title))
+                    .Select(task => new PlannerTaskSnapshot(task.Id!, task.Title!, task.PlanId ?? planId)));
+            }
+
+            if (string.IsNullOrWhiteSpace(tasksResponse.OdataNextLink))
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            tasksResponse = await graphClient.Planner.Plans[planId].Tasks
+                .WithUrl(tasksResponse.OdataNextLink)
+                .GetAsync(cancellationToken: cancellationToken);
         }
 
-        return tasksResponse.Value
-            .Where(task => !string.IsNullOrWhiteSpace(task.Id) && !string.IsNullOrWhiteSpace(task.Title))
-            .Select(task => new PlannerTaskSnapshot(task.Id!, task.Title!, task.PlanId ?? planId))
-            .ToList();
+        return tasks;
     }
 
     /// <inheritdoc/>
