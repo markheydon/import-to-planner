@@ -46,9 +46,17 @@ This app uses the **Microsoft Graph beta API** (`https://graph.microsoft.com/bet
 
 ### Authentication
 
-The infrastructure currently uses an in-memory `IPlannerGateway` implementation to enable end-to-end UI and orchestration development.
+The app supports both gateways:
+- `InMemoryPlannerGateway` for local/offline development
+- `GraphPlannerGateway` for live Microsoft Graph delegated calls (beta API)
 
-The next implementation step is replacing this with real Microsoft Graph delegated calls via Entra ID authentication.
+Gateway selection is controlled with:
+
+```json
+"PlannerGateway": {
+  "UseGraph": false
+}
+```
 
 For delegated Entra authentication, this project tracks certificate credentials (not client secrets) for confidential-client setup.
 

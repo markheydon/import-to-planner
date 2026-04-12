@@ -46,7 +46,14 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ICsvImportParser, CsvImportParser>();
 builder.Services.AddScoped<IImportPlannerOrchestrator, ImportPlannerOrchestrator>();
-builder.Services.AddScoped<IPlannerGateway, InMemoryPlannerGateway>();
+if (builder.Configuration.GetValue<bool>("PlannerGateway:UseGraph"))
+{
+    builder.Services.AddScoped<IPlannerGateway, GraphPlannerGateway>();
+}
+else
+{
+    builder.Services.AddScoped<IPlannerGateway, InMemoryPlannerGateway>();
+}
 
 var app = builder.Build();
 
