@@ -132,6 +132,9 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
             throw new InvalidOperationException("An authenticated user context is required to acquire a Graph access token.");
         }
 
-        return await tokenAcquisition.GetAccessTokenForUserAsync(scopes, user: user).ConfigureAwait(false);
+        return await tokenAcquisition.GetAccessTokenForUserAsync(
+            scopes,
+            authenticationScheme: OpenIdConnectDefaults.AuthenticationScheme,
+            user: user).ConfigureAwait(false);
     }
 }
