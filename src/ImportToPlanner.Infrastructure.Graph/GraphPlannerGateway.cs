@@ -89,7 +89,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         var existing = plansResponse?.Value?.FirstOrDefault(plan =>
             string.Equals(plan.Title, planName, StringComparison.OrdinalIgnoreCase));
 
-        return existing is null ? null : MapPlannerPlan(existing);
+        return existing is null ? null : MapPlannerPlan(existing, containerId, null);
     }
 
     /// <inheritdoc/>
@@ -117,7 +117,10 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             },
             cancellationToken: cancellationToken);
 
-        return MapPlannerPlan(created ?? throw new InvalidOperationException("Graph did not return the created plan."));
+        return MapPlannerPlan(
+            created ?? throw new InvalidOperationException("Graph did not return the created plan."),
+            containerId,
+            containerType);
     }
 
     /// <inheritdoc/>
@@ -220,21 +223,23 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         return new PlannerTaskSnapshot(created.Id, created.Title, created.PlanId ?? planId);
     }
 
-    private static PlannerPlan MapPlannerPlan(GraphPlannerPlan graphPlan)
+    private static PlannerPlan MapPlannerPlan(
+        GraphPlannerPlan graphPlan,
+        string? fallbackContainerId,
+        ContainerType? fallbackContainerType)
     {
         if (string.IsNullOrWhiteSpace(graphPlan.Id) || string.IsNullOrWhiteSpace(graphPlan.Title))
         {
             throw new InvalidOperationException("Graph returned an invalid plan response.");
         }
 
-        if (graphPlan.Container is null || string.IsNullOrWhiteSpace(graphPlan.Container.ContainerId))
-        {
-            throw new InvalidOperationException("Graph returned plan data without container information.");
-        }
+        var containerId = graphPlan.Container?.ContainerId ?? fallbackContainerId;
+        var containerType = graphPlan.Container is null
+            ? fallbackContainerType
+            : ResolveContainerTypeFromGraphValue(graphPlan.Container.Type?.ToString(), graphPlan.Container.AdditionalData);
+        containerType ??= fallbackContainerType;
 
-        var containerType = ResolveContainerTypeFromGraphValue(graphPlan.Container.Type?.ToString(), graphPlan.Container.AdditionalData);
-
-        return new Domain.PlannerPlan(graphPlan.Id, graphPlan.Title, graphPlan.Container.ContainerId, containerType);
+        return new Domain.PlannerPlan(graphPlan.Id, graphPlan.Title, containerId, containerType);
     }
 
     private async Task<ContainerType> ResolveContainerTypeAsync(string containerId, CancellationToken cancellationToken)
@@ -249,7 +254,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         return container.Type;
     }
 
-    private static ContainerType ResolveContainerTypeFromGraphValue(string? type, IDictionary<string, object>? additionalData)
+    private static ContainerType? ResolveContainerTypeFromGraphValue(string? type, IDictionary<string, object>? additionalData)
     {
         var resolvedType = type;
         if (string.IsNullOrWhiteSpace(resolvedType) &&
@@ -269,7 +274,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             return ContainerType.Group;
         }
 
-        throw new InvalidOperationException($"Unsupported Planner container type '{resolvedType ?? "<null>"}'.");
+        return null;
     }
 
     private static string EscapeODataLiteral(string value)
