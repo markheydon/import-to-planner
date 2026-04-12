@@ -174,13 +174,20 @@
 			}
 		}
 
-		// Guard against duplicate loads: clear before adding to ensure single initialization.
-		containers.Clear();
-		var loadedContainers = await PlannerGateway.GetAvailableContainersAsync(CancellationToken.None);
-		containers.AddRange(loadedContainers);
-		if (containers.Count > 0)
+		try
 		{
-			selectedContainer = containers[0];
+			// Guard against duplicate loads: clear before adding to ensure single initialization.
+			containers.Clear();
+			var loadedContainers = await PlannerGateway.GetAvailableContainersAsync(CancellationToken.None);
+			containers.AddRange(loadedContainers);
+			if (containers.Count > 0)
+			{
+				selectedContainer = containers[0];
+			}
+		}
+		catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
+		{
+			NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
 		}
 	}
 
