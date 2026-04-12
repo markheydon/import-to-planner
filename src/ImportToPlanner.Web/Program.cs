@@ -4,6 +4,8 @@ using ImportToPlanner.Application.Services;
 using ImportToPlanner.Infrastructure.Graph;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.Graph;
+using Microsoft.Kiota.Abstractions.Authentication;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 
@@ -32,12 +34,23 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddFluentUIComponents();
 builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddHttpContextAccessor();
+
+var graphScopes = builder.Configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
 
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
     .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
     .EnableTokenAcquisitionToCallDownstreamApi()
-    .AddMicrosoftGraph(builder.Configuration.GetSection("DownstreamApis:MicrosoftGraph"))
     .AddInMemoryTokenCaches();
+
+builder.Services.AddScoped<GraphServiceClient>(serviceProvider =>
+{
+    var tokenAcquisition = serviceProvider.GetRequiredService<ITokenAcquisition>();
+    var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
+    var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, graphScopes);
+    var authenticationProvider = new BaseBearerTokenAuthenticationProvider(accessTokenProvider);
+    return new GraphServiceClient(authenticationProvider);
+});
 
 builder.Services.AddControllersWithViews()
     .AddMicrosoftIdentityUI();
@@ -77,3 +90,48 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvider
+{
+    private readonly ITokenAcquisition tokenAcquisition;
+    private readonly IHttpContextAccessor httpContextAccessor;
+    private readonly IReadOnlyCollection<string> scopes;
+
+    public MicrosoftIdentityAccessTokenProvider(
+        ITokenAcquisition tokenAcquisition,
+        IHttpContextAccessor httpContextAccessor,
+        IReadOnlyCollection<string> scopes)
+    {
+        ArgumentNullException.ThrowIfNull(tokenAcquisition);
+        ArgumentNullException.ThrowIfNull(httpContextAccessor);
+        ArgumentNullException.ThrowIfNull(scopes);
+
+        this.tokenAcquisition = tokenAcquisition;
+        this.httpContextAccessor = httpContextAccessor;
+        this.scopes = scopes;
+    }
+
+    public AllowedHostsValidator AllowedHostsValidator { get; } = new AllowedHostsValidator(["graph.microsoft.com"]);
+
+    public async Task<string> GetAuthorizationTokenAsync(
+        Uri uri,
+        Dictionary<string, object>? additionalAuthenticationContext = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(uri);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!AllowedHostsValidator.IsUrlHostValid(uri))
+        {
+            return string.Empty;
+        }
+
+        var user = httpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true)
+        {
+            throw new InvalidOperationException("An authenticated user context is required to acquire a Graph access token.");
+        }
+
+        return await tokenAcquisition.GetAccessTokenForUserAsync(scopes, user: user).ConfigureAwait(false);
+    }
+}
