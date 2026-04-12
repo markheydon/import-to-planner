@@ -199,15 +199,16 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketId, nameof(bucketId));
         ValidateRequired(taskName, nameof(taskName));
+        _ = description;
+        _ = goal;
 
-        var mappedPriority = MapPriority(priority);
         var created = await graphClient.Planner.Tasks.PostAsync(
             new GraphPlannerTask
             {
                 PlanId = planId,
                 BucketId = bucketId,
                 Title = taskName,
-                Priority = mappedPriority,
+                Priority = priority,
             },
             cancellationToken: cancellationToken);
 
@@ -226,11 +227,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             throw new InvalidOperationException("Graph returned an invalid plan response.");
         }
 
-        var containerType = graphPlan.Container is null
-            ? (ContainerType?)null
-            : ResolveContainerTypeFromGraphValue(graphPlan.Container.Type?.ToString(), graphPlan.Container.AdditionalData);
+        if (graphPlan.Container is null || string.IsNullOrWhiteSpace(graphPlan.Container.ContainerId))
+        {
+            throw new InvalidOperationException("Graph returned plan data without container information.");
+        }
 
-        return new Domain.PlannerPlan(graphPlan.Id, graphPlan.Title, graphPlan.Container?.ContainerId, containerType);
+        var containerType = ResolveContainerTypeFromGraphValue(graphPlan.Container.Type?.ToString(), graphPlan.Container.AdditionalData);
+
+        return new Domain.PlannerPlan(graphPlan.Id, graphPlan.Title, graphPlan.Container.ContainerId, containerType);
     }
 
     private async Task<ContainerType> ResolveContainerTypeAsync(string containerId, CancellationToken cancellationToken)
@@ -255,26 +259,17 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             resolvedType = value?.ToString();
         }
 
-        return string.Equals(resolvedType, "user", StringComparison.OrdinalIgnoreCase)
-            ? ContainerType.User
-            : ContainerType.Group;
-    }
-
-    private static int? MapPriority(int? priority)
-    {
-        if (priority is null)
+        if (string.Equals(resolvedType, "user", StringComparison.OrdinalIgnoreCase))
         {
-            return null;
+            return ContainerType.User;
         }
 
-        return priority.Value switch
+        if (string.Equals(resolvedType, "group", StringComparison.OrdinalIgnoreCase))
         {
-            1 => 1,
-            3 => 3,
-            5 => 5,
-            9 => 9,
-            _ => priority.Value,
-        };
+            return ContainerType.Group;
+        }
+
+        throw new InvalidOperationException($"Unsupported Planner container type '{resolvedType ?? "<null>"}'.");
     }
 
     private static string EscapeODataLiteral(string value)

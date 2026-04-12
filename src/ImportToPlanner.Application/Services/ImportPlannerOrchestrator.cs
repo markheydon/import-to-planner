@@ -50,7 +50,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                     row.RowNumber,
                     row.TaskName,
                     resolvedBucket,
-                    ResolveGoals(row.Goal),
+                    ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
                     "Duplicate task name in CSV."));
 
@@ -63,7 +63,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                     row.RowNumber,
                     row.TaskName,
                     resolvedBucket,
-                    ResolveGoals(row.Goal),
+                    ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
                     "Task already exists in target plan."));
 
@@ -74,7 +74,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                 row.RowNumber,
                 row.TaskName,
                 resolvedBucket,
-                ResolveGoals(row.Goal),
+                ResolveGoalList(row.Goal),
                 PlannedEntityAction.Create));
         }
 
@@ -270,7 +270,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         }
     }
 
-    private static IReadOnlyList<string>? ResolveGoals(string? goal)
+    private static IReadOnlyList<string>? ResolveGoalList(string? goal)
     {
         if (string.IsNullOrWhiteSpace(goal))
         {

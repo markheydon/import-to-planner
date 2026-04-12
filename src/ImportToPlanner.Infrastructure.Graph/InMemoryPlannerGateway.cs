@@ -62,7 +62,12 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         }
 
         var container = Containers.FirstOrDefault(existing => string.Equals(existing.Id, containerId, StringComparison.OrdinalIgnoreCase));
-        var plan = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, containerId, container?.Type);
+        if (container is null)
+        {
+            throw new InvalidOperationException($"Container '{containerId}' is not available.");
+        }
+
+        var plan = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, containerId, container.Type);
         plans.Add(plan);
 
         bucketsByPlan.TryAdd(plan.Id, []);
