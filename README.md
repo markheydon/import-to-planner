@@ -30,20 +30,36 @@ This repository now includes:
 - Confirmation + execution reporting UI
 - Unit tests for parser and orchestrator behavior
 
-## Important Note
+## Important Notes
+
+### Graph API Version
+
+This app uses the **Microsoft Graph beta API** (`https://graph.microsoft.com/beta/`), not v1.0:
+- **Why**: v1.0 does not support personal (user-owned) plans; beta is required for both group-linked and personal Planner plans
+- **Beta disclaimer**: Microsoft Graph beta APIs are subject to change and may introduce breaking changes without notice; see the official guidance: https://learn.microsoft.com/graph/api/overview?view=graph-rest-beta
+
+### Planner Plan Limitations
+
+- **Supported**: Basic Planner plans only (Premium plans are not accessible via Graph API)
+- **Goals**: Planner Goals exist in the UI but are **not currently settable via Graph API**. The app accepts a `Goal` CSV column and outputs a list of manual actions (goals to create and task-to-goal mappings) that users must complete in the Planner UI
+- **Containers**: App supports both **group-linked plans** and **personal (user-based) plans**
+
+### Authentication
 
 The infrastructure currently uses an in-memory `IPlannerGateway` implementation to enable end-to-end UI and orchestration development.
 
-The next implementation step is replacing this with real Microsoft Graph delegated calls.
+The next implementation step is replacing this with real Microsoft Graph delegated calls via Entra ID authentication.
 
-For delegated Entra authentication, this project is tracking certificate credentials (not client secrets) for confidential-client setup.
+For delegated Entra authentication, this project tracks certificate credentials (not client secrets) for confidential-client setup.
 
 ## Microsoft Graph Constraints Accounted For
 
-- Planner plans are container-scoped (group-backed plan container expected).
-- User context is delegated.
-- Tasks are idempotent by app logic (title-based check in selected plan).
-- Goal is mapped to Planner category/label behavior in the app model.
+- Plans use **beta API** container model: supports `group`, `user` (personal), and other container types
+- User context is delegated via Entra ID authentication
+- Tasks are idempotent by app logic (title-based check in selected plan)
+- **Goals are NOT settable via Graph API**: the app accepts a `Goal` CSV column and generates a manual action list for post-import user actions
+- Plan tier support limited to **Basic plans** (Premium plans not accessible)
+- Category labels (up to 25) are settable; these are task **labels**, not goals
 
 ## Run Locally
 
@@ -88,12 +104,18 @@ Review architecture,Validate boundaries,5,Architecture,Quality
 Prepare release notes,,Low,,Communication
 ```
 
-## Next Steps
+## Implementation Roadmap (GitHub Issues)
 
-1. Implement real Graph gateway in `src/ImportToPlanner.Infrastructure.Graph`.
-2. Add Entra ID delegated auth in the web app and token acquisition using certificate credentials.
-3. Replace in-memory groups with real user-accessible group lookup.
-4. Add integration tests for Graph error handling and permission failures.
+Tracked in [issue #1](https://github.com/markheydon/import-to-planner/issues/1) (parent) with sub-issues:
+
+1. [**#2**](https://github.com/markheydon/import-to-planner/issues/2): Implement real Graph gateway (`GraphPlannerGateway`) with beta API support for both group-linked and personal plans; update interface to support goals tracking for manual post-import actions
+2. [**#3**](https://github.com/markheydon/import-to-planner/issues/3): Add Entra ID delegated auth in the web app using certificate credentials (auth flow)
+3. [**#4**](https://github.com/markheydon/import-to-planner/issues/4): Replace in-memory groups with real user-accessible group/personal plan discovery
+4. [**#5**](https://github.com/markheydon/import-to-planner/issues/5): Add Graph error handling (401, 403, 404, 409/412, 429)
+5. [**#6**](https://github.com/markheydon/import-to-planner/issues/6): Add integration tests for gateway success and failure paths
+6. [**#7**](https://github.com/markheydon/import-to-planner/issues/7): Update README for real Graph setup and configuration guidance
+7. [**#8**](https://github.com/markheydon/import-to-planner/issues/8): Create Entra app registration and grant Graph permissions (human task)
+8. [**#9**](https://github.com/markheydon/import-to-planner/issues/9): Configure app with Entra values using .NET user secrets (human task)
 
 ## Open Source Compliance Report
 
