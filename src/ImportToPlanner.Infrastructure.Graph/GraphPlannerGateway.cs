@@ -14,6 +14,7 @@ namespace ImportToPlanner.Infrastructure.Graph;
 public sealed class GraphPlannerGateway : IPlannerGateway
 {
     private const string BetaBaseUrl = "https://graph.microsoft.com/beta";
+    private const int MaxGroupPageSize = 999;
     private readonly GraphServiceClient graphClient;
 
     /// <summary>
@@ -50,8 +51,9 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         var groupsResponse = await graphClient.Me.MemberOf.GraphGroup.GetAsync(
             requestConfiguration =>
             {
-                requestConfiguration.QueryParameters.Select = ["id", "displayName", "groupTypes"];
-                requestConfiguration.QueryParameters.Filter = "groupTypes/any(x:x eq 'Unified')";
+                requestConfiguration.QueryParameters.Select = ["id", "displayName"];
+                requestConfiguration.QueryParameters.Filter = "groupTypes/any(c:c eq 'Unified')";
+                requestConfiguration.QueryParameters.Top = MaxGroupPageSize;
             },
             cancellationToken);
 

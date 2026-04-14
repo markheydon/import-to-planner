@@ -19,6 +19,12 @@
 						  SelectedOption="@selectedContainer"
 						  SelectedOptionChanged="@((PlannerContainer? container) => OnSelectedContainerChanged(container))"
 						  Label="Container" />
+			@if (isUsingGraphGateway && noGroupsFound)
+			{
+				<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
+					No groups found. Ensure you are a member of at least one Microsoft 365 group.
+				</FluentMessageBar>
+			}
 
 			<FluentTextField Value="@planName" ValueChanged="@((string? value) => OnPlanNameChanged(value))"
 							 Immediate="true" Label="Plan Name" Required="true" Maxlength="200" />
@@ -141,6 +147,8 @@
 	private string selectedFileName = "No file selected.";
 	private string? statusMessage;
 	private bool isBusy;
+	private bool isUsingGraphGateway;
+	private bool noGroupsFound;
 	private bool ignoreExtraColumns = true;
 
 	private ImportPlanPreview? preview;
@@ -162,8 +170,8 @@
 
 	protected override async Task OnInitializedAsync()
 	{
-		var useGraph = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
-		if (useGraph)
+		isUsingGraphGateway = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
+		if (isUsingGraphGateway)
 		{
 			var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
 			var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
@@ -180,6 +188,7 @@
 			containers.Clear();
 			var loadedContainers = await PlannerGateway.GetAvailableContainersAsync(CancellationToken.None);
 			containers.AddRange(loadedContainers);
+			noGroupsFound = containers.All(container => container.Type != ContainerType.Group);
 			if (containers.Count > 0)
 			{
 				selectedContainer = containers[0];
