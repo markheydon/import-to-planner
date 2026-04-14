@@ -50,8 +50,9 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         var groupsResponse = await graphClient.Me.MemberOf.GraphGroup.GetAsync(
             requestConfiguration =>
             {
-                requestConfiguration.QueryParameters.Select = ["id", "displayName", "groupTypes"];
-                requestConfiguration.QueryParameters.Filter = "groupTypes/any(x:x eq 'Unified')";
+                requestConfiguration.QueryParameters.Select = ["id", "displayName"];
+                requestConfiguration.QueryParameters.Filter = "groupTypes/any(c:c eq 'Unified')";
+                requestConfiguration.QueryParameters.Top = 999;
             },
             cancellationToken);
 
