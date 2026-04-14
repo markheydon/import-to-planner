@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
     <ProjectReference Include="..\ImportToPlanner.Infrastructure.Graph\ImportToPlanner.Infrastructure.Graph.csproj" />
+    <ProjectReference Include="..\ImportToPlanner.ServiceDefaults\ImportToPlanner.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
