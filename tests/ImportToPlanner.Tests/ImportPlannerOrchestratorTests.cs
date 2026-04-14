@@ -117,7 +117,7 @@ public sealed class ImportPlannerOrchestratorTests
 
         // Assert
         Assert.Contains(result.ManualActions, action =>
-            action.ActionType == "CreateGoal" &&
+            action.ActionType == "EnsureGoalExists" &&
             action.GoalName == "Goal A");
         Assert.Contains(result.ManualActions, action =>
             action.ActionType == "LinkTaskToGoal" &&
