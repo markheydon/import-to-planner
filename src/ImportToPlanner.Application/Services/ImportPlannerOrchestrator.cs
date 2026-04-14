@@ -185,10 +185,10 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         foreach (var goal in goalsToCreate)
         {
             manualActions.Add(new ManualAction(
-                "CreateGoal",
+                "EnsureGoalExists",
                 goal,
                 null,
-                "Create this goal manually in Planner, then link imported tasks to it."));
+                "Verify this goal/category exists in Planner, create it if needed, then link imported tasks to it."));
         }
 
         var rowsByNumber = request.Rows.ToDictionary(row => row.RowNumber);

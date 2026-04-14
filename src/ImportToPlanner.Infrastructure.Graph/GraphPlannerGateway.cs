@@ -50,18 +50,32 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         var groupsResponse = await graphClient.Me.MemberOf.GraphGroup.GetAsync(
             requestConfiguration =>
             {
-                requestConfiguration.QueryParameters.Select = ["id", "displayName"];
+                requestConfiguration.QueryParameters.Select = ["id", "displayName", "groupTypes"];
+                requestConfiguration.QueryParameters.Filter = "groupTypes/any(x:x eq 'Unified')";
             },
             cancellationToken);
 
-        if (groupsResponse?.Value is not null)
+        while (groupsResponse is not null)
         {
-            containers.AddRange(groupsResponse.Value
-                .Where(group => !string.IsNullOrWhiteSpace(group.Id))
-                .Select(group => new PlannerContainer(
-                    group.Id!,
-                    string.IsNullOrWhiteSpace(group.DisplayName) ? group.Id! : group.DisplayName,
-                    ContainerType.Group)));
+            if (groupsResponse.Value is not null)
+            {
+                containers.AddRange(groupsResponse.Value
+                    .Where(group => !string.IsNullOrWhiteSpace(group.Id))
+                    .Select(group => new PlannerContainer(
+                        group.Id!,
+                        string.IsNullOrWhiteSpace(group.DisplayName) ? group.Id! : group.DisplayName,
+                        ContainerType.Group)));
+            }
+
+            if (string.IsNullOrWhiteSpace(groupsResponse.OdataNextLink))
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            groupsResponse = await graphClient.Me.MemberOf.GraphGroup
+                .WithUrl(groupsResponse.OdataNextLink)
+                .GetAsync(cancellationToken: cancellationToken);
         }
 
         return containers
@@ -148,15 +162,29 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(planId, nameof(planId));
 
         var bucketsResponse = await graphClient.Planner.Plans[planId].Buckets.GetAsync(cancellationToken: cancellationToken);
-        if (bucketsResponse?.Value is null)
+        var buckets = new List<PlannerBucket>();
+
+        while (bucketsResponse is not null)
         {
-            return [];
+            if (bucketsResponse.Value is not null)
+            {
+                buckets.AddRange(bucketsResponse.Value
+                    .Where(bucket => !string.IsNullOrWhiteSpace(bucket.Id) && !string.IsNullOrWhiteSpace(bucket.Name))
+                    .Select(bucket => new PlannerBucket(bucket.Id!, bucket.Name!, bucket.PlanId ?? planId)));
+            }
+
+            if (string.IsNullOrWhiteSpace(bucketsResponse.OdataNextLink))
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            bucketsResponse = await graphClient.Planner.Plans[planId].Buckets
+                .WithUrl(bucketsResponse.OdataNextLink)
+                .GetAsync(cancellationToken: cancellationToken);
         }
 
-        return bucketsResponse.Value
-            .Where(bucket => !string.IsNullOrWhiteSpace(bucket.Id) && !string.IsNullOrWhiteSpace(bucket.Name))
-            .Select(bucket => new PlannerBucket(bucket.Id!, bucket.Name!, bucket.PlanId ?? planId))
-            .ToList();
+        return buckets;
     }
 
     /// <inheritdoc/>
