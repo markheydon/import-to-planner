@@ -8,32 +8,32 @@ namespace ImportToPlanner.Infrastructure.Graph;
 /// </summary>
 public sealed class InMemoryPlannerGateway : IPlannerGateway
 {
-    private readonly Dictionary<string, List<PlannerPlan>> plansByGroup = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, List<PlannerPlan>> plansByContainer = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<PlannerBucket>> bucketsByPlan = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<PlannerTaskSnapshot>> tasksByPlan = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, HashSet<string>> goalsByPlan = new(StringComparer.OrdinalIgnoreCase);
 
-    private static readonly IReadOnlyList<PlannerGroup> Groups =
+    private static readonly IReadOnlyList<PlannerContainer> Containers =
     [
-        new PlannerGroup("group-alpha", "Alpha Team"),
-        new PlannerGroup("group-bravo", "Bravo Team"),
+        new PlannerContainer("group-alpha", "Alpha Team", ContainerType.Group),
+        new PlannerContainer("group-bravo", "Bravo Team", ContainerType.Group),
+        new PlannerContainer("user-me", "My Personal Plans", ContainerType.User),
     ];
 
     /// <inheritdoc/>
-    public Task<IReadOnlyList<PlannerGroup>> GetAvailableGroupsAsync(CancellationToken cancellationToken)
+    public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(Groups);
+        return Task.FromResult(Containers);
     }
 
     /// <inheritdoc/>
-    public Task<PlannerPlan?> FindPlanByNameAsync(string groupId, string planName, CancellationToken cancellationToken)
+    public Task<PlannerPlan?> FindPlanByNameAsync(string containerId, string planName, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ValidateRequired(groupId, nameof(groupId));
+        ValidateRequired(containerId, nameof(containerId));
         ValidateRequired(planName, nameof(planName));
 
-        if (!plansByGroup.TryGetValue(groupId, out var plans))
+        if (!plansByContainer.TryGetValue(containerId, out var plans))
         {
             return Task.FromResult<PlannerPlan?>(null);
         }
@@ -43,16 +43,16 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     }
 
     /// <inheritdoc/>
-    public Task<PlannerPlan> CreatePlanAsync(string groupId, string planName, CancellationToken cancellationToken)
+    public Task<PlannerPlan> CreatePlanAsync(string containerId, string planName, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ValidateRequired(groupId, nameof(groupId));
+        ValidateRequired(containerId, nameof(containerId));
         ValidateRequired(planName, nameof(planName));
 
-        if (!plansByGroup.TryGetValue(groupId, out var plans))
+        if (!plansByContainer.TryGetValue(containerId, out var plans))
         {
             plans = [];
-            plansByGroup[groupId] = plans;
+            plansByContainer[containerId] = plans;
         }
 
         var existing = plans.FirstOrDefault(plan => string.Equals(plan.Title, planName, StringComparison.OrdinalIgnoreCase));
@@ -61,12 +61,17 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
             return Task.FromResult(existing);
         }
 
-        var plan = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, groupId);
+        var container = Containers.FirstOrDefault(existing => string.Equals(existing.Id, containerId, StringComparison.OrdinalIgnoreCase));
+        if (container is null)
+        {
+            throw new InvalidOperationException($"Container '{containerId}' is not available.");
+        }
+
+        var plan = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, containerId, container.Type);
         plans.Add(plan);
 
         bucketsByPlan.TryAdd(plan.Id, []);
         tasksByPlan.TryAdd(plan.Id, []);
-        goalsByPlan.TryAdd(plan.Id, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
 
         return Task.FromResult(plan);
     }
@@ -121,50 +126,6 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         }
 
         return Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>(tasks);
-    }
-
-    /// <inheritdoc/>
-    public Task<IReadOnlySet<string>> GetGoalsAsync(string planId, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ValidateRequired(planId, nameof(planId));
-
-        if (!goalsByPlan.TryGetValue(planId, out var goals))
-        {
-            return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>(StringComparer.OrdinalIgnoreCase));
-        }
-
-        return Task.FromResult<IReadOnlySet<string>>(goals);
-    }
-
-    /// <inheritdoc/>
-    public Task<IReadOnlySet<string>> EnsureGoalsAsync(
-        string planId,
-        IReadOnlyCollection<string> goals,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ValidateRequired(planId, nameof(planId));
-        ArgumentNullException.ThrowIfNull(goals);
-
-        if (!goalsByPlan.TryGetValue(planId, out var existing))
-        {
-            existing = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            goalsByPlan[planId] = existing;
-        }
-
-        var created = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var goal in goals)
-        {
-            ValidateRequired(goal, nameof(goals));
-
-            if (existing.Add(goal))
-            {
-                created.Add(goal);
-            }
-        }
-
-        return Task.FromResult<IReadOnlySet<string>>(created);
     }
 
     /// <inheritdoc/>

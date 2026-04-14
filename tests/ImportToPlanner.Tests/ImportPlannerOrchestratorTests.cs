@@ -52,6 +52,7 @@ public sealed class ImportPlannerOrchestratorTests
         // Assert
         Assert.Contains(preview.TaskActions, task => task.Action == PlannedEntityAction.Skip);
         Assert.Empty(result.Errors);
+        Assert.Empty(result.ManualActions);
         Assert.Contains(result.ReusedOrSkipped, line => line.Contains("Task A", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -99,31 +100,55 @@ public sealed class ImportPlannerOrchestratorTests
         Assert.Contains(preview.TaskActions, task => task.Action == PlannedEntityAction.Skip);
     }
 
+    [Fact]
+    public async Task ExecuteAsync_WithGoal_AddsManualGoalActions()
+    {
+        // Arrange
+        var gateway = new FakePlannerGateway();
+        var orchestrator = new ImportPlannerOrchestrator(gateway);
+        var request = new ImportRequest(
+            "group-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", "Goal A")]);
+
+        // Act
+        var preview = await orchestrator.BuildPreviewAsync(request, CancellationToken.None);
+        var result = await orchestrator.ExecuteAsync(request, preview, CancellationToken.None);
+
+        // Assert
+        Assert.Contains(result.ManualActions, action =>
+            action.ActionType == "EnsureGoalExists" &&
+            action.GoalName == "Goal A");
+        Assert.Contains(result.ManualActions, action =>
+            action.ActionType == "LinkTaskToGoal" &&
+            action.GoalName == "Goal A" &&
+            action.TaskName == "Task A");
+    }
+
     private sealed class FakePlannerGateway : IPlannerGateway
     {
         private readonly List<PlannerPlan> plans = [];
         private readonly Dictionary<string, List<PlannerBucket>> buckets = new();
         private readonly Dictionary<string, List<PlannerTaskSnapshot>> tasks = new();
-        private readonly Dictionary<string, HashSet<string>> goals = new();
 
-        public Task<IReadOnlyList<PlannerGroup>> GetAvailableGroupsAsync(CancellationToken cancellationToken)
+        public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
         {
-            return Task.FromResult<IReadOnlyList<PlannerGroup>>([new PlannerGroup("group-a", "Group A")]);
+            return Task.FromResult<IReadOnlyList<PlannerContainer>>([new PlannerContainer("group-a", "Group A", ContainerType.Group)]);
         }
 
-        public Task<PlannerPlan?> FindPlanByNameAsync(string groupId, string planName, CancellationToken cancellationToken)
+        public Task<PlannerPlan?> FindPlanByNameAsync(string containerId, string planName, CancellationToken cancellationToken)
         {
             var plan = plans.FirstOrDefault(existing =>
-                string.Equals(existing.GroupId, groupId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(existing.ContainerId, containerId, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(existing.Title, planName, StringComparison.OrdinalIgnoreCase));
 
             return Task.FromResult<PlannerPlan?>(plan);
         }
 
-        public Task<PlannerPlan> CreatePlanAsync(string groupId, string planName, CancellationToken cancellationToken)
+        public Task<PlannerPlan> CreatePlanAsync(string containerId, string planName, CancellationToken cancellationToken)
         {
             var existing = plans.FirstOrDefault(plan =>
-                string.Equals(plan.GroupId, groupId, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(plan.ContainerId, containerId, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(plan.Title, planName, StringComparison.OrdinalIgnoreCase));
 
             if (existing is not null)
@@ -131,11 +156,10 @@ public sealed class ImportPlannerOrchestratorTests
                 return Task.FromResult(existing);
             }
 
-            var created = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, groupId);
+            var created = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, containerId, ContainerType.Group);
             plans.Add(created);
             buckets[created.Id] = [];
             tasks[created.Id] = [];
-            goals[created.Id] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             return Task.FromResult(created);
         }
 
@@ -168,37 +192,6 @@ public sealed class ImportPlannerOrchestratorTests
         public Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
         {
             return Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>(tasks.GetValueOrDefault(planId, []));
-        }
-
-        public Task<IReadOnlySet<string>> GetGoalsAsync(string planId, CancellationToken cancellationToken)
-        {
-            if (!goals.TryGetValue(planId, out var planGoals))
-            {
-                planGoals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                goals[planId] = planGoals;
-            }
-
-            return Task.FromResult<IReadOnlySet<string>>(planGoals);
-        }
-
-        public Task<IReadOnlySet<string>> EnsureGoalsAsync(string planId, IReadOnlyCollection<string> goalValues, CancellationToken cancellationToken)
-        {
-            if (!goals.TryGetValue(planId, out var planGoals))
-            {
-                planGoals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                goals[planId] = planGoals;
-            }
-
-            var created = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var goal in goalValues)
-            {
-                if (planGoals.Add(goal))
-                {
-                    created.Add(goal);
-                }
-            }
-
-            return Task.FromResult<IReadOnlySet<string>>(created);
         }
 
         public Task<PlannerTaskSnapshot> CreateTaskAsync(

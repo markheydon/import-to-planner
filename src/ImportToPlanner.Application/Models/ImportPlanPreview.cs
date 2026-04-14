@@ -6,9 +6,9 @@ namespace ImportToPlanner.Application.Models;
 public sealed record ImportPlanPreview
 {
     /// <summary>
-    /// Gets or sets the selected group identifier.
+    /// Gets or sets the selected container identifier.
     /// </summary>
-    public required string GroupId { get; init; }
+    public required string ContainerId { get; init; }
 
     /// <summary>
     /// Gets or sets the plan name.
@@ -24,11 +24,6 @@ public sealed record ImportPlanPreview
     /// Gets or sets the planned bucket actions keyed by bucket name.
     /// </summary>
     public required IReadOnlyDictionary<string, PlannedEntityAction> BucketActions { get; init; }
-
-    /// <summary>
-    /// Gets or sets the planned goal/category actions keyed by goal text.
-    /// </summary>
-    public required IReadOnlyDictionary<string, PlannedEntityAction> GoalActions { get; init; }
 
     /// <summary>
     /// Gets or sets the per-task actions.

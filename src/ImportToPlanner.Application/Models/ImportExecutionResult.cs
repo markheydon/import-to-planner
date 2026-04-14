@@ -19,4 +19,9 @@ public sealed record ImportExecutionResult
     /// Gets or sets the execution errors.
     /// </summary>
     public required IReadOnlyList<string> Errors { get; init; }
+
+    /// <summary>
+    /// Gets or sets the post-import manual actions.
+    /// </summary>
+    public required IReadOnlyList<ManualAction> ManualActions { get; init; }
 }

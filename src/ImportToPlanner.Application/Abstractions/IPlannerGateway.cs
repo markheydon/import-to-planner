@@ -8,29 +8,29 @@ namespace ImportToPlanner.Application.Abstractions;
 public interface IPlannerGateway
 {
     /// <summary>
-    /// Gets groups that can be used as Planner containers by the current user.
+    /// Gets containers that can be used for Planner plans by the current user.
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A list of available groups.</returns>
-    Task<IReadOnlyList<PlannerGroup>> GetAvailableGroupsAsync(CancellationToken cancellationToken);
+    /// <returns>A list of available containers.</returns>
+    Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Gets a plan by name within the specified group.
+    /// Gets a plan by name within the specified container.
     /// </summary>
-    /// <param name="groupId">The group identifier.</param>
+    /// <param name="containerId">The container identifier.</param>
     /// <param name="planName">The plan title.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The plan if found; otherwise <see langword="null"/>.</returns>
-    Task<PlannerPlan?> FindPlanByNameAsync(string groupId, string planName, CancellationToken cancellationToken);
+    Task<PlannerPlan?> FindPlanByNameAsync(string containerId, string planName, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Creates a plan in the specified group.
+    /// Creates a plan in the specified container.
     /// </summary>
-    /// <param name="groupId">The group identifier.</param>
+    /// <param name="containerId">The container identifier.</param>
     /// <param name="planName">The plan title.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created plan.</returns>
-    Task<PlannerPlan> CreatePlanAsync(string groupId, string planName, CancellationToken cancellationToken);
+    Task<PlannerPlan> CreatePlanAsync(string containerId, string planName, CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets all buckets for a plan.
@@ -58,23 +58,6 @@ public interface IPlannerGateway
     Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Gets existing goal/category mappings for the specified plan.
-    /// </summary>
-    /// <param name="planId">The plan identifier.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>A set of goal values already mapped in the plan.</returns>
-    Task<IReadOnlySet<string>> GetGoalsAsync(string planId, CancellationToken cancellationToken);
-
-    /// <summary>
-    /// Ensures that each goal exists as a plan category.
-    /// </summary>
-    /// <param name="planId">The plan identifier.</param>
-    /// <param name="goals">The goal values to ensure.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The goals that were newly created.</returns>
-    Task<IReadOnlySet<string>> EnsureGoalsAsync(string planId, IReadOnlyCollection<string> goals, CancellationToken cancellationToken);
-
-    /// <summary>
     /// Creates a task in the specified plan.
     /// </summary>
     /// <param name="planId">The plan identifier.</param>
@@ -82,7 +65,7 @@ public interface IPlannerGateway
     /// <param name="taskName">The task name.</param>
     /// <param name="description">The optional description.</param>
     /// <param name="priority">The optional priority.</param>
-    /// <param name="goal">The optional goal/category.</param>
+    /// <param name="goal">The optional goal value from CSV.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created task snapshot.</returns>
     Task<PlannerTaskSnapshot> CreateTaskAsync(
