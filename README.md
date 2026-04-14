@@ -78,6 +78,22 @@ dotnet test ImportToPlanner.slnx
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
+## Run With Aspire
+
+Use Aspire to orchestrate the app and access logs/resource status from one place.
+
+```bash
+aspire start --isolated
+aspire describe
+aspire logs web
+```
+
+Stop the running AppHost when finished:
+
+```bash
+aspire stop
+```
+
 ## Certificate Credentials (Local Dev, Cross-Platform)
 
 Use certificate credentials via .NET user secrets and keep real values out of tracked files.

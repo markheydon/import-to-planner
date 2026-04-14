@@ -11,6 +11,8 @@ using Microsoft.Identity.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 var certificatePathOverrides = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 foreach (var certificateSection in builder.Configuration.GetSection("AzureAd:ClientCertificates").GetChildren())
 {
@@ -88,6 +90,7 @@ app.MapStaticAssets();
 app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapDefaultEndpoints();
 
 app.Run();
 

@@ -4,6 +4,7 @@
     <Project Path="src/ImportToPlanner.Domain/ImportToPlanner.Domain.csproj" />
     <Project Path="src/ImportToPlanner.Infrastructure.Graph/ImportToPlanner.Infrastructure.Graph.csproj" />
     <Project Path="src/ImportToPlanner.Web/ImportToPlanner.Web.csproj" />
+    <Project Path="src/ImportToPlanner.ServiceDefaults/ImportToPlanner.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj" />
