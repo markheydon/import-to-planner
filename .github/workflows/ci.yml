@@ -37,6 +37,9 @@ jobs:
       - name: Build solution
         run: dotnet build ImportToPlanner.slnx --no-restore
 
+      - name: Restore Aspire AppHost
+        run: dotnet restore apphost.cs
+
       - name: Build Aspire AppHost
         run: dotnet build apphost.cs --no-restore
 
