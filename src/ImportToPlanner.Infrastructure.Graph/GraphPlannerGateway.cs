@@ -14,6 +14,7 @@ namespace ImportToPlanner.Infrastructure.Graph;
 public sealed class GraphPlannerGateway : IPlannerGateway
 {
     private const string BetaBaseUrl = "https://graph.microsoft.com/beta";
+    private const int MaxGroupPageSize = 999;
     private readonly GraphServiceClient graphClient;
 
     /// <summary>
@@ -52,7 +53,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             {
                 requestConfiguration.QueryParameters.Select = ["id", "displayName"];
                 requestConfiguration.QueryParameters.Filter = "groupTypes/any(c:c eq 'Unified')";
-                requestConfiguration.QueryParameters.Top = 999;
+                requestConfiguration.QueryParameters.Top = MaxGroupPageSize;
             },
             cancellationToken);
 
