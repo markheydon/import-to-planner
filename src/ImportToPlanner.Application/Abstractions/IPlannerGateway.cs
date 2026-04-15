@@ -15,22 +15,21 @@ public interface IPlannerGateway
     Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Gets a plan by name within the specified container.
+    /// Gets a plan by identifier.
     /// </summary>
-    /// <param name="containerId">The container identifier.</param>
-    /// <param name="planName">The plan title.</param>
+    /// <param name="planId">The plan identifier.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The plan if found; otherwise <see langword="null"/>.</returns>
-    Task<PlannerPlan?> FindPlanByNameAsync(string containerId, string planName, CancellationToken cancellationToken);
+    /// <returns>The matching plan if found; otherwise <see langword="null"/>.</returns>
+    Task<PlannerPlan?> GetPlanByIdAsync(string planId, CancellationToken cancellationToken);
 
     /// <summary>
-    /// Creates a plan in the specified container.
+    /// Gets plans available in the specified container.
     /// </summary>
     /// <param name="containerId">The container identifier.</param>
-    /// <param name="planName">The plan title.</param>
+    /// <param name="containerType">The container type.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The created plan.</returns>
-    Task<PlannerPlan> CreatePlanAsync(string containerId, string planName, CancellationToken cancellationToken);
+    /// <returns>The plans in the selected container.</returns>
+    Task<IReadOnlyList<PlannerPlan>> GetPlansAsync(string containerId, ContainerType containerType, CancellationToken cancellationToken);
 
     /// <summary>
     /// Gets all buckets for a plan.

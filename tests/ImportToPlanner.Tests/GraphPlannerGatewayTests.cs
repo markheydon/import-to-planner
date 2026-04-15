@@ -50,53 +50,47 @@ public sealed class GraphPlannerGatewayTests
     }
 
     [Fact]
-    public async Task FindPlanByNameAsync_WithNoMatchingPlan_ReturnsNull()
+    public async Task GetPlansAsync_WithNoPlans_ReturnsEmptyList()
     {
         // Arrange
         var adapter = new StubRequestAdapter();
         adapter.QueueSendAsyncResponse<PlannerPlanCollectionResponse>(
             "plans",
-            request => request.URI?.AbsolutePath.EndsWith("/planner/plans", StringComparison.OrdinalIgnoreCase) == true,
+            request => request.URI?.AbsolutePath.EndsWith("/groups/group-1/planner/plans", StringComparison.OrdinalIgnoreCase) == true,
             new PlannerPlanCollectionResponse
             {
-                Value = [new GraphPlannerPlan { Id = "plan-1", Title = "Other" }],
+                Value = [],
             });
 
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.FindPlanByNameAsync("group-1", "Target", CancellationToken.None);
+        var result = await gateway.GetPlansAsync("group-1", ContainerType.Group, CancellationToken.None);
 
         // Assert
-        Assert.Null(result);
+        Assert.Empty(result);
     }
 
     [Fact]
-    public async Task CreatePlanAsync_WithValidContainer_ReturnsCreatedPlan()
+    public async Task GetPlanByIdAsync_WithRosterContainer_ReturnsRawContainerDetails()
     {
         // Arrange
         var adapter = new StubRequestAdapter();
-        adapter.QueueSendAsyncResponse<User>(
-            "me",
-            request => request.URI?.AbsolutePath.EndsWith("/me", StringComparison.OrdinalIgnoreCase) == true,
-            new User { Id = "user-1", DisplayName = "Mark" });
-        adapter.QueueSendAsyncResponse<GroupCollectionResponse>(
-            "memberOf",
-            request => request.URI?.AbsolutePath.Contains("/memberOf/", StringComparison.OrdinalIgnoreCase) == true,
-            new GroupCollectionResponse { Value = [] });
         adapter.QueueSendAsyncResponse<GraphPlannerPlan>(
-            "createPlan",
-            request => request.URI?.AbsolutePath.EndsWith("/planner/plans", StringComparison.OrdinalIgnoreCase) == true,
+            "planById",
+            request => request.URI?.AbsolutePath.EndsWith("/planner/plans/plan-1", StringComparison.OrdinalIgnoreCase) == true,
             new GraphPlannerPlan
             {
                 Id = "plan-1",
-                Title = "Personal Plan",
+                Title = "Personal Board",
                 Container = new PlannerPlanContainer
                 {
-                    ContainerId = "user-1",
+                    ContainerId = "roster-1",
+                    Type = PlannerContainerType.UnknownFutureValue,
+                    Url = "https://graph.microsoft.com/beta/planner/rosters/roster-1",
                     AdditionalData = new Dictionary<string, object>
                     {
-                        ["type"] = "user",
+                        ["type"] = "roster",
                     },
                 },
             });
@@ -104,13 +98,135 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreatePlanAsync("user-1", "Personal Plan", CancellationToken.None);
+        var result = await gateway.GetPlanByIdAsync("plan-1", CancellationToken.None);
 
         // Assert
+        Assert.NotNull(result);
         Assert.Equal("plan-1", result.Id);
-        Assert.Equal("Personal Plan", result.Title);
-        Assert.Equal("user-1", result.ContainerId);
+        Assert.Equal("Personal Board", result.Title);
+        Assert.Equal("roster-1", result.ContainerId);
+        Assert.Equal(ContainerType.Roster, result.ContainerType);
+        Assert.Equal("roster", result.RawContainerType);
+        Assert.Equal("https://graph.microsoft.com/beta/planner/rosters/roster-1", result.ContainerUrl);
+    }
+
+    [Fact]
+    public async Task GetPlanByIdAsync_WithUserContainerUrl_InfersUserContainerType()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerPlan>(
+            "planByIdUserContainer",
+            request => request.URI?.AbsolutePath.EndsWith("/planner/plans/plan-2", StringComparison.OrdinalIgnoreCase) == true,
+            new GraphPlannerPlan
+            {
+                Id = "plan-2",
+                Title = "Personal Plan",
+                Container = new PlannerPlanContainer
+                {
+                    ContainerId = "b55eed95-2e13-4f07-84ef-65d8ddb048dc",
+                    Url = "https://graph.microsoft.com/beta/users/b55eed95-2e13-4f07-84ef-65d8ddb048dc",
+                },
+            });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.GetPlanByIdAsync("plan-2", CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
         Assert.Equal(ContainerType.User, result.ContainerType);
+        Assert.Equal("user", result.RawContainerType);
+        Assert.Equal("https://graph.microsoft.com/beta/users/b55eed95-2e13-4f07-84ef-65d8ddb048dc", result.ContainerUrl);
+    }
+
+    [Fact]
+    public async Task GetPlansAsync_WithMatchingPlans_ReturnsMappedPlans()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<PlannerPlanCollectionResponse>(
+            "plans",
+            request => request.URI?.AbsolutePath.EndsWith("/groups/group-1/planner/plans", StringComparison.OrdinalIgnoreCase) == true,
+            new PlannerPlanCollectionResponse
+            {
+                Value =
+                [
+                    new GraphPlannerPlan
+                    {
+                        Id = "plan-1",
+                        Title = "Team Plan",
+                        Container = new PlannerPlanContainer
+                        {
+                            ContainerId = "group-1",
+                            Type = PlannerContainerType.Group,
+                        },
+                    },
+                ],
+            });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.GetPlansAsync("group-1", ContainerType.Group, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("plan-1", result[0].Id);
+        Assert.Equal("Team Plan", result[0].Title);
+        Assert.Equal("group-1", result[0].ContainerId);
+        Assert.Equal(ContainerType.Group, result[0].ContainerType);
+    }
+
+    [Fact]
+    public async Task GetPlansAsync_WithUserContainer_FiltersUnknownContainerTypes()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<PlannerPlanCollectionResponse>(
+            "userPlans",
+            request => request.URI?.AbsolutePath.EndsWith("/users/user-1/planner/plans", StringComparison.OrdinalIgnoreCase) == true,
+            new PlannerPlanCollectionResponse
+            {
+                Value =
+                [
+                    new GraphPlannerPlan
+                    {
+                        Id = "personal-plan",
+                        Title = "Personal Plan",
+                        Container = new PlannerPlanContainer
+                        {
+                            ContainerId = "user-1",
+                            Type = PlannerContainerType.UnknownFutureValue,
+                            AdditionalData = new Dictionary<string, object>
+                            {
+                                ["type"] = "user",
+                            },
+                        },
+                    },
+                    new GraphPlannerPlan
+                    {
+                        Id = "unknown-type-plan",
+                        Title = "Unknown Type Plan",
+                        Container = new PlannerPlanContainer
+                        {
+                            ContainerId = "workspace-1",
+                            Type = PlannerContainerType.UnknownFutureValue,
+                        },
+                    },
+                ],
+            });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.GetPlansAsync("user-1", ContainerType.User, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("personal-plan", result[0].Id);
+        Assert.Equal(ContainerType.User, result[0].ContainerType);
     }
 
     [Fact]
@@ -219,6 +335,10 @@ public sealed class GraphPlannerGatewayTests
         adapter.QueueSendAsyncResponse<User>(
             "me",
             request => request.URI?.AbsolutePath.EndsWith("/me", StringComparison.OrdinalIgnoreCase) == true,
+            CreateApiException(401));
+        adapter.QueueSendAsyncResponse<GroupCollectionResponse>(
+            "memberOf",
+            request => request.URI?.AbsolutePath.Contains("/memberOf/", StringComparison.OrdinalIgnoreCase) == true,
             CreateApiException(401));
 
         var gateway = CreateGateway(adapter);

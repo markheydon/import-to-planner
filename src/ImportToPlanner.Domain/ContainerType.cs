@@ -11,6 +11,11 @@ public enum ContainerType
     Group,
 
     /// <summary>
+    /// A Planner roster container.
+    /// </summary>
+    Roster,
+
+    /// <summary>
     /// A personal user container.
     /// </summary>
     User,

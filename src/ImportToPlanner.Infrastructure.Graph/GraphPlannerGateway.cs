@@ -5,13 +5,12 @@ using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
 using GraphPlannerBucket = Microsoft.Graph.Models.PlannerBucket;
 using GraphPlannerPlan = Microsoft.Graph.Models.PlannerPlan;
-using GraphPlannerPlanContainer = Microsoft.Graph.Models.PlannerPlanContainer;
 using GraphPlannerTask = Microsoft.Graph.Models.PlannerTask;
 
 namespace ImportToPlanner.Infrastructure.Graph;
 
 /// <summary>
-/// Provides Planner operations backed by Microsoft Graph beta API.
+/// Provides Planner operations backed by Microsoft Graph.
 /// </summary>
 public sealed class GraphPlannerGateway : IPlannerGateway
 {
@@ -30,13 +29,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public GraphPlannerGateway(GraphServiceClient graphServiceClient)
     {
         ArgumentNullException.ThrowIfNull(graphServiceClient);
-        graphClient = new GraphServiceClient(graphServiceClient.RequestAdapter, BetaBaseUrl);
+        graphClient = graphServiceClient;
     }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var containers = new List<PlannerContainer>();
 
         var me = await ExecuteGraphCallAsync(
             "loading available planner containers",
@@ -48,7 +48,6 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                 innerToken),
             cancellationToken);
 
-        var containers = new List<PlannerContainer>();
         if (!string.IsNullOrWhiteSpace(me?.Id))
         {
             containers.Add(new PlannerContainer(
@@ -103,41 +102,93 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     }
 
     /// <inheritdoc/>
-    public async Task<PlannerPlan?> FindPlanByNameAsync(string containerId, string planName, CancellationToken cancellationToken)
+    public async Task<PlannerPlan?> GetPlanByIdAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ValidateRequired(containerId, nameof(containerId));
-        ValidateRequired(planName, nameof(planName));
+        ValidateRequired(planId, nameof(planId));
 
-        var findPlanOperation = $"finding planner plan '{planName}' in container '{containerId}'";
-
-        Microsoft.Graph.Models.PlannerPlanCollectionResponse? plansResponse;
         try
         {
-            plansResponse = await ExecuteGraphCallAsync(
-                findPlanOperation,
-                innerToken => graphClient.Planner.Plans.GetAsync(
+            var plan = await ExecuteGraphCallAsync(
+                $"loading planner plan '{planId}'",
+                innerToken => graphClient.Planner.Plans[planId].GetAsync(
                     requestConfiguration =>
                     {
-                        requestConfiguration.QueryParameters.Filter = $"container/containerId eq '{EscapeODataLiteral(containerId)}'";
                         requestConfiguration.QueryParameters.Select = ["id", "title", "container"];
+                        requestConfiguration.Headers.Add("Prefer", "include-unknown-enum-members");
                     },
                     innerToken),
                 cancellationToken);
+
+            return plan is null ? null : MapPlannerPlan(plan, null, null);
         }
         catch (PlannerNotFoundException)
         {
             return null;
         }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<PlannerPlan>> GetPlansAsync(string containerId, ContainerType containerType, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateRequired(containerId, nameof(containerId));
+
+        var getPlansOperation = $"loading planner plans for container '{containerId}'";
+        var plans = new List<PlannerPlan>();
+
+        Microsoft.Graph.Models.PlannerPlanCollectionResponse? plansResponse;
+        try
+        {
+            plansResponse = containerType switch
+            {
+                ContainerType.Roster => await ExecuteGraphCallAsync(
+                    getPlansOperation,
+                    innerToken => graphClient.Planner.Plans
+                        .WithUrl($"{BetaBaseUrl}/planner/rosters/{containerId}/plans")
+                        .GetAsync(
+                            requestConfiguration =>
+                            {
+                                requestConfiguration.QueryParameters.Select = ["id", "title", "container"];
+                                requestConfiguration.Headers.Add("Prefer", "include-unknown-enum-members");
+                            },
+                            innerToken),
+                    cancellationToken),
+                ContainerType.User => await ExecuteGraphCallAsync(
+                    getPlansOperation,
+                    innerToken => graphClient.Users[containerId].Planner.Plans.GetAsync(
+                        requestConfiguration =>
+                        {
+                            requestConfiguration.QueryParameters.Select = ["id", "title", "container"];
+                            requestConfiguration.Headers.Add("Prefer", "include-unknown-enum-members");
+                        },
+                        innerToken),
+                    cancellationToken),
+                _ => await ExecuteGraphCallAsync(
+                    getPlansOperation,
+                    innerToken => graphClient.Groups[containerId].Planner.Plans.GetAsync(
+                        requestConfiguration =>
+                        {
+                            requestConfiguration.QueryParameters.Select = ["id", "title", "container"];
+                            requestConfiguration.Headers.Add("Prefer", "include-unknown-enum-members");
+                        },
+                        innerToken),
+                    cancellationToken),
+            };
+        }
+        catch (PlannerNotFoundException)
+        {
+            return [];
+        }
 
         while (plansResponse is not null)
         {
-            var existing = plansResponse.Value?.FirstOrDefault(plan =>
-                string.Equals(plan.Title, planName, StringComparison.OrdinalIgnoreCase));
-
-            if (existing is not null)
+            if (plansResponse.Value is not null)
             {
-                return MapPlannerPlan(existing, containerId, null);
+                plans.AddRange(plansResponse.Value
+                    .Where(plan => !string.IsNullOrWhiteSpace(plan.Id) && !string.IsNullOrWhiteSpace(plan.Title))
+                    .Select(plan => MapPlannerPlan(plan, containerId, containerType))
+                    .Where(plan => plan.ContainerType == containerType));
             }
 
             if (string.IsNullOrWhiteSpace(plansResponse.OdataNextLink))
@@ -149,7 +200,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             try
             {
                 plansResponse = await ExecuteGraphCallAsync(
-                    findPlanOperation,
+                    getPlansOperation,
                     innerToken => graphClient.Planner.Plans
                         .WithUrl(plansResponse.OdataNextLink)
                         .GetAsync(cancellationToken: innerToken),
@@ -157,45 +208,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             }
             catch (PlannerNotFoundException)
             {
-                return null;
+                return [];
             }
         }
 
-        return null;
-    }
-
-    /// <inheritdoc/>
-    public async Task<PlannerPlan> CreatePlanAsync(string containerId, string planName, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ValidateRequired(containerId, nameof(containerId));
-        ValidateRequired(planName, nameof(planName));
-
-        var containerType = await ResolveContainerTypeAsync(containerId, cancellationToken);
-        var graphContainerType = containerType == ContainerType.Group ? "group" : "user";
-
-        var created = await ExecuteGraphCallAsync(
-            $"creating planner plan '{planName}' in container '{containerId}'",
-            innerToken => graphClient.Planner.Plans.PostAsync(
-                new GraphPlannerPlan
-                {
-                    Title = planName,
-                    Container = new GraphPlannerPlanContainer
-                    {
-                        ContainerId = containerId,
-                        AdditionalData = new Dictionary<string, object>
-                        {
-                            ["type"] = graphContainerType,
-                        },
-                    },
-                },
-                cancellationToken: innerToken),
-            cancellationToken);
-
-        return MapPlannerPlan(
-            created ?? throw new InvalidOperationException("Graph did not return the created plan."),
-            containerId,
-            containerType);
+        return plans
+            .DistinctBy(plan => plan.Id, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(plan => plan.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     /// <inheritdoc/>
@@ -354,42 +374,82 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         }
 
         var containerId = graphPlan.Container?.ContainerId ?? fallbackContainerId;
+        var rawContainerType = ResolveGraphContainerTypeValue(
+            graphPlan.Container?.Type?.ToString(),
+            graphPlan.Container?.AdditionalData,
+            graphPlan.Container?.Url);
         var containerType = graphPlan.Container is null
             ? fallbackContainerType
-            : ResolveContainerTypeFromGraphValue(graphPlan.Container.Type?.ToString(), graphPlan.Container.AdditionalData);
-        containerType ??= fallbackContainerType;
+            : ResolveContainerTypeFromGraphValue(rawContainerType);
 
-        return new Domain.PlannerPlan(graphPlan.Id, graphPlan.Title, containerId, containerType);
+        return new Domain.PlannerPlan(
+            graphPlan.Id,
+            graphPlan.Title,
+            containerId,
+            containerType,
+            graphPlan.Container?.Url,
+            rawContainerType);
     }
 
-    private async Task<ContainerType> ResolveContainerTypeAsync(string containerId, CancellationToken cancellationToken)
-    {
-        var containers = await GetAvailableContainersAsync(cancellationToken);
-        var container = containers.FirstOrDefault(existing => string.Equals(existing.Id, containerId, StringComparison.OrdinalIgnoreCase));
-        if (container is null)
-        {
-            throw new InvalidOperationException($"Container '{containerId}' is not available to the current user.");
-        }
-
-        return container.Type;
-    }
-
-    private static ContainerType? ResolveContainerTypeFromGraphValue(string? type, IDictionary<string, object>? additionalData)
+    private static string? ResolveGraphContainerTypeValue(string? type, IDictionary<string, object>? additionalData, string? containerUrl)
     {
         var resolvedType = type;
-        if (string.IsNullOrWhiteSpace(resolvedType) &&
+        if ((string.IsNullOrWhiteSpace(resolvedType) ||
+             string.Equals(resolvedType, "unknownFutureValue", StringComparison.OrdinalIgnoreCase)) &&
             additionalData is not null &&
             additionalData.TryGetValue("type", out var value))
         {
             resolvedType = value?.ToString();
         }
 
-        if (string.Equals(resolvedType, "user", StringComparison.OrdinalIgnoreCase))
+        if ((string.IsNullOrWhiteSpace(resolvedType) ||
+             string.Equals(resolvedType, "unknownFutureValue", StringComparison.OrdinalIgnoreCase)) &&
+            !string.IsNullOrWhiteSpace(containerUrl) &&
+            Uri.TryCreate(containerUrl, UriKind.Absolute, out var parsedContainerUri))
+        {
+            var segments = parsedContainerUri.AbsolutePath
+                .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            for (var index = 0; index < segments.Length; index++)
+            {
+                if (string.Equals(segments[index], "users", StringComparison.OrdinalIgnoreCase))
+                {
+                    resolvedType = "user";
+                    break;
+                }
+
+                if (string.Equals(segments[index], "groups", StringComparison.OrdinalIgnoreCase))
+                {
+                    resolvedType = "group";
+                    break;
+                }
+
+                if (index < segments.Length - 1 &&
+                    string.Equals(segments[index], "planner", StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(segments[index + 1], "rosters", StringComparison.OrdinalIgnoreCase))
+                {
+                    resolvedType = "roster";
+                    break;
+                }
+            }
+        }
+
+        return resolvedType;
+    }
+
+    private static ContainerType? ResolveContainerTypeFromGraphValue(string? type)
+    {
+        if (string.Equals(type, "roster", StringComparison.OrdinalIgnoreCase))
+        {
+            return ContainerType.Roster;
+        }
+
+        if (string.Equals(type, "user", StringComparison.OrdinalIgnoreCase))
         {
             return ContainerType.User;
         }
 
-        if (string.Equals(resolvedType, "group", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(type, "group", StringComparison.OrdinalIgnoreCase))
         {
             return ContainerType.Group;
         }

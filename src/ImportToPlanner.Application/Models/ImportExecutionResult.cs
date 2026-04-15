@@ -6,6 +6,11 @@ namespace ImportToPlanner.Application.Models;
 public sealed record ImportExecutionResult
 {
     /// <summary>
+    /// Gets or sets the plan identifier of the created or reused plan.
+    /// </summary>
+    public string? PlanId { get; init; }
+
+    /// <summary>
     /// Gets or sets the created item descriptions.
     /// </summary>
     public required IReadOnlyList<string> Created { get; init; }

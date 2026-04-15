@@ -11,6 +11,12 @@ public sealed record ImportPlanPreview
     public required string ContainerId { get; init; }
 
     /// <summary>
+    /// Gets or sets the plan identifier if the plan already exists; otherwise <see langword="null"/>.
+    /// </summary>
+    public string? PlanId { get; init; }
+
+
+    /// <summary>
     /// Gets or sets the plan name.
     /// </summary>
     public required string PlanName { get; init; }
