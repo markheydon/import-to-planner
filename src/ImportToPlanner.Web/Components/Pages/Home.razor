@@ -198,27 +198,32 @@
     private ImportRequest? currentRequest;
 
     private bool IsCurrentSelectionInSyncWithRequest()
-    => selectedContainer is not null
-    && selectedPlan is not null
-    && currentRequest is not null
-    && string.Equals(selectedContainer.Id, currentRequest.ContainerId, StringComparison.Ordinal)
-    && string.Equals(selectedPlan.Id, currentRequest.PlanId, StringComparison.Ordinal);
+        => selectedContainer is not null
+           && selectedPlan is not null
+           && currentRequest is not null
+           && string.Equals(selectedContainer.Id, currentRequest.ContainerId, StringComparison.Ordinal)
+           && string.Equals(selectedPlan.Id, currentRequest.PlanId, StringComparison.Ordinal);
 
-    private bool canValidate => !isBusy
-    && selectedContainer is not null
-    && selectedPlan is not null
-    && !string.IsNullOrWhiteSpace(csvContent);
-    private bool canExecute => !isBusy
-    && preview is not null
-    && currentRequest is not null
-    && IsCurrentSelectionInSyncWithRequest();
-    private MessageIntent StatusMessageIntent => parseErrors.Count > 0
-    ? MessageIntent.Error
-    : executionResult is null
-    ? MessageIntent.Info
-    : executionResult.Errors.Count > 0
-    ? MessageIntent.Warning
-    : MessageIntent.Success;
+    private bool canValidate
+        => !isBusy
+           && selectedContainer is not null
+           && selectedPlan is not null
+           && !string.IsNullOrWhiteSpace(csvContent);
+
+    private bool canExecute
+        => !isBusy
+           && preview is not null
+           && currentRequest is not null
+           && IsCurrentSelectionInSyncWithRequest();
+
+    private MessageIntent StatusMessageIntent
+        => parseErrors.Count > 0
+           ? MessageIntent.Error
+           : executionResult is null
+               ? MessageIntent.Info
+               : executionResult.Errors.Count > 0
+                   ? MessageIntent.Warning
+                   : MessageIntent.Success;
 
     protected override async Task OnInitializedAsync()
     {
@@ -419,11 +424,11 @@
             }
 
             currentRequest = new ImportRequest(
-            selectedContainer.Id,
-            selectedContainer.Type,
-            selectedPlan.Id,
-            selectedPlan.Title,
-            parseResult.Rows);
+                selectedContainer.Id,
+                selectedContainer.Type,
+                selectedPlan.Id,
+                selectedPlan.Title,
+                parseResult.Rows);
             preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
             statusMessage = "Preview generated. Review actions, then confirm execution.";
         }
@@ -451,13 +456,13 @@
         try
         {
             executionResult = await ImportPlannerOrchestrator.ExecuteAsync(
-            currentRequest!,
-            preview!,
-            CancellationToken.None);
+                currentRequest!,
+                preview!,
+                CancellationToken.None);
 
             statusMessage = executionResult.Errors.Count == 0
-            ? "Execution completed successfully."
-            : "Execution completed with errors.";
+                ? "Execution completed successfully."
+                : "Execution completed with errors.";
         }
         catch (Exception ex)
         {
@@ -500,10 +505,10 @@
         }
 
         var preferredContainer = selectedContainer is null
-        ? containers[0]
-        : containers.FirstOrDefault(container => string.Equals(container.Id, selectedContainer.Id,
-        StringComparison.OrdinalIgnoreCase))
-        ?? containers[0];
+            ? containers[0]
+            : containers.FirstOrDefault(container => string.Equals(container.Id, selectedContainer.Id,
+                StringComparison.OrdinalIgnoreCase))
+                ?? containers[0];
 
         selectedContainer = preferredContainer;
         if (!string.Equals(previousContainerId, selectedContainer.Id, StringComparison.OrdinalIgnoreCase))
@@ -525,8 +530,10 @@
             return;
         }
 
-        var loadedPlans = await PlannerGateway.GetPlansAsync(selectedContainer.Id, selectedContainer.Type,
-        CancellationToken.None);
+        var loadedPlans = await PlannerGateway.GetPlansAsync(
+            selectedContainer.Id,
+            selectedContainer.Type,
+            CancellationToken.None);
         plans.AddRange(loadedPlans.OrderBy(plan => plan.Title, StringComparer.OrdinalIgnoreCase));
 
         if (plans.Count == 0)
@@ -536,8 +543,8 @@
         }
 
         selectedPlan = selectedPlan is null
-        ? plans[0]
-        : plans.FirstOrDefault(plan => string.Equals(plan.Id, selectedPlan.Id, StringComparison.OrdinalIgnoreCase));
+            ? plans[0]
+            : plans.FirstOrDefault(plan => string.Equals(plan.Id, selectedPlan.Id, StringComparison.OrdinalIgnoreCase));
 
         selectedPlan ??= plans[0];
         if (!string.Equals(previousPlanId, selectedPlan.Id, StringComparison.OrdinalIgnoreCase))
