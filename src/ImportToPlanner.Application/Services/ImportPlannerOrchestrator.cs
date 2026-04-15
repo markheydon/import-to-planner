@@ -16,19 +16,16 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
     {
         ValidateRequest(request);
 
-        var existingPlan = await plannerGateway.FindPlanByNameAsync(
-            request.ContainerId,
-            request.PlanName,
-            cancellationToken);
+        var existingPlan = await plannerGateway.GetPlanByIdAsync(request.PlanId, cancellationToken)
+            ?? throw new InvalidOperationException("The selected plan was not found. Refresh plans and select an existing plan.");
 
-        var planAction = existingPlan is null ? PlannedEntityAction.Create : PlannedEntityAction.Reuse;
-        var existingBuckets = existingPlan is null
-            ? []
-            : await plannerGateway.GetBucketsAsync(existingPlan.Id, cancellationToken);
+        if (!string.Equals(existingPlan.ContainerId, request.ContainerId, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The selected plan does not belong to the selected container.");
+        }
 
-        var existingTasks = existingPlan is null
-            ? []
-            : await plannerGateway.GetTasksAsync(existingPlan.Id, cancellationToken);
+        var existingBuckets = await plannerGateway.GetBucketsAsync(existingPlan.Id, cancellationToken);
+        var existingTasks = await plannerGateway.GetTasksAsync(existingPlan.Id, cancellationToken);
 
         var bucketLookup = existingBuckets.ToDictionary(bucket => bucket.Name, StringComparer.OrdinalIgnoreCase);
         var taskLookup = existingTasks
@@ -96,8 +93,9 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         return new ImportPlanPreview
         {
             ContainerId = request.ContainerId,
-            PlanName = request.PlanName,
-            PlanAction = planAction,
+            PlanName = existingPlan.Title,
+            PlanId = existingPlan.Id,
+            PlanAction = PlannedEntityAction.Reuse,
             BucketActions = bucketActions,
             TaskActions = taskActions,
         };
@@ -113,7 +111,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         ArgumentNullException.ThrowIfNull(preview);
 
         if (!string.Equals(request.ContainerId, preview.ContainerId, StringComparison.Ordinal) ||
-            !string.Equals(request.PlanName, preview.PlanName, StringComparison.Ordinal))
+            !string.Equals(request.PlanId, preview.PlanId, StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Preview does not match request.");
         }
@@ -122,29 +120,22 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         var reusedOrSkipped = new List<string>();
         var errors = new List<string>();
         var manualActions = new List<ManualAction>();
+        var emittedGoalTaskLinks = new HashSet<(string Goal, string TaskName)>();
 
         PlannerPlan plan;
         try
         {
-            plan = preview.PlanAction == PlannedEntityAction.Create
-                ? await plannerGateway.CreatePlanAsync(request.ContainerId, request.PlanName, cancellationToken)
-                : (await plannerGateway.FindPlanByNameAsync(request.ContainerId, request.PlanName, cancellationToken))
-                    ?? throw new InvalidOperationException("Plan was expected to exist but was not found.");
+            plan = await plannerGateway.GetPlanByIdAsync(request.PlanId, cancellationToken)
+                ?? throw new InvalidOperationException("Selected plan was not found.");
 
-            if (preview.PlanAction == PlannedEntityAction.Create)
-            {
-                created.Add($"Plan: {request.PlanName}");
-            }
-            else
-            {
-                reusedOrSkipped.Add($"Plan: {request.PlanName} (reused)");
-            }
+            reusedOrSkipped.Add($"Plan: {plan.Title} (reused)");
         }
         catch (Exception ex)
         {
             errors.Add($"Plan operation failed: {ex.Message}");
             return new ImportExecutionResult
             {
+                PlanId = request.PlanId,
                 Created = created,
                 ReusedOrSkipped = reusedOrSkipped,
                 Errors = errors,
@@ -176,7 +167,9 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         }
 
         var goalsToCreate = preview.TaskActions
-            .Where(task => task.Action == PlannedEntityAction.Create && task.Goals is not null)
+            .Where(task => task.Action != PlannedEntityAction.Skip ||
+                           string.Equals(task.Reason, "Task already exists in target plan.", StringComparison.OrdinalIgnoreCase))
+            .Where(task => task.Goals is not null)
             .SelectMany(task => task.Goals!)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(goal => goal, StringComparer.OrdinalIgnoreCase)
@@ -198,6 +191,22 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             if (taskAction.Action != PlannedEntityAction.Create)
             {
                 reusedOrSkipped.Add($"Task: {taskAction.TaskName} ({taskAction.Reason ?? "skipped"})");
+
+                if (string.Equals(taskAction.Reason, "Task already exists in target plan.", StringComparison.OrdinalIgnoreCase))
+                {
+                    foreach (var goal in taskAction.Goals ?? [])
+                    {
+                        if (emittedGoalTaskLinks.Add((goal, taskAction.TaskName)))
+                        {
+                            manualActions.Add(new ManualAction(
+                                "LinkTaskToGoal",
+                                goal,
+                                taskAction.TaskName,
+                                "Link this existing task to the goal manually in Planner."));
+                        }
+                    }
+                }
+
                 continue;
             }
 
@@ -223,11 +232,14 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
 
                 foreach (var goal in taskAction.Goals ?? [])
                 {
-                    manualActions.Add(new ManualAction(
-                        "LinkTaskToGoal",
-                        goal,
-                        sourceRow.TaskName,
-                        "Link this imported task to the goal manually in Planner."));
+                    if (emittedGoalTaskLinks.Add((goal, sourceRow.TaskName)))
+                    {
+                        manualActions.Add(new ManualAction(
+                            "LinkTaskToGoal",
+                            goal,
+                            sourceRow.TaskName,
+                            "Link this imported task to the goal manually in Planner."));
+                    }
                 }
             }
             catch (Exception ex)
@@ -238,6 +250,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
 
         return new ImportExecutionResult
         {
+            PlanId = plan.Id,
             Created = created,
             ReusedOrSkipped = reusedOrSkipped,
             Errors = errors,
@@ -257,6 +270,11 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         if (string.IsNullOrWhiteSpace(request.ContainerId))
         {
             throw new ArgumentException("Container is required.", nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.PlanId))
+        {
+            throw new ArgumentException("Plan is required.", nameof(request));
         }
 
         if (string.IsNullOrWhiteSpace(request.PlanName))

@@ -19,6 +19,16 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         new PlannerContainer("user-me", "My Personal Plans", ContainerType.User),
     ];
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="InMemoryPlannerGateway"/> class.
+    /// </summary>
+    public InMemoryPlannerGateway()
+    {
+        SeedPlan("group-alpha", ContainerType.Group, "Alpha Team Plan");
+        SeedPlan("group-bravo", ContainerType.Group, "Bravo Team Plan");
+        SeedPlan("user-me", ContainerType.User, "My Tasks");
+    }
+
     /// <inheritdoc/>
     public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
     {
@@ -27,53 +37,30 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
     }
 
     /// <inheritdoc/>
-    public Task<PlannerPlan?> FindPlanByNameAsync(string containerId, string planName, CancellationToken cancellationToken)
+    public Task<PlannerPlan?> GetPlanByIdAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ValidateRequired(containerId, nameof(containerId));
-        ValidateRequired(planName, nameof(planName));
+        ValidateRequired(planId, nameof(planId));
 
-        if (!plansByContainer.TryGetValue(containerId, out var plans))
-        {
-            return Task.FromResult<PlannerPlan?>(null);
-        }
+        var plan = plansByContainer.Values
+            .SelectMany(existingPlans => existingPlans)
+            .FirstOrDefault(existing => string.Equals(existing.Id, planId, StringComparison.OrdinalIgnoreCase));
 
-        var plan = plans.FirstOrDefault(existing => string.Equals(existing.Title, planName, StringComparison.OrdinalIgnoreCase));
         return Task.FromResult<PlannerPlan?>(plan);
     }
 
     /// <inheritdoc/>
-    public Task<PlannerPlan> CreatePlanAsync(string containerId, string planName, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<PlannerPlan>> GetPlansAsync(string containerId, ContainerType containerType, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateRequired(containerId, nameof(containerId));
-        ValidateRequired(planName, nameof(planName));
 
         if (!plansByContainer.TryGetValue(containerId, out var plans))
         {
-            plans = [];
-            plansByContainer[containerId] = plans;
+            return Task.FromResult<IReadOnlyList<PlannerPlan>>([]);
         }
 
-        var existing = plans.FirstOrDefault(plan => string.Equals(plan.Title, planName, StringComparison.OrdinalIgnoreCase));
-        if (existing is not null)
-        {
-            return Task.FromResult(existing);
-        }
-
-        var container = Containers.FirstOrDefault(existing => string.Equals(existing.Id, containerId, StringComparison.OrdinalIgnoreCase));
-        if (container is null)
-        {
-            throw new InvalidOperationException($"Container '{containerId}' is not available.");
-        }
-
-        var plan = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, containerId, container.Type);
-        plans.Add(plan);
-
-        bucketsByPlan.TryAdd(plan.Id, []);
-        tasksByPlan.TryAdd(plan.Id, []);
-
-        return Task.FromResult(plan);
+        return Task.FromResult<IReadOnlyList<PlannerPlan>>(plans);
     }
 
     /// <inheritdoc/>
@@ -166,5 +153,19 @@ public sealed class InMemoryPlannerGateway : IPlannerGateway
         {
             throw new ArgumentException("A non-empty value is required.", parameterName);
         }
+    }
+
+    private void SeedPlan(string containerId, ContainerType containerType, string planName)
+    {
+        if (!plansByContainer.TryGetValue(containerId, out var plans))
+        {
+            plans = [];
+            plansByContainer[containerId] = plans;
+        }
+
+        var created = new PlannerPlan(Guid.NewGuid().ToString("N"), planName, containerId, containerType);
+        plans.Add(created);
+        bucketsByPlan.TryAdd(created.Id, []);
+        tasksByPlan.TryAdd(created.Id, []);
     }
 }
