@@ -1,6 +1,8 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Domain;
 using Microsoft.Graph;
+using Microsoft.Kiota.Abstractions;
 using GraphPlannerBucket = Microsoft.Graph.Models.PlannerBucket;
 using GraphPlannerPlan = Microsoft.Graph.Models.PlannerPlan;
 using GraphPlannerPlanContainer = Microsoft.Graph.Models.PlannerPlanContainer;
@@ -15,6 +17,10 @@ public sealed class GraphPlannerGateway : IPlannerGateway
 {
     private const string BetaBaseUrl = "https://graph.microsoft.com/beta";
     private const int MaxGroupPageSize = 999;
+    private const int MaxThrottlingRetries = 3;
+    private const int MaxConflictRetries = 1;
+    private const int DefaultRetryAfterSeconds = 10;
+    private const int MaxRetryAfterSeconds = 60;
     private readonly GraphServiceClient graphClient;
 
     /// <summary>
@@ -32,11 +38,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var me = await graphClient.Me.GetAsync(
-            requestConfiguration =>
-            {
-                requestConfiguration.QueryParameters.Select = ["id", "displayName"];
-            },
+        var me = await ExecuteGraphCallAsync(
+            "loading available planner containers",
+            innerToken => graphClient.Me.GetAsync(
+                requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = ["id", "displayName"];
+                },
+                innerToken),
             cancellationToken);
 
         var containers = new List<PlannerContainer>();
@@ -48,13 +57,16 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                 ContainerType.User));
         }
 
-        var groupsResponse = await graphClient.Me.MemberOf.GraphGroup.GetAsync(
-            requestConfiguration =>
-            {
-                requestConfiguration.QueryParameters.Select = ["id", "displayName"];
-                requestConfiguration.QueryParameters.Filter = "groupTypes/any(c:c eq 'Unified')";
-                requestConfiguration.QueryParameters.Top = MaxGroupPageSize;
-            },
+        var groupsResponse = await ExecuteGraphCallAsync(
+            "loading available planner containers",
+            innerToken => graphClient.Me.MemberOf.GraphGroup.GetAsync(
+                requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = ["id", "displayName"];
+                    requestConfiguration.QueryParameters.Filter = "groupTypes/any(c:c eq 'Unified')";
+                    requestConfiguration.QueryParameters.Top = MaxGroupPageSize;
+                },
+                innerToken),
             cancellationToken);
 
         while (groupsResponse is not null)
@@ -75,9 +87,12 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            groupsResponse = await graphClient.Me.MemberOf.GraphGroup
-                .WithUrl(groupsResponse.OdataNextLink)
-                .GetAsync(cancellationToken: cancellationToken);
+            groupsResponse = await ExecuteGraphCallAsync(
+                "loading available planner containers",
+                innerToken => graphClient.Me.MemberOf.GraphGroup
+                    .WithUrl(groupsResponse.OdataNextLink)
+                    .GetAsync(cancellationToken: innerToken),
+                cancellationToken);
         }
 
         return containers
@@ -94,13 +109,26 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(containerId, nameof(containerId));
         ValidateRequired(planName, nameof(planName));
 
-        var plansResponse = await graphClient.Planner.Plans.GetAsync(
-            requestConfiguration =>
-            {
-                requestConfiguration.QueryParameters.Filter = $"container/containerId eq '{EscapeODataLiteral(containerId)}'";
-                requestConfiguration.QueryParameters.Select = ["id", "title", "container"];
-            },
-            cancellationToken);
+        var findPlanOperation = $"finding planner plan '{planName}' in container '{containerId}'";
+
+        Microsoft.Graph.Models.PlannerPlanCollectionResponse? plansResponse;
+        try
+        {
+            plansResponse = await ExecuteGraphCallAsync(
+                findPlanOperation,
+                innerToken => graphClient.Planner.Plans.GetAsync(
+                    requestConfiguration =>
+                    {
+                        requestConfiguration.QueryParameters.Filter = $"container/containerId eq '{EscapeODataLiteral(containerId)}'";
+                        requestConfiguration.QueryParameters.Select = ["id", "title", "container"];
+                    },
+                    innerToken),
+                cancellationToken);
+        }
+        catch (PlannerNotFoundException)
+        {
+            return null;
+        }
 
         while (plansResponse is not null)
         {
@@ -118,9 +146,19 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            plansResponse = await graphClient.Planner.Plans
-                .WithUrl(plansResponse.OdataNextLink)
-                .GetAsync(cancellationToken: cancellationToken);
+            try
+            {
+                plansResponse = await ExecuteGraphCallAsync(
+                    findPlanOperation,
+                    innerToken => graphClient.Planner.Plans
+                        .WithUrl(plansResponse.OdataNextLink)
+                        .GetAsync(cancellationToken: innerToken),
+                    cancellationToken);
+            }
+            catch (PlannerNotFoundException)
+            {
+                return null;
+            }
         }
 
         return null;
@@ -136,20 +174,23 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         var containerType = await ResolveContainerTypeAsync(containerId, cancellationToken);
         var graphContainerType = containerType == ContainerType.Group ? "group" : "user";
 
-        var created = await graphClient.Planner.Plans.PostAsync(
-            new GraphPlannerPlan
-            {
-                Title = planName,
-                Container = new GraphPlannerPlanContainer
+        var created = await ExecuteGraphCallAsync(
+            $"creating planner plan '{planName}' in container '{containerId}'",
+            innerToken => graphClient.Planner.Plans.PostAsync(
+                new GraphPlannerPlan
                 {
-                    ContainerId = containerId,
-                    AdditionalData = new Dictionary<string, object>
+                    Title = planName,
+                    Container = new GraphPlannerPlanContainer
                     {
-                        ["type"] = graphContainerType,
+                        ContainerId = containerId,
+                        AdditionalData = new Dictionary<string, object>
+                        {
+                            ["type"] = graphContainerType,
+                        },
                     },
                 },
-            },
-            cancellationToken: cancellationToken);
+                cancellationToken: innerToken),
+            cancellationToken);
 
         return MapPlannerPlan(
             created ?? throw new InvalidOperationException("Graph did not return the created plan."),
@@ -163,7 +204,10 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         cancellationToken.ThrowIfCancellationRequested();
         ValidateRequired(planId, nameof(planId));
 
-        var bucketsResponse = await graphClient.Planner.Plans[planId].Buckets.GetAsync(cancellationToken: cancellationToken);
+        var bucketsResponse = await ExecuteGraphCallAsync(
+            $"loading planner buckets for plan '{planId}'",
+            innerToken => graphClient.Planner.Plans[planId].Buckets.GetAsync(cancellationToken: innerToken),
+            cancellationToken);
         var buckets = new List<PlannerBucket>();
 
         while (bucketsResponse is not null)
@@ -181,9 +225,12 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            bucketsResponse = await graphClient.Planner.Plans[planId].Buckets
-                .WithUrl(bucketsResponse.OdataNextLink)
-                .GetAsync(cancellationToken: cancellationToken);
+            bucketsResponse = await ExecuteGraphCallAsync(
+                $"loading planner buckets for plan '{planId}'",
+                innerToken => graphClient.Planner.Plans[planId].Buckets
+                    .WithUrl(bucketsResponse.OdataNextLink)
+                    .GetAsync(cancellationToken: innerToken),
+                cancellationToken);
         }
 
         return buckets;
@@ -196,13 +243,16 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketName, nameof(bucketName));
 
-        var created = await graphClient.Planner.Buckets.PostAsync(
-            new GraphPlannerBucket
-            {
-                Name = bucketName,
-                PlanId = planId,
-            },
-            cancellationToken: cancellationToken);
+        var created = await ExecuteGraphCallAsync(
+            $"creating planner bucket '{bucketName}' in plan '{planId}'",
+            innerToken => graphClient.Planner.Buckets.PostAsync(
+                new GraphPlannerBucket
+                {
+                    Name = bucketName,
+                    PlanId = planId,
+                },
+                cancellationToken: innerToken),
+            cancellationToken);
 
         if (string.IsNullOrWhiteSpace(created?.Id) || string.IsNullOrWhiteSpace(created.Name))
         {
@@ -218,11 +268,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         cancellationToken.ThrowIfCancellationRequested();
         ValidateRequired(planId, nameof(planId));
 
-        var tasksResponse = await graphClient.Planner.Plans[planId].Tasks.GetAsync(
-            requestConfiguration =>
-            {
-                requestConfiguration.QueryParameters.Select = ["id", "title", "planId"];
-            },
+        var tasksResponse = await ExecuteGraphCallAsync(
+            $"loading planner tasks for plan '{planId}'",
+            innerToken => graphClient.Planner.Plans[planId].Tasks.GetAsync(
+                requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = ["id", "title", "planId"];
+                },
+                innerToken),
             cancellationToken);
 
         var tasks = new List<PlannerTaskSnapshot>();
@@ -241,9 +294,12 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            tasksResponse = await graphClient.Planner.Plans[planId].Tasks
-                .WithUrl(tasksResponse.OdataNextLink)
-                .GetAsync(cancellationToken: cancellationToken);
+            tasksResponse = await ExecuteGraphCallAsync(
+                $"loading planner tasks for plan '{planId}'",
+                innerToken => graphClient.Planner.Plans[planId].Tasks
+                    .WithUrl(tasksResponse.OdataNextLink)
+                    .GetAsync(cancellationToken: innerToken),
+                cancellationToken);
         }
 
         return tasks;
@@ -266,15 +322,18 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         _ = description;
         _ = goal;
 
-        var created = await graphClient.Planner.Tasks.PostAsync(
-            new GraphPlannerTask
-            {
-                PlanId = planId,
-                BucketId = bucketId,
-                Title = taskName,
-                Priority = priority,
-            },
-            cancellationToken: cancellationToken);
+        var created = await ExecuteGraphCallAsync(
+            $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'",
+            innerToken => graphClient.Planner.Tasks.PostAsync(
+                new GraphPlannerTask
+                {
+                    PlanId = planId,
+                    BucketId = bucketId,
+                    Title = taskName,
+                    Priority = priority,
+                },
+                cancellationToken: innerToken),
+            cancellationToken);
 
         if (string.IsNullOrWhiteSpace(created?.Id) || string.IsNullOrWhiteSpace(created.Title))
         {
@@ -348,6 +407,129 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         if (string.IsNullOrWhiteSpace(value))
         {
             throw new ArgumentException("A non-empty value is required.", parameterName);
+        }
+    }
+
+    private static bool TryGetStatusCode(Exception exception, out int statusCode)
+    {
+        if (exception is ApiException apiException)
+        {
+            statusCode = apiException.ResponseStatusCode;
+            return statusCode > 0;
+        }
+
+        statusCode = 0;
+        return false;
+    }
+
+    private static int ResolveRetryAfterSeconds(ApiException apiException)
+    {
+        if (apiException.ResponseHeaders is not null)
+        {
+            foreach (var header in apiException.ResponseHeaders)
+            {
+                if (!string.Equals(header.Key, "Retry-After", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var retryAfterValue = header.Value?.FirstOrDefault();
+                if (int.TryParse(retryAfterValue, out var parsedSeconds))
+                {
+                    return Math.Clamp(parsedSeconds, 0, MaxRetryAfterSeconds);
+                }
+            }
+        }
+
+        return DefaultRetryAfterSeconds;
+    }
+
+    private static void ThrowMappedException(Exception exception, int statusCode, string operationName)
+    {
+        switch (statusCode)
+        {
+            case 401:
+                throw new PlannerAuthenticationException(
+                    "Authentication failed. Please sign in again.",
+                    exception);
+
+            case 403:
+                throw new PlannerPermissionException(
+                    "Insufficient permissions. Ensure the app has Tasks.ReadWrite and Group.Read.All consent.",
+                    exception);
+
+            case 404:
+                throw new PlannerNotFoundException(
+                    $"A Planner resource was not found while {operationName}.",
+                    exception);
+
+            default:
+                throw new InvalidOperationException(
+                    $"Microsoft Graph returned HTTP {statusCode} while {operationName}.",
+                    exception);
+        }
+    }
+
+    private static async Task<T> ExecuteGraphCallAsync<T>(
+        string operationName,
+        Func<CancellationToken, Task<T>> graphCall,
+        CancellationToken cancellationToken,
+        Func<CancellationToken, Task<bool>>? onConflictAsync = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationName);
+        ArgumentNullException.ThrowIfNull(graphCall);
+
+        var throttlingRetries = 0;
+        var conflictRetries = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                return await graphCall(cancellationToken);
+            }
+            catch (Exception ex) when (TryGetStatusCode(ex, out var statusCode))
+            {
+                if (statusCode == 429)
+                {
+                    if (throttlingRetries >= MaxThrottlingRetries)
+                    {
+                        throw new PlannerThrottlingException(
+                            $"Microsoft Graph throttled the request while {operationName} after {MaxThrottlingRetries} retries.",
+                            ex);
+                    }
+
+                    throttlingRetries++;
+                    var retryAfter = ResolveRetryAfterSeconds((ApiException)ex);
+                    await Task.Delay(TimeSpan.FromSeconds(retryAfter), cancellationToken);
+                    continue;
+                }
+
+                if (statusCode is 409 or 412)
+                {
+                    if (onConflictAsync is null || conflictRetries >= MaxConflictRetries)
+                    {
+                        throw new PlannerConflictException(
+                            $"Microsoft Graph reported a conflict while {operationName}.",
+                            ex);
+                    }
+
+                    conflictRetries++;
+                    var shouldRetry = await onConflictAsync(cancellationToken);
+                    if (!shouldRetry)
+                    {
+                        throw new PlannerConflictException(
+                            $"Microsoft Graph reported a conflict while {operationName}.",
+                            ex);
+                    }
+
+                    continue;
+                }
+
+                ThrowMappedException(ex, statusCode, operationName);
+            }
         }
     }
 }
