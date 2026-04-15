@@ -143,6 +143,47 @@ public sealed class ImportPlannerOrchestratorTests
             action.TaskName == "Task A");
     }
 
+    [Fact]
+    public async Task ExecuteAsync_WithExistingTaskGoalCaseDifferences_DeduplicatesManualLinkActions()
+    {
+        // Arrange
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var orchestrator = new ImportPlannerOrchestrator(gateway);
+        var request = new ImportRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", "Goal A")]);
+
+        var preview = new ImportPlanPreview
+        {
+            ContainerId = "group-a",
+            PlanId = "plan-a",
+            PlanName = "Plan A",
+            PlanAction = PlannedEntityAction.Reuse,
+            BucketActions = new Dictionary<string, PlannedEntityAction>(StringComparer.OrdinalIgnoreCase),
+            TaskActions =
+            [
+                new ImportTaskPlanItem(2, "Task A", "Ops", ["Goal A"], PlannedEntityAction.Skip, "Task already exists in target plan."),
+                new ImportTaskPlanItem(3, "task a", "Ops", ["goal a"], PlannedEntityAction.Skip, "Task already exists in target plan."),
+            ],
+        };
+
+        // Act
+        var result = await orchestrator.ExecuteAsync(request, preview, CancellationToken.None);
+
+        // Assert
+        Assert.Single(result.ManualActions.Where(action =>
+            action.ActionType == "EnsureGoalExists" &&
+            string.Equals(action.GoalName, "Goal A", StringComparison.OrdinalIgnoreCase)));
+        Assert.Single(result.ManualActions.Where(action =>
+            action.ActionType == "LinkTaskToGoal" &&
+            string.Equals(action.GoalName, "Goal A", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(action.TaskName, "Task A", StringComparison.OrdinalIgnoreCase)));
+    }
+
     private sealed class FakePlannerGateway : IPlannerGateway
     {
         private readonly List<PlannerPlan> plans = [];

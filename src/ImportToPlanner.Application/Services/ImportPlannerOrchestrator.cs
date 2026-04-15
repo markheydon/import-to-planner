@@ -10,6 +10,7 @@ namespace ImportToPlanner.Application.Services;
 public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : IImportPlannerOrchestrator
 {
     private const string DefaultBucketName = "General";
+    private const string TaskAlreadyExistsReason = "Task already exists in target plan.";
 
     /// <inheritdoc/>
     public async Task<ImportPlanPreview> BuildPreviewAsync(ImportRequest request, CancellationToken cancellationToken)
@@ -62,7 +63,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                     resolvedBucket,
                     ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
-                    "Task already exists in target plan."));
+                    TaskAlreadyExistsReason));
 
                 continue;
             }
@@ -120,7 +121,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         var reusedOrSkipped = new List<string>();
         var errors = new List<string>();
         var manualActions = new List<ManualAction>();
-        var emittedGoalTaskLinks = new HashSet<(string Goal, string TaskName)>();
+        var emittedGoalTaskLinks = new HashSet<(string Goal, string TaskName)>(GoalTaskLinkComparer.Instance);
 
         PlannerPlan plan;
         try
@@ -168,7 +169,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
 
         var goalsToCreate = preview.TaskActions
             .Where(task => task.Action != PlannedEntityAction.Skip ||
-                           string.Equals(task.Reason, "Task already exists in target plan.", StringComparison.OrdinalIgnoreCase))
+                           IsTaskAlreadyExistsReason(task.Reason))
             .Where(task => task.Goals is not null)
             .SelectMany(task => task.Goals!)
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -192,7 +193,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             {
                 reusedOrSkipped.Add($"Task: {taskAction.TaskName} ({taskAction.Reason ?? "skipped"})");
 
-                if (string.Equals(taskAction.Reason, "Task already exists in target plan.", StringComparison.OrdinalIgnoreCase))
+                if (IsTaskAlreadyExistsReason(taskAction.Reason))
                 {
                     foreach (var goal in taskAction.Goals ?? [])
                     {
@@ -296,5 +297,28 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         }
 
         return [goal.Trim()];
+    }
+
+    private static bool IsTaskAlreadyExistsReason(string? reason)
+    {
+        return string.Equals(reason, TaskAlreadyExistsReason, StringComparison.Ordinal);
+    }
+
+    private sealed class GoalTaskLinkComparer : IEqualityComparer<(string Goal, string TaskName)>
+    {
+        public static GoalTaskLinkComparer Instance { get; } = new();
+
+        public bool Equals((string Goal, string TaskName) x, (string Goal, string TaskName) y)
+        {
+            return string.Equals(x.Goal, y.Goal, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(x.TaskName, y.TaskName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public int GetHashCode((string Goal, string TaskName) obj)
+        {
+            return HashCode.Combine(
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.Goal),
+                StringComparer.OrdinalIgnoreCase.GetHashCode(obj.TaskName));
+        }
     }
 }

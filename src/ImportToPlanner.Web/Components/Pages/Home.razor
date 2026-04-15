@@ -232,11 +232,21 @@ private ImportExecutionResult? executionResult;
 private ImportRequest? currentRequest;
 private PlannerPlan? inspectedPlan;
 
+private bool IsCurrentSelectionInSyncWithRequest()
+=> selectedContainer is not null
+&& selectedPlan is not null
+&& currentRequest is not null
+&& string.Equals(selectedContainer.Id, currentRequest.ContainerId, StringComparison.Ordinal)
+&& string.Equals(selectedPlan.Id, currentRequest.PlanId, StringComparison.Ordinal);
+
 private bool canValidate => !isBusy
 && selectedContainer is not null
 && selectedPlan is not null
 && !string.IsNullOrWhiteSpace(csvContent);
-private bool canExecute => !isBusy && preview is not null && currentRequest is not null;
+private bool canExecute => !isBusy
+&& preview is not null
+&& currentRequest is not null
+&& IsCurrentSelectionInSyncWithRequest();
 private bool canInspectPlan => isUsingGraphGateway && !isBusy && !string.IsNullOrWhiteSpace(planLookupInput);
 private MessageIntent StatusMessageIntent => parseErrors.Count > 0
 ? MessageIntent.Error
@@ -606,6 +616,7 @@ return goals is { Count: > 0 } ? string.Join(", ", goals) : string.Empty;
 
 private async Task LoadContainersAsync()
 {
+var previousContainerId = selectedContainer?.Id;
 containers.Clear();
 var loadedContainers = await PlannerGateway.GetAvailableContainersAsync(CancellationToken.None);
 containers.AddRange(loadedContainers);
@@ -625,10 +636,17 @@ var preferredContainer = selectedContainer is null
 ?? containers[0];
 
 selectedContainer = preferredContainer;
+if (!string.Equals(previousContainerId, selectedContainer.Id, StringComparison.OrdinalIgnoreCase))
+{
+selectedPlan = null;
+plans.Clear();
+ResetFlowState();
+}
 }
 
 private async Task LoadPlansAsync()
 {
+var previousPlanId = selectedPlan?.Id;
 plans.Clear();
 
 if (selectedContainer is null)
@@ -651,6 +669,10 @@ selectedPlan = selectedPlan is null
 : plans.FirstOrDefault(plan => string.Equals(plan.Id, selectedPlan.Id, StringComparison.OrdinalIgnoreCase));
 
 selectedPlan ??= plans[0];
+if (!string.Equals(previousPlanId, selectedPlan.Id, StringComparison.OrdinalIgnoreCase))
+{
+ResetFlowState();
+}
 }
 
 private sealed record PlanInspectionRow(string Field, string Value);
