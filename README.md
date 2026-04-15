@@ -21,12 +21,20 @@ Implemented solution components:
 
 ## Prerequisites
 
+### Required to build/run (in-memory mode)
+
 - .NET 10 SDK
+
+### Additional requirements for Graph mode
+
 - Microsoft 365 tenant with at least one Microsoft 365 group
 - Entra app registration configured for delegated authentication (see setup below)
 - Certificate credential configured for the Entra app registration (not client secret)
-- Aspire CLI (`aspire`) for local orchestration workflow
-- GitHub CLI (`gh`) optional, for issue/PR workflow
+
+### Optional tooling
+
+- Aspire CLI (`aspire`) for local orchestration workflow (you can also run via `dotnet run`)
+- GitHub CLI (`gh`) for issue/PR workflow
 
 ## Entra App Registration Setup
 
@@ -52,7 +60,9 @@ The app is configured through `appsettings.json` plus local developer secrets.
 
 ### In-memory mode (no credentials required)
 
-Set:
+In-memory mode is the default in this repository (`PlannerGateway:UseGraph` is already `false` in `appsettings.json`), so no configuration changes are required for a first run.
+
+Reference value:
 
 ```json
 { "PlannerGateway": { "UseGraph": false } }
