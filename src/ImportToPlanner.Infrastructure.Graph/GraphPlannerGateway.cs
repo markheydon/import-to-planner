@@ -109,11 +109,13 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(containerId, nameof(containerId));
         ValidateRequired(planName, nameof(planName));
 
+        var findPlanOperation = $"finding planner plan '{planName}' in container '{containerId}'";
+
         Microsoft.Graph.Models.PlannerPlanCollectionResponse? plansResponse;
         try
         {
             plansResponse = await ExecuteGraphCallAsync(
-                "finding planner plan by name",
+                findPlanOperation,
                 innerToken => graphClient.Planner.Plans.GetAsync(
                     requestConfiguration =>
                     {
@@ -144,12 +146,19 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            plansResponse = await ExecuteGraphCallAsync(
-                "finding planner plan by name",
-                innerToken => graphClient.Planner.Plans
-                    .WithUrl(plansResponse.OdataNextLink)
-                    .GetAsync(cancellationToken: innerToken),
-                cancellationToken);
+            try
+            {
+                plansResponse = await ExecuteGraphCallAsync(
+                    findPlanOperation,
+                    innerToken => graphClient.Planner.Plans
+                        .WithUrl(plansResponse.OdataNextLink)
+                        .GetAsync(cancellationToken: innerToken),
+                    cancellationToken);
+            }
+            catch (PlannerNotFoundException)
+            {
+                return null;
+            }
         }
 
         return null;
@@ -166,7 +175,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         var graphContainerType = containerType == ContainerType.Group ? "group" : "user";
 
         var created = await ExecuteGraphCallAsync(
-            "creating planner plan",
+            $"creating planner plan '{planName}' in container '{containerId}'",
             innerToken => graphClient.Planner.Plans.PostAsync(
                 new GraphPlannerPlan
                 {
@@ -196,7 +205,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(planId, nameof(planId));
 
         var bucketsResponse = await ExecuteGraphCallAsync(
-            "loading planner buckets",
+            $"loading planner buckets for plan '{planId}'",
             innerToken => graphClient.Planner.Plans[planId].Buckets.GetAsync(cancellationToken: innerToken),
             cancellationToken);
         var buckets = new List<PlannerBucket>();
@@ -217,7 +226,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
 
             cancellationToken.ThrowIfCancellationRequested();
             bucketsResponse = await ExecuteGraphCallAsync(
-                "loading planner buckets",
+                $"loading planner buckets for plan '{planId}'",
                 innerToken => graphClient.Planner.Plans[planId].Buckets
                     .WithUrl(bucketsResponse.OdataNextLink)
                     .GetAsync(cancellationToken: innerToken),
@@ -235,7 +244,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(bucketName, nameof(bucketName));
 
         var created = await ExecuteGraphCallAsync(
-            "creating planner bucket",
+            $"creating planner bucket '{bucketName}' in plan '{planId}'",
             innerToken => graphClient.Planner.Buckets.PostAsync(
                 new GraphPlannerBucket
                 {
@@ -260,7 +269,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(planId, nameof(planId));
 
         var tasksResponse = await ExecuteGraphCallAsync(
-            "loading planner tasks",
+            $"loading planner tasks for plan '{planId}'",
             innerToken => graphClient.Planner.Plans[planId].Tasks.GetAsync(
                 requestConfiguration =>
                 {
@@ -286,7 +295,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
 
             cancellationToken.ThrowIfCancellationRequested();
             tasksResponse = await ExecuteGraphCallAsync(
-                "loading planner tasks",
+                $"loading planner tasks for plan '{planId}'",
                 innerToken => graphClient.Planner.Plans[planId].Tasks
                     .WithUrl(tasksResponse.OdataNextLink)
                     .GetAsync(cancellationToken: innerToken),
@@ -314,7 +323,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         _ = goal;
 
         var created = await ExecuteGraphCallAsync(
-            "creating planner task",
+            $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'",
             innerToken => graphClient.Planner.Tasks.PostAsync(
                 new GraphPlannerTask
                 {
@@ -464,7 +473,8 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     private static async Task<T> ExecuteGraphCallAsync<T>(
         string operationName,
         Func<CancellationToken, Task<T>> graphCall,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<CancellationToken, Task<bool>>? onConflictAsync = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(operationName);
         ArgumentNullException.ThrowIfNull(graphCall);
@@ -499,7 +509,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
 
                 if (statusCode is 409 or 412)
                 {
-                    if (conflictRetries >= MaxConflictRetries)
+                    if (onConflictAsync is null || conflictRetries >= MaxConflictRetries)
                     {
                         throw new PlannerConflictException(
                             $"Microsoft Graph reported a conflict while {operationName}.",
@@ -507,6 +517,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                     }
 
                     conflictRetries++;
+                    var shouldRetry = await onConflictAsync(cancellationToken);
+                    if (!shouldRetry)
+                    {
+                        throw new PlannerConflictException(
+                            $"Microsoft Graph reported a conflict while {operationName}.",
+                            ex);
+                    }
+
                     continue;
                 }
 
