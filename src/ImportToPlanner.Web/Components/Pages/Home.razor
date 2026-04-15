@@ -10,670 +10,540 @@
 <PageTitle>Import To Planner</PageTitle>
 
 <FluentStack Orientation="Orientation.Vertical" VerticalGap="16" class="import-grid">
-<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-<FluentLabel Typo="Typography.PaneHeader">Import Input</FluentLabel>
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+        <FluentLabel Typo="Typography.PaneHeader">Import Input</FluentLabel>
 
-<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
-Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
-</FluentMessageBar>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+            <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
+                Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
+            </FluentMessageBar>
 
-<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
-<FluentSelect Items="@containers" OptionText="@(container => container is null ? string.Empty : $"{container.DisplayName} ({container.Type})")"
-  OptionSelected="@(container => container?.Id == selectedContainer?.Id)"
-  SelectedOption="@selectedContainer"
-  SelectedOptionChanged="@((PlannerContainer? container) => OnSelectedContainerChangedAsync(container))"
-  Label="Container" />
-<FluentButton Appearance="Appearance.Outline" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
-Refresh Containers
-</FluentButton>
-</FluentStack>
-@if (isUsingGraphGateway && noGroupsFound)
-{
-<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
-No groups found. Ensure you are a member of at least one Microsoft 365 group.
-</FluentMessageBar>
-}
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
+                         VerticalAlignment="VerticalAlignment.Center">
+                <FluentSelect Items="@containers"
+                              OptionText="@(container => container is null ? string.Empty : $"{container.DisplayName} ({container.Type})")"
+                              OptionSelected="@(container => container?.Id == selectedContainer?.Id)"
+                              SelectedOption="@selectedContainer"
+                              SelectedOptionChanged="@((PlannerContainer? container) => OnSelectedContainerChangedAsync(container))"
+                              Label="Container" />
+                <FluentButton Appearance="Appearance.Outline" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
+                    Refresh Containers
+                </FluentButton>
+            </FluentStack>
+            @if (isUsingGraphGateway && noGroupsFound)
+            {
+                <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
+                    No groups found. Ensure you are a member of at least one Microsoft 365 group.
+                </FluentMessageBar>
+            }
 
-<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
-<FluentSelect Items="@plans"
-  OptionText="@(plan => plan?.Title ?? string.Empty)"
-  OptionSelected="@(plan => plan?.Id == selectedPlan?.Id)"
-  SelectedOption="@selectedPlan"
-  SelectedOptionChanged="@((PlannerPlan? plan) => OnSelectedPlanChanged(plan))"
-  Label="Plan" />
-<FluentButton Appearance="Appearance.Outline" Disabled="@(isBusy || selectedContainer is null)" OnClick="@RefreshPlansAsync">
-Refresh Plans
-</FluentButton>
-</FluentStack>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
+                         VerticalAlignment="VerticalAlignment.Center">
+                <FluentSelect Items="@plans" OptionText="@(plan => plan?.Title ?? string.Empty)"
+                              OptionSelected="@(plan => plan?.Id == selectedPlan?.Id)" SelectedOption="@selectedPlan"
+                              SelectedOptionChanged="@((PlannerPlan? plan) => OnSelectedPlanChanged(plan))" Label="Plan" />
+                <FluentButton Appearance="Appearance.Outline" Disabled="@(isBusy || selectedContainer is null)"
+                              OnClick="@RefreshPlansAsync">
+                    Refresh Plans
+                </FluentButton>
+            </FluentStack>
 
-@if (selectedContainer is not null && plans.Count == 0)
-{
-<FluentMessageBar Intent="MessageIntent.Warning" AllowDismiss="false">
-No plans were found for this container. Create a plan in Planner, then click Refresh Plans.
-</FluentMessageBar>
-}
+            @if (selectedContainer is not null && plans.Count == 0)
+            {
+                <FluentMessageBar Intent="MessageIntent.Warning" AllowDismiss="false">
+                    No plans were found for this container. Create a plan in Planner, then click Refresh Plans.
+                </FluentMessageBar>
+            }
 
-<FluentInputFile Id="csv-file-input" AnchorId="csv-file-button" OnInputFileChange="OnFileChangedAsync"
- Accept=".csv,text/csv" MaximumFileCount="1" DragDropZoneVisible="false" />
-<FluentSwitch Value="@ignoreExtraColumns"
-  ValueChanged="@((bool value) => OnIgnoreExtraColumnsChanged(value))"
-  Label="Ignore extra columns" />
-<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
- VerticalAlignment="VerticalAlignment.Center">
-<FluentButton Id="csv-file-button" Appearance="Appearance.Outline">Browse CSV file</FluentButton>
-<FluentLabel>@selectedFileName</FluentLabel>
-</FluentStack>
+            <FluentInputFile Id="csv-file-input" AnchorId="csv-file-button" OnInputFileChange="OnFileChangedAsync"
+                             Accept=".csv,text/csv" MaximumFileCount="1" DragDropZoneVisible="false" />
+            <FluentSwitch Value="@ignoreExtraColumns"
+                          ValueChanged="@((bool value) => OnIgnoreExtraColumnsChanged(value))" Label="Ignore extra columns" />
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
+                         VerticalAlignment="VerticalAlignment.Center">
+                <FluentButton Id="csv-file-button" Appearance="Appearance.Outline">Browse CSV file</FluentButton>
+                <FluentLabel>@selectedFileName</FluentLabel>
+            </FluentStack>
 
-<FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
-<FluentButton Appearance="Appearance.Accent" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
-Validate And Preview
-</FluentButton>
-<FluentButton Appearance="Appearance.Neutral" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
-Confirm And Execute
-</FluentButton>
-</FluentStack>
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
+                <FluentButton Appearance="Appearance.Accent" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
+                    Validate And Preview
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Neutral" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
+                    Confirm And Execute
+                </FluentButton>
+            </FluentStack>
 
-@if (!string.IsNullOrWhiteSpace(statusMessage))
-{
-<FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
-}
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
+            }
 
-@if (parseErrors.Count > 0)
-{
-<FluentLabel Typo="Typography.Header">Validation Errors</FluentLabel>
-<FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
-<PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
-<PropertyColumn Property="@(error => error.Field)" Title="Field" />
-<PropertyColumn Property="@(error => error.Message)" Title="Message" />
-</FluentDataGrid>
-}
-</FluentStack>
-</FluentStack>
+            @if (parseErrors.Count > 0)
+            {
+                <FluentLabel Typo="Typography.Header">Validation Errors</FluentLabel>
+                <FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
+                    <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
+                    <PropertyColumn Property="@(error => error.Field)" Title="Field" />
+                    <PropertyColumn Property="@(error => error.Message)" Title="Message" />
+                </FluentDataGrid>
+            }
+        </FluentStack>
+    </FluentStack>
 
-@if (isUsingGraphGateway)
-{
-<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-<FluentLabel Typo="Typography.PaneHeader">Plan Inspection</FluentLabel>
+    @if (preview is not null)
+    {
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+            <FluentLabel Typo="Typography.PaneHeader">Dry-Run Preview</FluentLabel>
 
-<FluentTextField Value="@planLookupInput"
- ValueChanged="@((string? value) => OnPlanLookupInputChanged(value))"
- Immediate="true"
- Label="Planner URL Or Plan ID"
- Placeholder="Paste a Planner URL or a plan id" />
+            <FluentLabel Typo="Typography.Subject">Plan action: Reuse existing plan</FluentLabel>
 
-<FluentButton Appearance="Appearance.Outline" Disabled="@(!canInspectPlan)" OnClick="@InspectPlanAsync">
-Inspect Existing Plan
-</FluentButton>
+            @if (preview.PlanId is not null)
+            {
+                <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
+                    Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.PlanId" target="_blank"
+                                      rel="noopener noreferrer">Open in Planner</a>
+                </FluentMessageBar>
+            }
 
-@if (!string.IsNullOrWhiteSpace(planInspectionError))
-{
-<FluentMessageBar Intent="MessageIntent.Warning" AllowDismiss="false">@planInspectionError</FluentMessageBar>
-}
+            <FluentLabel Typo="Typography.Header">Bucket Actions</FluentLabel>
+            <FluentDataGrid Items="@preview.BucketActions.AsQueryable()"
+                            TGridItem="KeyValuePair<string, PlannedEntityAction>">
+                <PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
+                <PropertyColumn Property="@(action => action.Value)" Title="Action" />
+            </FluentDataGrid>
 
-@if (inspectedPlan is not null)
-{
-<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">
-Plan found. <a href="https://planner.cloud.microsoft/webui/plan/@inspectedPlan.Id" target="_blank" rel="noopener noreferrer">Open in Planner</a>
-</FluentMessageBar>
+            <FluentLabel Typo="Typography.Header">Task Actions</FluentLabel>
+            <FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
+                <PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
+                <PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
+                <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
+                <PropertyColumn Property="@(task => FormatGoals(task.Goals))" Title="Goals" />
+                <PropertyColumn Property="@(task => task.Action)" Title="Action" />
+                <PropertyColumn Property="@(task => task.Reason)" Title="Reason" Tooltip="true" />
+            </FluentDataGrid>
+        </FluentStack>
+    }
 
-<FluentDataGrid Items="@GetPlanInspectionRows().AsQueryable()" TGridItem="PlanInspectionRow">
-<PropertyColumn Property="@(row => row.Field)" Title="Field" />
-<PropertyColumn Property="@(row => row.Value)" Title="Value" Tooltip="true" />
-</FluentDataGrid>
-}
-</FluentStack>
-}
+    @if (executionResult is not null)
+    {
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+            <FluentLabel Typo="Typography.PaneHeader">Execution Report</FluentLabel>
 
-@if (preview is not null)
-{
-<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-<FluentLabel Typo="Typography.PaneHeader">Dry-Run Preview</FluentLabel>
+            @if (executionResult.PlanId is not null)
+            {
+                <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">
+                    Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@executionResult.PlanId"
+                                        target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
+                </FluentMessageBar>
+            }
 
-<FluentLabel Typo="Typography.Subject">Plan action: Reuse existing plan</FluentLabel>
+            <FluentLabel Typo="Typography.Header">Created</FluentLabel>
+            <FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
+                <PropertyColumn Property="@(item => item)" Title="Item" />
+            </FluentDataGrid>
 
-@if (preview.PlanId is not null)
-{
-<FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
-Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.PlanId" target="_blank" rel="noopener noreferrer">Open in Planner</a>
-</FluentMessageBar>
-}
+            <FluentLabel Typo="Typography.Header">Reused Or Skipped</FluentLabel>
+            <FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
+                <PropertyColumn Property="@(item => item)" Title="Item" />
+            </FluentDataGrid>
 
-<FluentLabel Typo="Typography.Header">Bucket Actions</FluentLabel>
-<FluentDataGrid Items="@preview.BucketActions.AsQueryable()"
-TGridItem="KeyValuePair<string, PlannedEntityAction>">
-<PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
-<PropertyColumn Property="@(action => action.Value)" Title="Action" />
-</FluentDataGrid>
+            <FluentLabel Typo="Typography.Header">Errors</FluentLabel>
+            @if (executionResult.Errors.Count == 0)
+            {
+                <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
+            }
+            else
+            {
+                <FluentDataGrid Items="@executionResult.Errors.AsQueryable()" TGridItem="string">
+                    <PropertyColumn Property="@(item => item)" Title="Error" />
+                </FluentDataGrid>
+            }
 
-<FluentLabel Typo="Typography.Header">Task Actions</FluentLabel>
-<FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
-<PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
-<PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
-<PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
-<PropertyColumn Property="@(task => FormatGoals(task.Goals))" Title="Goals" />
-<PropertyColumn Property="@(task => task.Action)" Title="Action" />
-<PropertyColumn Property="@(task => task.Reason)" Title="Reason" Tooltip="true" />
-</FluentDataGrid>
-</FluentStack>
-}
-
-@if (executionResult is not null)
-{
-<FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-<FluentLabel Typo="Typography.PaneHeader">Execution Report</FluentLabel>
-
-@if (executionResult.PlanId is not null)
-{
-<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">
-Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@executionResult.PlanId" target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
-</FluentMessageBar>
-}
-
-<FluentLabel Typo="Typography.Header">Created</FluentLabel>
-<FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
-<PropertyColumn Property="@(item => item)" Title="Item" />
-</FluentDataGrid>
-
-<FluentLabel Typo="Typography.Header">Reused Or Skipped</FluentLabel>
-<FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
-<PropertyColumn Property="@(item => item)" Title="Item" />
-</FluentDataGrid>
-
-<FluentLabel Typo="Typography.Header">Errors</FluentLabel>
-@if (executionResult.Errors.Count == 0)
-{
-<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
-}
-else
-{
-<FluentDataGrid Items="@executionResult.Errors.AsQueryable()" TGridItem="string">
-<PropertyColumn Property="@(item => item)" Title="Error" />
-</FluentDataGrid>
-}
-
-<FluentLabel Typo="Typography.Header">Manual Actions</FluentLabel>
-@if (executionResult.ManualActions.Count == 0)
-{
-<FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
-}
-else
-{
-<FluentDataGrid Items="@executionResult.ManualActions.AsQueryable()" TGridItem="ManualAction">
-<PropertyColumn Property="@(item => item.ActionType)" Title="Action Type" />
-<PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
-<PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
-<PropertyColumn Property="@(item => item.Details)" Title="Details" />
-</FluentDataGrid>
-}
-</FluentStack>
-}
+            <FluentLabel Typo="Typography.Header">Manual Actions</FluentLabel>
+            @if (executionResult.ManualActions.Count == 0)
+            {
+                <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
+            }
+            else
+            {
+                <FluentDataGrid Items="@executionResult.ManualActions.AsQueryable()" TGridItem="ManualAction">
+                    <PropertyColumn Property="@(item => item.ActionType)" Title="Action Type" />
+                    <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
+                    <PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
+                    <PropertyColumn Property="@(item => item.Details)" Title="Details" />
+                </FluentDataGrid>
+            }
+        </FluentStack>
+    }
 </FluentStack>
 
 @code {
-private readonly List<PlannerContainer> containers = [];
-private readonly List<PlannerPlan> plans = [];
-private readonly List<ImportValidationError> parseErrors = [];
+    private readonly List<PlannerContainer> containers = [];
+    private readonly List<PlannerPlan> plans = [];
+    private readonly List<ImportValidationError> parseErrors = [];
 
-private PlannerContainer? selectedContainer;
-private PlannerPlan? selectedPlan;
-private string csvContent = string.Empty;
-private string selectedFileName = "No file selected.";
-private string? statusMessage;
-private bool isBusy;
-private bool isUsingGraphGateway;
-private bool noGroupsFound;
-private bool ignoreExtraColumns = true;
-private string planLookupInput = string.Empty;
-private string? planInspectionError;
+    private PlannerContainer? selectedContainer;
+    private PlannerPlan? selectedPlan;
+    private string csvContent = string.Empty;
+    private string selectedFileName = "No file selected.";
+    private string? statusMessage;
+    private bool isBusy;
+    private bool isUsingGraphGateway;
+    private bool noGroupsFound;
+    private bool ignoreExtraColumns = true;
 
-private ImportPlanPreview? preview;
-private ImportExecutionResult? executionResult;
-private ImportRequest? currentRequest;
-private PlannerPlan? inspectedPlan;
+    private ImportPlanPreview? preview;
+    private ImportExecutionResult? executionResult;
+    private ImportRequest? currentRequest;
 
-private bool IsCurrentSelectionInSyncWithRequest()
-=> selectedContainer is not null
-&& selectedPlan is not null
-&& currentRequest is not null
-&& string.Equals(selectedContainer.Id, currentRequest.ContainerId, StringComparison.Ordinal)
-&& string.Equals(selectedPlan.Id, currentRequest.PlanId, StringComparison.Ordinal);
+    private bool IsCurrentSelectionInSyncWithRequest()
+    => selectedContainer is not null
+    && selectedPlan is not null
+    && currentRequest is not null
+    && string.Equals(selectedContainer.Id, currentRequest.ContainerId, StringComparison.Ordinal)
+    && string.Equals(selectedPlan.Id, currentRequest.PlanId, StringComparison.Ordinal);
 
-private bool canValidate => !isBusy
-&& selectedContainer is not null
-&& selectedPlan is not null
-&& !string.IsNullOrWhiteSpace(csvContent);
-private bool canExecute => !isBusy
-&& preview is not null
-&& currentRequest is not null
-&& IsCurrentSelectionInSyncWithRequest();
-private bool canInspectPlan => isUsingGraphGateway && !isBusy && !string.IsNullOrWhiteSpace(planLookupInput);
-private MessageIntent StatusMessageIntent => parseErrors.Count > 0
-? MessageIntent.Error
-: executionResult is null
-? MessageIntent.Info
-: executionResult.Errors.Count > 0
-? MessageIntent.Warning
-: MessageIntent.Success;
+    private bool canValidate => !isBusy
+    && selectedContainer is not null
+    && selectedPlan is not null
+    && !string.IsNullOrWhiteSpace(csvContent);
+    private bool canExecute => !isBusy
+    && preview is not null
+    && currentRequest is not null
+    && IsCurrentSelectionInSyncWithRequest();
+    private MessageIntent StatusMessageIntent => parseErrors.Count > 0
+    ? MessageIntent.Error
+    : executionResult is null
+    ? MessageIntent.Info
+    : executionResult.Errors.Count > 0
+    ? MessageIntent.Warning
+    : MessageIntent.Success;
 
-protected override async Task OnInitializedAsync()
-{
-isUsingGraphGateway = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
-if (isUsingGraphGateway)
-{
-var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
-if (!isAuthenticated)
-{
-NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
-return;
-}
-}
+    protected override async Task OnInitializedAsync()
+    {
+        isUsingGraphGateway = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
+        if (isUsingGraphGateway)
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+            if (!isAuthenticated)
+            {
+                NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+                return;
+            }
+        }
 
-try
-{
-await LoadContainersAsync();
-await LoadPlansAsync();
-}
-catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
-{
-NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
-}
-}
+        try
+        {
+            await LoadContainersAsync();
+            await LoadPlansAsync();
+        }
+        catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
+        {
+            NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+        }
+    }
 
-private async Task RefreshContainersAsync()
-{
-if (isBusy)
-{
-return;
-}
+    private async Task RefreshContainersAsync()
+    {
+        if (isBusy)
+        {
+            return;
+        }
 
-isBusy = true;
-try
-{
-await LoadContainersAsync();
-await LoadPlansAsync();
-statusMessage = "Container list refreshed.";
-}
-catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
-{
-NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
-}
-catch (Exception ex)
-{
-Logger.LogError(ex, "Failed to refresh containers.");
-statusMessage = "Failed to refresh containers.";
-}
-finally
-{
-isBusy = false;
-}
-}
+        isBusy = true;
+        try
+        {
+            await LoadContainersAsync();
+            await LoadPlansAsync();
+            statusMessage = "Container list refreshed.";
+        }
+        catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
+        {
+            NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh containers.");
+            statusMessage = "Failed to refresh containers.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 
-private async Task RefreshPlansAsync()
-{
-if (isBusy || selectedContainer is null)
-{
-return;
-}
+    private async Task RefreshPlansAsync()
+    {
+        if (isBusy || selectedContainer is null)
+        {
+            return;
+        }
 
-isBusy = true;
-try
-{
-await LoadPlansAsync();
-statusMessage = "Plan list refreshed.";
-}
-catch (Exception ex)
-{
-Logger.LogError(ex, "Failed to refresh plans for container '{ContainerId}'.", selectedContainer.Id);
-statusMessage = "Failed to refresh plans.";
-}
-finally
-{
-isBusy = false;
-}
-}
+        isBusy = true;
+        try
+        {
+            await LoadPlansAsync();
+            statusMessage = "Plan list refreshed.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to refresh plans for container '{ContainerId}'.", selectedContainer.Id);
+            statusMessage = "Failed to refresh plans.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 
-private async Task OnFileChangedAsync(InputFileChangeEventArgs args)
-{
-ResetFlowState();
+    private async Task OnFileChangedAsync(InputFileChangeEventArgs args)
+    {
+        ResetFlowState();
 
-var file = args.File;
-selectedFileName = file.Name;
+        var file = args.File;
+        selectedFileName = file.Name;
 
-await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
-using var reader = new StreamReader(stream);
-csvContent = await reader.ReadToEndAsync();
+        await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+        using var reader = new StreamReader(stream);
+        csvContent = await reader.ReadToEndAsync();
 
-statusMessage = "CSV file loaded. Click Validate And Preview.";
-}
+        statusMessage = "CSV file loaded. Click Validate And Preview.";
+    }
 
-private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
-{
-if (selectedContainer?.Id == container?.Id)
-{
-return;
-}
+    private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
+    {
+        if (selectedContainer?.Id == container?.Id)
+        {
+            return;
+        }
 
-selectedContainer = container;
-selectedPlan = null;
-plans.Clear();
-ResetFlowState();
+        selectedContainer = container;
+        selectedPlan = null;
+        plans.Clear();
+        ResetFlowState();
 
-if (selectedContainer is null)
-{
-return;
-}
+        if (selectedContainer is null)
+        {
+            return;
+        }
 
-isBusy = true;
-try
-{
-await LoadPlansAsync();
-}
-catch (Exception ex)
-{
-Logger.LogError(ex, "Failed to load plans for container '{ContainerId}'.", selectedContainer.Id);
-statusMessage = "Failed to load plans for the selected container.";
-}
-finally
-{
-isBusy = false;
-}
-}
+        isBusy = true;
+        try
+        {
+            await LoadPlansAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load plans for container '{ContainerId}'.", selectedContainer.Id);
+            statusMessage = "Failed to load plans for the selected container.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 
-private void OnSelectedPlanChanged(PlannerPlan? plan)
-{
-if (selectedPlan?.Id == plan?.Id)
-{
-return;
-}
+    private void OnSelectedPlanChanged(PlannerPlan? plan)
+    {
+        if (selectedPlan?.Id == plan?.Id)
+        {
+            return;
+        }
 
-selectedPlan = plan;
-ResetFlowState();
-}
+        selectedPlan = plan;
+        ResetFlowState();
+    }
 
-private void OnIgnoreExtraColumnsChanged(bool value)
-{
-if (ignoreExtraColumns == value)
-{
-return;
-}
+    private void OnIgnoreExtraColumnsChanged(bool value)
+    {
+        if (ignoreExtraColumns == value)
+        {
+            return;
+        }
 
-ignoreExtraColumns = value;
-ResetFlowState();
-}
+        ignoreExtraColumns = value;
+        ResetFlowState();
+    }
 
-private void ResetFlowState()
-{
-parseErrors.Clear();
-preview = null;
-currentRequest = null;
-executionResult = null;
-statusMessage = null;
-}
+    private void ResetFlowState()
+    {
+        parseErrors.Clear();
+        preview = null;
+        currentRequest = null;
+        executionResult = null;
+        statusMessage = null;
+    }
 
-private void OnPlanLookupInputChanged(string? value)
-{
-var normalizedValue = value ?? string.Empty;
-if (string.Equals(planLookupInput, normalizedValue, StringComparison.Ordinal))
-{
-return;
-}
+    private async Task BuildPreviewAsync()
+    {
+        if (isBusy)
+        {
+            return;
+        }
 
-planLookupInput = normalizedValue;
-inspectedPlan = null;
-planInspectionError = null;
-}
+        parseErrors.Clear();
+        preview = null;
+        executionResult = null;
+        statusMessage = null;
 
-private async Task BuildPreviewAsync()
-{
-if (isBusy)
-{
-return;
-}
+        if (selectedContainer is null)
+        {
+            parseErrors.Add(new ImportValidationError(0, "Container", "A container must be selected."));
+            return;
+        }
 
-parseErrors.Clear();
-preview = null;
-executionResult = null;
-statusMessage = null;
+        if (selectedPlan is null)
+        {
+            parseErrors.Add(new ImportValidationError(0, "Plan", "Select an existing plan."));
+            return;
+        }
 
-if (selectedContainer is null)
-{
-parseErrors.Add(new ImportValidationError(0, "Container", "A container must be selected."));
-return;
-}
+        if (string.IsNullOrWhiteSpace(csvContent))
+        {
+            parseErrors.Add(new ImportValidationError(0, "File", "Upload a CSV file first."));
+            return;
+        }
 
-if (selectedPlan is null)
-{
-parseErrors.Add(new ImportValidationError(0, "Plan", "Select an existing plan."));
-return;
-}
+        isBusy = true;
+        try
+        {
+            var parseResult = await CsvImportParser.ParseAsync(csvContent, CancellationToken.None, ignoreExtraColumns);
+            parseErrors.AddRange(parseResult.ValidationErrors);
 
-if (string.IsNullOrWhiteSpace(csvContent))
-{
-parseErrors.Add(new ImportValidationError(0, "File", "Upload a CSV file first."));
-return;
-}
+            if (parseResult.HasErrors)
+            {
+                statusMessage = "Validation failed. Fix the reported issues and retry.";
+                return;
+            }
 
-isBusy = true;
-try
-{
-var parseResult = await CsvImportParser.ParseAsync(csvContent, CancellationToken.None, ignoreExtraColumns);
-parseErrors.AddRange(parseResult.ValidationErrors);
+            currentRequest = new ImportRequest(
+            selectedContainer.Id,
+            selectedContainer.Type,
+            selectedPlan.Id,
+            selectedPlan.Title,
+            parseResult.Rows);
+            preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
+            statusMessage = "Preview generated. Review actions, then confirm execution.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Preview generation failed.");
+            parseErrors.Add(new ImportValidationError(0, "System", "Preview generation failed due to an unexpected system error."));
+            statusMessage = "Preview generation failed.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 
-if (parseResult.HasErrors)
-{
-statusMessage = "Validation failed. Fix the reported issues and retry.";
-return;
-}
+    private async Task ExecuteAsync()
+    {
+        if (!canExecute)
+        {
+            return;
+        }
 
-currentRequest = new ImportRequest(
-selectedContainer.Id,
-selectedContainer.Type,
-selectedPlan.Id,
-selectedPlan.Title,
-parseResult.Rows);
-preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
-statusMessage = "Preview generated. Review actions, then confirm execution.";
-}
-catch (Exception ex)
-{
-Logger.LogError(ex, "Preview generation failed.");
-parseErrors.Add(new ImportValidationError(0, "System", "Preview generation failed due to an unexpected system error."));
-statusMessage = "Preview generation failed.";
-}
-finally
-{
-isBusy = false;
-}
-}
+        isBusy = true;
+        statusMessage = null;
+        try
+        {
+            executionResult = await ImportPlannerOrchestrator.ExecuteAsync(
+            currentRequest!,
+            preview!,
+            CancellationToken.None);
 
-private async Task ExecuteAsync()
-{
-if (!canExecute)
-{
-return;
-}
+            statusMessage = executionResult.Errors.Count == 0
+            ? "Execution completed successfully."
+            : "Execution completed with errors.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Execution failed.");
+            executionResult = new ImportExecutionResult
+            {
+                Created = [],
+                ReusedOrSkipped = [],
+                Errors = ["Execution failed due to an unexpected system error. Check logs and retry."],
+                ManualActions = [],
+            };
 
-isBusy = true;
-statusMessage = null;
-try
-{
-executionResult = await ImportPlannerOrchestrator.ExecuteAsync(
-currentRequest!,
-preview!,
-CancellationToken.None);
+            statusMessage = "Execution failed.";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 
-statusMessage = executionResult.Errors.Count == 0
-? "Execution completed successfully."
-: "Execution completed with errors.";
-}
-catch (Exception ex)
-{
-Logger.LogError(ex, "Execution failed.");
-executionResult = new ImportExecutionResult
-{
-Created = [],
-ReusedOrSkipped = [],
-Errors = ["Execution failed due to an unexpected system error. Check logs and retry."],
-ManualActions = [],
-};
+    private static string? FormatGoals(IReadOnlyList<string>? goals)
+    {
+        return goals is { Count: > 0 } ? string.Join(", ", goals) : string.Empty;
+    }
 
-statusMessage = "Execution failed.";
-}
-finally
-{
-isBusy = false;
-}
-}
+    private async Task LoadContainersAsync()
+    {
+        var previousContainerId = selectedContainer?.Id;
+        containers.Clear();
+        var loadedContainers = await PlannerGateway.GetAvailableContainersAsync(CancellationToken.None);
+        containers.AddRange(loadedContainers);
+        noGroupsFound = containers.All(container => container.Type != ContainerType.Group);
 
-private async Task InspectPlanAsync()
-{
-if (!canInspectPlan)
-{
-return;
-}
+        if (containers.Count == 0)
+        {
+            selectedContainer = null;
+            selectedPlan = null;
+            plans.Clear();
+            return;
+        }
 
-isBusy = true;
-inspectedPlan = null;
-planInspectionError = null;
+        var preferredContainer = selectedContainer is null
+        ? containers[0]
+        : containers.FirstOrDefault(container => string.Equals(container.Id, selectedContainer.Id,
+        StringComparison.OrdinalIgnoreCase))
+        ?? containers[0];
 
-try
-{
-var planId = TryExtractPlanId(planLookupInput);
-if (string.IsNullOrWhiteSpace(planId))
-{
-planInspectionError = "Enter a valid Planner URL or a plan id.";
-return;
-}
+        selectedContainer = preferredContainer;
+        if (!string.Equals(previousContainerId, selectedContainer.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            selectedPlan = null;
+            plans.Clear();
+            ResetFlowState();
+        }
+    }
 
-inspectedPlan = await PlannerGateway.GetPlanByIdAsync(planId, CancellationToken.None);
-if (inspectedPlan is null)
-{
-planInspectionError = "Planner did not return a plan for that id.";
-}
-}
-catch (Exception ex)
-{
-Logger.LogError(ex, "Plan inspection failed for input '{PlanLookupInput}'.", planLookupInput);
-planInspectionError = "Plan inspection failed. Check logs and confirm the signed-in account can access that plan.";
-}
-finally
-{
-isBusy = false;
-}
-}
+    private async Task LoadPlansAsync()
+    {
+        var previousPlanId = selectedPlan?.Id;
+        plans.Clear();
 
-private IReadOnlyList<PlanInspectionRow> GetPlanInspectionRows()
-{
-if (inspectedPlan is null)
-{
-return [];
-}
+        if (selectedContainer is null)
+        {
+            selectedPlan = null;
+            return;
+        }
 
-return
-[
-new PlanInspectionRow("Plan ID", inspectedPlan.Id),
-new PlanInspectionRow("Title", inspectedPlan.Title),
-new PlanInspectionRow("Container Type", inspectedPlan.ContainerType?.ToString() ?? "(not mapped)"),
-new PlanInspectionRow("Raw Graph Type", inspectedPlan.RawContainerType ?? "(not returned)"),
-new PlanInspectionRow("Container ID", inspectedPlan.ContainerId ?? "(not returned)"),
-new PlanInspectionRow("Container URL", inspectedPlan.ContainerUrl ?? "(not returned)"),
-];
-}
+        var loadedPlans = await PlannerGateway.GetPlansAsync(selectedContainer.Id, selectedContainer.Type,
+        CancellationToken.None);
+        plans.AddRange(loadedPlans.OrderBy(plan => plan.Title, StringComparer.OrdinalIgnoreCase));
 
-private static string? TryExtractPlanId(string input)
-{
-var trimmedInput = input.Trim();
-if (string.IsNullOrWhiteSpace(trimmedInput))
-{
-return null;
-}
+        if (plans.Count == 0)
+        {
+            selectedPlan = null;
+            return;
+        }
 
-if (!Uri.TryCreate(trimmedInput, UriKind.Absolute, out var uri))
-{
-return trimmedInput;
-}
+        selectedPlan = selectedPlan is null
+        ? plans[0]
+        : plans.FirstOrDefault(plan => string.Equals(plan.Id, selectedPlan.Id, StringComparison.OrdinalIgnoreCase));
 
-var segments = uri.AbsolutePath
-.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        selectedPlan ??= plans[0];
+        if (!string.Equals(previousPlanId, selectedPlan.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            ResetFlowState();
+        }
+    }
 
-for (var index = 0; index < segments.Length - 1; index++)
-{
-if (string.Equals(segments[index], "plan", StringComparison.OrdinalIgnoreCase))
-{
-return Uri.UnescapeDataString(segments[index + 1]);
-}
-}
-
-return null;
-}
-
-private static string? FormatGoals(IReadOnlyList<string>? goals)
-{
-return goals is { Count: > 0 } ? string.Join(", ", goals) : string.Empty;
-}
-
-private async Task LoadContainersAsync()
-{
-var previousContainerId = selectedContainer?.Id;
-containers.Clear();
-var loadedContainers = await PlannerGateway.GetAvailableContainersAsync(CancellationToken.None);
-containers.AddRange(loadedContainers);
-noGroupsFound = containers.All(container => container.Type != ContainerType.Group);
-
-if (containers.Count == 0)
-{
-selectedContainer = null;
-selectedPlan = null;
-plans.Clear();
-return;
-}
-
-var preferredContainer = selectedContainer is null
-? containers[0]
-: containers.FirstOrDefault(container => string.Equals(container.Id, selectedContainer.Id, StringComparison.OrdinalIgnoreCase))
-?? containers[0];
-
-selectedContainer = preferredContainer;
-if (!string.Equals(previousContainerId, selectedContainer.Id, StringComparison.OrdinalIgnoreCase))
-{
-selectedPlan = null;
-plans.Clear();
-ResetFlowState();
-}
-}
-
-private async Task LoadPlansAsync()
-{
-var previousPlanId = selectedPlan?.Id;
-plans.Clear();
-
-if (selectedContainer is null)
-{
-selectedPlan = null;
-return;
-}
-
-var loadedPlans = await PlannerGateway.GetPlansAsync(selectedContainer.Id, selectedContainer.Type, CancellationToken.None);
-plans.AddRange(loadedPlans.OrderBy(plan => plan.Title, StringComparer.OrdinalIgnoreCase));
-
-if (plans.Count == 0)
-{
-selectedPlan = null;
-return;
-}
-
-selectedPlan = selectedPlan is null
-? plans[0]
-: plans.FirstOrDefault(plan => string.Equals(plan.Id, selectedPlan.Id, StringComparison.OrdinalIgnoreCase));
-
-selectedPlan ??= plans[0];
-if (!string.Equals(previousPlanId, selectedPlan.Id, StringComparison.OrdinalIgnoreCase))
-{
-ResetFlowState();
-}
-}
-
-private sealed record PlanInspectionRow(string Field, string Value);
 }

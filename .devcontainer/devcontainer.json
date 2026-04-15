@@ -1,0 +1,22 @@
+{
+  "name": "Import To Planner",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:dev-10.0-noble",
+  "features": {
+    "ghcr.io/microsoft/aspire-devcontainer-feature/aspire:2": {}
+  },
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "postStartCommand": "dotnet dev-certs https --trust",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "GitHub.copilot-chat",
+        "microsoft-aspire.aspire-vscode"
+      ]
+    }
+  }
+}

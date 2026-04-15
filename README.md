@@ -34,7 +34,22 @@ Implemented solution components:
 ### Optional tooling
 
 - Aspire CLI (`aspire`) for local orchestration workflow (you can also run via `dotnet run`)
+  - `aspire start` requires an OCI-compatible container runtime even when the AppHost has no container resources; on WSL, [Podman](https://podman.io/) is the recommended alternative to Docker Desktop
 - GitHub CLI (`gh`) for issue/PR workflow
+
+## GitHub Codespaces
+
+This repository includes a Codespaces-ready dev container in `.devcontainer/devcontainer.json`.
+
+Recommended baseline for this repository:
+
+- 4 CPU cores
+- 8 GB memory
+- 32 GB storage
+
+That is intentionally lower than the general Aspire template because the current AppHost only orchestrates the Blazor web project and does not currently require Docker-in-Docker or additional language runtimes.
+
+If you want faster startup times, enable a prebuild in the GitHub repository settings for the `main` branch and this dev container configuration. Prebuilds are configured in GitHub, not in this repository. For a single-user or small-team repository, starting with a prebuild for `main` in your primary region is the most cost-effective default.
 
 ## Entra App Registration Setup
 
@@ -106,6 +121,8 @@ dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
 ### Run with Aspire orchestration
+
+> **Note:** `aspire start` requires a container runtime (e.g. Podman or Docker Desktop) to be running before you start the AppHost. On WSL, Podman is recommended (`sudo apt install podman`). The `dotnet run` path does not have this requirement.
 
 ```bash
 aspire start --isolated
