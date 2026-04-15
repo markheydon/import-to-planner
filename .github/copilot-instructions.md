@@ -49,6 +49,13 @@ This app uses Microsoft Graph API to access Microsoft Planner and related assets
 - Prefer integration tests for Graph API interactions using `InMemoryPlannerGateway` in test scenarios.
 - Refer to the `csharp-xunit` skill for test patterns and data-driven test guidance.
 
+## PR Review Comment Handling
+
+- When addressing pull request review threads, reply in-thread only.
+- Never use top-level PR/issue comments as a substitute for thread replies.
+- If tooling cannot post an in-thread reply, stop and report the limitation with draft reply text per thread.
+- Do not resolve a review thread unless an in-thread reply has been posted.
+
 ## C# Agent Support
 
 For complex C# coding work, defer to the **C# Expert** agent. It has deep expertise in .NET architecture and can handle refactoring, design decisions, and implementation at scale.
