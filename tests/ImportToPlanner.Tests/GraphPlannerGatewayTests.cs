@@ -1,3 +1,4 @@
+using System.Globalization;
 using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Infrastructure.Graph;
@@ -450,7 +451,7 @@ public sealed class GraphPlannerGatewayTests
         {
             exception.ResponseHeaders = new Dictionary<string, IEnumerable<string>>(StringComparer.OrdinalIgnoreCase)
             {
-                ["Retry-After"] = [retryAfterSeconds.Value.ToString()],
+                ["Retry-After"] = [retryAfterSeconds.Value.ToString(CultureInfo.InvariantCulture)],
             };
         }
 

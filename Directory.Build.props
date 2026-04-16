@@ -1,0 +1,29 @@
+<Project>
+
+  <!--
+    Properties hoisted here apply to every project in the solution.
+    Project-specific overrides can still appear in individual .csproj files.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Enforce .editorconfig style rules during dotnet build / CI -->
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+
+    <!-- Enable the latest recommended set of .NET analysers -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!-- Fail the build on any compiler warning so issues are caught early -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!--
+      Required for IDE0005 (remove unnecessary usings) to work during dotnet build.
+      CS1591 (missing XML doc comment) is suppressed below in .editorconfig until
+      full API documentation is added.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

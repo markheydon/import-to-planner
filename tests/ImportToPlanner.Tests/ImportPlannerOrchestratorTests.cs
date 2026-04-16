@@ -175,13 +175,13 @@ public sealed class ImportPlannerOrchestratorTests
         var result = await orchestrator.ExecuteAsync(request, preview, CancellationToken.None);
 
         // Assert
-        Assert.Single(result.ManualActions.Where(action =>
+        Assert.Single(result.ManualActions, action =>
             action.ActionType == "EnsureGoalExists" &&
-            string.Equals(action.GoalName, "Goal A", StringComparison.OrdinalIgnoreCase)));
-        Assert.Single(result.ManualActions.Where(action =>
+            string.Equals(action.GoalName, "Goal A", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(result.ManualActions, action =>
             action.ActionType == "LinkTaskToGoal" &&
             string.Equals(action.GoalName, "Goal A", StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(action.TaskName, "Task A", StringComparison.OrdinalIgnoreCase)));
+            string.Equals(action.TaskName, "Task A", StringComparison.OrdinalIgnoreCase));
     }
 
     private sealed class FakePlannerGateway : IPlannerGateway

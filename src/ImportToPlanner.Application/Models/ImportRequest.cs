@@ -11,8 +11,8 @@ namespace ImportToPlanner.Application.Models;
 /// <param name="PlanName">The selected target plan name.</param>
 /// <param name="Rows">The parsed CSV rows.</param>
 public sealed record ImportRequest(
-	string ContainerId,
-	ContainerType ContainerType,
-	string PlanId,
-	string PlanName,
-	IReadOnlyList<CsvTaskRow> Rows);
+    string ContainerId,
+    ContainerType ContainerType,
+    string PlanId,
+    string PlanName,
+    IReadOnlyList<CsvTaskRow> Rows);

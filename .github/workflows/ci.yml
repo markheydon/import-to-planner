@@ -29,10 +29,13 @@ jobs:
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "10.x"
+          global-json-file: global.json
 
       - name: Restore dependencies
         run: dotnet restore ImportToPlanner.slnx
+
+      - name: Verify formatting
+        run: dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 
       - name: Build solution
         run: dotnet build ImportToPlanner.slnx --no-restore

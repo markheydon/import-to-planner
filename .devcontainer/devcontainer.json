@@ -1,0 +1,37 @@
+{
+  "name": "Import To Planner",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:dev-10.0-noble",
+  "features": {
+    "ghcr.io/microsoft/aspire-devcontainer-feature/aspire:2": {}
+  },
+  "containerEnv": {
+    "SSL_CERT_DIR": "/home/vscode/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+  },
+  "updateContentCommand": "dotnet restore ImportToPlanner.slnx && dotnet restore apphost.cs",
+  "hostRequirements": {
+    "cpus": 4,
+    "memory": "8gb",
+    "storage": "32gb"
+  },
+  "forwardPorts": [5126, 7129],
+  "portsAttributes": {
+    "5126": {
+      "label": "Import To Planner HTTP",
+      "onAutoForward": "notify"
+    },
+    "7129": {
+      "label": "Import To Planner HTTPS",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postStartCommand": "dotnet dev-certs https --trust",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "GitHub.copilot-chat",
+        "microsoft-aspire.aspire-vscode"
+      ]
+    }
+  }
+}

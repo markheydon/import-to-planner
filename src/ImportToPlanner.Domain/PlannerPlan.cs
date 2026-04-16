@@ -10,9 +10,9 @@ namespace ImportToPlanner.Domain;
 /// <param name="ContainerUrl">The canonical Graph container URL, when available.</param>
 /// <param name="RawContainerType">The raw Graph container type value, when available.</param>
 public sealed record PlannerPlan(
-	string Id,
-	string Title,
-	string? ContainerId = null,
-	ContainerType? ContainerType = null,
-	string? ContainerUrl = null,
-	string? RawContainerType = null);
+    string Id,
+    string Title,
+    string? ContainerId = null,
+    ContainerType? ContainerType = null,
+    string? ContainerUrl = null,
+    string? RawContainerType = null);
