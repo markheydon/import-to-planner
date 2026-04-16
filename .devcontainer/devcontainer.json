@@ -4,6 +4,9 @@
   "features": {
     "ghcr.io/microsoft/aspire-devcontainer-feature/aspire:2": {}
   },
+  "containerEnv": {
+    "SSL_CERT_DIR": "/home/vscode/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
+  },
   "updateContentCommand": "dotnet restore ImportToPlanner.slnx && dotnet restore apphost.cs",
   "hostRequirements": {
     "cpus": 4,

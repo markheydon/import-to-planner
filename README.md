@@ -34,7 +34,9 @@ Implemented solution components:
 ### Optional tooling
 
 - Aspire CLI (`aspire`) for local orchestration workflow (you can also run via `dotnet run`)
-  - `aspire start` requires an OCI-compatible container runtime even when the AppHost has no container resources; on WSL, [Podman](https://podman.io/) is the recommended alternative to Docker Desktop
+  - For the current AppHost in this repository, `aspire start` works without Docker or Podman because the graph only contains the Blazor web project
+  - `aspire doctor` still checks for a container runtime as a general Aspire prerequisite and may report `No container runtime detected` in environments such as GitHub Codespaces even when this repository runs successfully
+  - If future changes add container-backed Aspire resources, an OCI-compatible runtime will become required; on WSL, [Podman](https://podman.io/) is the recommended alternative to Docker Desktop
 - GitHub CLI (`gh`) for issue/PR workflow
 
 ## GitHub Codespaces
@@ -48,6 +50,12 @@ Recommended baseline for this repository:
 - 32 GB storage
 
 That is intentionally lower than the general Aspire template because the current AppHost only orchestrates the Blazor web project and does not currently require Docker-in-Docker or additional language runtimes.
+
+The dev container intentionally does not install Docker-in-Docker. That keeps Codespaces startup lighter and matches the current AppHost, which only launches a .NET project resource.
+
+If you run `aspire doctor` in Codespaces, it may still report `No container runtime detected`. Treat that as a generic Aspire prerequisite warning, not as a blocker for this repository in its current shape.
+
+This repository also does not commit Aspire agent or MCP configuration by default. The workspace is ready to build and run as-is, but if you plan to use AI tooling that can benefit from Aspire agent setup, run `aspire agent init` locally in your environment.
 
 If you want faster startup times, enable a prebuild in the GitHub repository settings for the `main` branch and this dev container configuration. Prebuilds are configured in GitHub, not in this repository. For a single-user or small-team repository, starting with a prebuild for `main` in your primary region is the most cost-effective default.
 
@@ -122,7 +130,7 @@ dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 
 ### Run with Aspire orchestration
 
-> **Note:** `aspire start` requires a container runtime (e.g. Podman or Docker Desktop) to be running before you start the AppHost. On WSL, Podman is recommended (`sudo apt install podman`). The `dotnet run` path does not have this requirement.
+> **Note:** For the current AppHost, `aspire start` does not require Docker or Podman because it only launches the web project. If you add container-backed resources later, you will need a container runtime. `dotnet run` remains the simplest option when you only want to run the web app directly.
 
 ```bash
 aspire start --isolated

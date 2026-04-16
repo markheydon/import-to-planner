@@ -9,13 +9,35 @@ Thank you for your interest in contributing! This is a solo-maintained project, 
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
-- A **Microsoft 365 account** with access to Microsoft Planner and the Microsoft Graph API (required to test real Graph functionality).
-- An **Entra ID app registration** with the appropriate delegated permissions if you are working on auth or Graph integration.
+- A **Microsoft 365 account** with access to Microsoft Planner and the Microsoft Graph API only if you need to test real Graph functionality.
+- An **Entra ID app registration** with the appropriate delegated permissions only if you are working on authentication or Graph integration.
+
+### Recommended first run
+
+The repository defaults to the in-memory planner gateway, so you can build, test, and run the app locally without tenant credentials.
+
+```bash
+dotnet restore ImportToPlanner.slnx
+dotnet build ImportToPlanner.slnx
+dotnet test ImportToPlanner.slnx
+dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
+```
+
+If you prefer a containerised development environment, GitHub Codespaces is supported through `.devcontainer/devcontainer.json`.
+
+### Optional local tooling
+
+- Aspire CLI (`aspire`) for orchestration and diagnostics.
+- GitHub CLI (`gh`) for issue and pull request workflows.
+
+For the current AppHost in this repository, `aspire start` works without Docker or Podman because the graph only contains the web project. `aspire doctor` may still report `No container runtime detected` as a generic prerequisite warning, especially in Codespaces.
+
+If you plan to use AI tooling that benefits from Aspire agent setup, run `aspire agent init` locally in your environment. This repository does not commit Aspire agent or MCP configuration by default.
 
 ### Building and running tests
 
 ```bash
-dotnet restore
+dotnet restore ImportToPlanner.slnx
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
 ```
@@ -25,6 +47,8 @@ To run the web app locally:
 ```bash
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
+
+If you need to work against a real tenant, see the Graph setup guidance in `README.md` before switching `PlannerGateway:UseGraph` to `true`.
 
 ---
 
@@ -54,6 +78,7 @@ Open a [GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new
 5. **All CI checks must pass** - the `Build and Test` workflow must be green before a PR can merge.
 6. **Copilot code review** - an automated Copilot review will be requested on every PR. Address any findings before requesting a human review.
 7. Open the PR and fill in the description clearly explaining what the change does and why.
+8. If your change affects contributor setup or local development behaviour, update `README.md` and/or this file in the same PR.
 
 ---
 
