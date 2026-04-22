@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -uo pipefail
+set -euo pipefail
 
 # Updates NuGet packages for all projects in a solution by calling
 # `dotnet package update --project` for each project path.
