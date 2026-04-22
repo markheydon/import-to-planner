@@ -31,13 +31,16 @@ while IFS= read -r project; do
 
   echo
   echo "==> $project"
-  dotnet package update --project "$project"
-  exit_code=$?
+  if dotnet package update --project "$project"; then
+    continue
+  else
+    exit_code=$?
+  fi
 
   # dotnet package update exit code notes:
   # 0 = packages updated successfully
   # 2 = nothing to update (treated as success)
-  if [[ "$exit_code" -eq 0 || "$exit_code" -eq 2 ]]; then
+  if [[ "$exit_code" -eq 2 ]]; then
     continue
   fi
 
