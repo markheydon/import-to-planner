@@ -9,26 +9,21 @@
   <ItemGroup>
     <!-- Test and coverage tooling -->
     <PackageVersion Include="coverlet.collector" Version="10.0.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-
     <!-- CSV parsing -->
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
-
     <!-- Blazor UI (Fluent UI) -->
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="4.14.1" />
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.1" />
-
     <!-- Microsoft Graph and identity/authentication -->
-    <PackageVersion Include="Microsoft.Graph" Version="5.104.0" />
-    <PackageVersion Include="Microsoft.Identity.Web" Version="4.8.0" />
-    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.8.0" />
-
+    <PackageVersion Include="Microsoft.Graph" Version="5.105.0" />
+    <PackageVersion Include="Microsoft.Identity.Web" Version="4.9.0" />
+    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.9.0" />
     <!-- Resilience and service discovery for service defaults -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.5.0" />
-
     <!-- OpenTelemetry exporters and instrumentation -->
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
