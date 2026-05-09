@@ -144,7 +144,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         var stalePreviewReason = await VerifyPreviewFreshnessAsync(request, preview, cancellationToken);
         if (stalePreviewReason is not null)
         {
-            throw new InvalidOperationException(stalePreviewReason);
+            throw new StaleImportPreviewException(stalePreviewReason);
         }
 
         var created = new List<string>();

@@ -495,10 +495,16 @@
                 ? "Execution completed successfully."
                 : "Execution completed with errors.";
         }
+        catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
+        {
+            Logger.LogWarning(ex, "Execution blocked because preview is stale.");
+            isPreviewStale = true;
+            statusMessage = ex.Message;
+        }
         catch (InvalidOperationException ex)
         {
             Logger.LogWarning(ex, "Execution blocked by workflow constraints.");
-            isPreviewStale = ex.Message.Contains("fresh preview", StringComparison.OrdinalIgnoreCase);
+            isPreviewStale = false;
             statusMessage = ex.Message;
         }
         catch (Exception ex)
