@@ -2,7 +2,8 @@
   "name": "Import To Planner",
   "image": "mcr.microsoft.com/devcontainers/dotnet:dev-10.0-noble",
   "features": {
-    "ghcr.io/microsoft/aspire-devcontainer-feature/aspire:2": {}
+    "ghcr.io/microsoft/aspire-devcontainer-feature/aspire:2": {},
+    "ghcr.io/markheydon/devcontainer-features/copilot-likes:1": {}
   },
   "containerEnv": {
     "SSL_CERT_DIR": "/home/vscode/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"

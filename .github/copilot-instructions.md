@@ -59,3 +59,8 @@ This app uses Microsoft Graph API to access Microsoft Planner and related assets
 ## C# Agent Support
 
 For complex C# coding work, defer to the **C# Expert** agent. It has deep expertise in .NET architecture and can handle refactoring, design decisions, and implementation at scale.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read specs/001-import-planner-csv/plan.md
+<!-- SPECKIT END -->
