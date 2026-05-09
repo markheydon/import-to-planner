@@ -5,7 +5,7 @@
 
 **Tests**: Test tasks are REQUIRED for behaviour changes and bug fixes. Include unit, integration, and regression tasks as applicable to the scope.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+**Organisation**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
 

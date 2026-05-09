@@ -11,7 +11,7 @@ description: "Task list template for feature implementation"
 **Tests**: Test tasks are REQUIRED for behaviour changes and bug fixes. Include unit,
 integration, and regression tasks as applicable to the scope.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+**Organisation**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -36,7 +36,7 @@ integration, and regression tasks as applicable to the scope.
   - Entities from data-model.md
   - Endpoints from contracts/
   
-  Tasks MUST be organized by user story so each story can be:
+  Tasks MUST be organised by user story so each story can be:
   - Implemented independently
   - Tested independently
   - Delivered as an MVP increment
