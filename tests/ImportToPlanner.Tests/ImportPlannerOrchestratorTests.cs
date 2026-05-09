@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
@@ -5,7 +6,6 @@ using ImportToPlanner.Application.Services;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Tests.TestData;
-using System.Diagnostics;
 
 namespace ImportToPlanner.Tests;
 
