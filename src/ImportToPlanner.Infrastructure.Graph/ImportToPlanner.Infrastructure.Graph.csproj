@@ -7,5 +7,6 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Graph" />
+    <PackageReference Include="Microsoft.Kiota.Abstractions" />
   </ItemGroup>
 </Project>
