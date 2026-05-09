@@ -5,6 +5,7 @@
       in this file and referenced version-less from individual project files.
     -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
     <!-- Test and coverage tooling -->
@@ -19,6 +20,7 @@
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.1" />
     <!-- Microsoft Graph and identity/authentication -->
     <PackageVersion Include="Microsoft.Graph" Version="5.105.0" />
+    <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="1.22.2" />
     <PackageVersion Include="Microsoft.Identity.Web" Version="4.9.0" />
     <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.9.0" />
     <!-- Resilience and service discovery for service defaults -->
