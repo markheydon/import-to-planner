@@ -31,6 +31,6 @@
 
 ## Notes
 
-- Validation pass completed with all checks passing on first iteration.
+- Checklist reflects known implementation-detail references in the current specification and is not fully passing.
 - Specification is ready for /speckit.clarify or /speckit.plan.
 - Checklist amended after review: technology-specific references (for example Microsoft Graph) remain in the current feature spec, so implementation-detail related checks are intentionally marked incomplete.

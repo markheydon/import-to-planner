@@ -20,6 +20,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     private const int MaxConflictRetries = 1;
     private const int DefaultRetryAfterSeconds = 10;
     private const int MaxRetryAfterSeconds = 60;
+    private const int TransientRowFailureRetryCount = 1;
     private readonly GraphServiceClient graphClient;
 
     /// <summary>
@@ -342,17 +343,21 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         _ = description;
         _ = goal;
 
-        var created = await ExecuteGraphCallAsync(
-            $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'",
-            innerToken => graphClient.Planner.Tasks.PostAsync(
-                new GraphPlannerTask
-                {
-                    PlanId = planId,
-                    BucketId = bucketId,
-                    Title = taskName,
-                    Priority = priority,
-                },
-                cancellationToken: innerToken),
+        var operationName = $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'";
+        var created = await ExecuteWithTransientRowRetryAsync(
+            operationName,
+            innerToken => ExecuteGraphCallAsync(
+                operationName,
+                token => graphClient.Planner.Tasks.PostAsync(
+                    new GraphPlannerTask
+                    {
+                        PlanId = planId,
+                        BucketId = bucketId,
+                        Title = taskName,
+                        Priority = priority,
+                    },
+                    cancellationToken: token),
+                innerToken),
             cancellationToken);
 
         if (string.IsNullOrWhiteSpace(created?.Id) || string.IsNullOrWhiteSpace(created.Title))
@@ -361,6 +366,42 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         }
 
         return new PlannerTaskSnapshot(created.Id, created.Title, created.PlanId ?? planId);
+    }
+
+    private static async Task<T> ExecuteWithTransientRowRetryAsync<T>(
+        string operationName,
+        Func<CancellationToken, Task<T>> operation,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationName);
+        ArgumentNullException.ThrowIfNull(operation);
+
+        var attempt = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                return await operation(cancellationToken);
+            }
+            catch (Exception ex) when (attempt < TransientRowFailureRetryCount && IsTransientRowFailure(ex))
+            {
+                attempt++;
+            }
+        }
+    }
+
+    private static bool IsTransientRowFailure(Exception exception)
+    {
+        if (!TryGetStatusCode(exception, out var statusCode) &&
+            (exception.InnerException is null || !TryGetStatusCode(exception.InnerException, out statusCode)))
+        {
+            return false;
+        }
+
+        return statusCode == 408 || statusCode >= 500;
     }
 
     private static PlannerPlan MapPlannerPlan(

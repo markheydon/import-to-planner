@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace ImportToPlanner.Application.Exceptions;
 
 /// <summary>
@@ -78,4 +80,46 @@ public sealed class PlannerThrottlingException : Exception
         : base(message, innerException)
     {
     }
+}
+
+/// <summary>
+/// Maps exceptions to user-safe error messages for Planner import workflows.
+/// </summary>
+public static partial class PlannerGraphErrorMapper
+{
+    /// <summary>
+    /// Converts an exception into a user-safe message that avoids tenant-sensitive details.
+    /// </summary>
+    /// <param name="exception">The source exception.</param>
+    /// <param name="fallbackMessage">The fallback message if no specific mapping is available.</param>
+    /// <returns>A user-safe error message.</returns>
+    public static string ToUserSafeMessage(Exception exception, string fallbackMessage)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fallbackMessage);
+
+        return exception switch
+        {
+            PlannerAuthenticationException => "Authentication expired. Sign in again and retry.",
+            PlannerPermissionException => "Permission denied. Confirm the required Planner permissions and try again.",
+            PlannerNotFoundException => "Planner resource no longer exists. Refresh and run a fresh preview.",
+            PlannerConflictException => "Planner data changed during processing. Run a fresh preview and retry.",
+            PlannerThrottlingException => "Planner is temporarily busy. Wait and retry the import.",
+            _ => RedactSensitiveTokens(fallbackMessage),
+        };
+    }
+
+    private static string RedactSensitiveTokens(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return "An unexpected error occurred while processing Planner data.";
+        }
+
+        var redacted = SensitiveTokenPattern().Replace(message, "[redacted]");
+        return redacted;
+    }
+
+    [GeneratedRegex("(?i)(tenant|secret|certificate|cert|token|client[-_ ]?id|thumbprint)\\s*[:=]\\s*[^\\s,;]+")]
+    private static partial Regex SensitiveTokenPattern();
 }

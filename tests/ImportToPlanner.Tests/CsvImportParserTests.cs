@@ -1,9 +1,45 @@
 using ImportToPlanner.Application.Services;
+using ImportToPlanner.Tests.TestData;
 
 namespace ImportToPlanner.Tests;
 
 public sealed class CsvImportParserTests
 {
+    [Fact]
+    public async Task ParseAsync_WithMissingTaskName_ReturnsRowLevelValidationError()
+    {
+        // Arrange
+        var parser = new CsvImportParser();
+        var csv = CsvFixtureLoader.Load("invalid-missing-task-name.csv");
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.HasErrors);
+        Assert.Contains(result.ValidationErrors, error =>
+            error.RowNumber == 2 &&
+            error.Field == "Task Name" &&
+            error.Message.Contains("required", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithMissingTaskNameHeader_ReturnsHeaderValidationError()
+    {
+        // Arrange
+        const string csv = "Description,Priority,Bucket,Goal\nTask without header,3,Operations,Goal A";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.HasErrors);
+        Assert.Contains(result.ValidationErrors, error =>
+            error.RowNumber == 0 &&
+            error.Field == "Task Name");
+    }
+
     [Fact]
     public async Task ParseAsync_WithInvalidPriority_ReturnsValidationError()
     {
@@ -54,5 +90,38 @@ public sealed class CsvImportParserTests
         Assert.False(result.HasErrors);
         Assert.Single(result.Rows);
         Assert.Equal("Task A", result.Rows[0].TaskName);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithExtraColumnsAndIgnoreDisabled_ReturnsUnexpectedColumnError()
+    {
+        // Arrange
+        var parser = new CsvImportParser();
+        var csv = CsvFixtureLoader.Load("with-extra-columns.csv");
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None, ignoreExtraColumns: false);
+
+        // Assert
+        Assert.True(result.HasErrors);
+        Assert.Contains(result.ValidationErrors, error =>
+            string.Equals(error.Field, "Owner", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(error.Field, "Due Date", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithExtraColumnsAndIgnoreEnabled_ParsesRowsSuccessfully()
+    {
+        // Arrange
+        var parser = new CsvImportParser();
+        var csv = CsvFixtureLoader.Load("with-extra-columns.csv");
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None, ignoreExtraColumns: true);
+
+        // Assert
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Equal("Task with extras", result.Rows[0].TaskName);
     }
 }

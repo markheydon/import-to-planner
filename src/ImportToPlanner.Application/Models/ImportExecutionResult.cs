@@ -29,4 +29,24 @@ public sealed record ImportExecutionResult
     /// Gets or sets the post-import manual actions.
     /// </summary>
     public required IReadOnlyList<ManualAction> ManualActions { get; init; }
+
+    /// <summary>
+    /// Gets or sets the aggregate execution outcome summary.
+    /// </summary>
+    public ImportExecutionOutcomeSummary? OutcomeSummary { get; init; }
 }
+
+/// <summary>
+/// Represents aggregate execution outcome counters for reporting consistency.
+/// </summary>
+/// <param name="CreatedCount">The number of created items.</param>
+/// <param name="ReusedOrSkippedCount">The number of reused or skipped items.</param>
+/// <param name="ErrorCount">The number of failed items.</param>
+/// <param name="ManualActionCount">The number of manual follow-up actions.</param>
+/// <param name="IsPartialSuccess">Indicates whether the run completed with both successes and failures.</param>
+public sealed record ImportExecutionOutcomeSummary(
+    int CreatedCount,
+    int ReusedOrSkippedCount,
+    int ErrorCount,
+    int ManualActionCount,
+    bool IsPartialSuccess);
