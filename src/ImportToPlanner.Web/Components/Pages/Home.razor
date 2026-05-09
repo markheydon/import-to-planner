@@ -74,6 +74,13 @@
                 </FluentButton>
             </FluentStack>
 
+            @if (isPreviewStale)
+            {
+                <FluentMessageBar Intent="MessageIntent.Warning" AllowDismiss="false">
+                    Preview is stale because Planner state changed. Generate a fresh preview before execution.
+                </FluentMessageBar>
+            }
+
             @if (!string.IsNullOrWhiteSpace(statusMessage))
             {
                 <FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
@@ -192,6 +199,7 @@
     private bool isUsingGraphGateway;
     private bool noGroupsFound;
     private bool ignoreExtraColumns = true;
+    private bool isPreviewStale;
 
     private ImportPlanPreview? preview;
     private ImportExecutionResult? executionResult;
@@ -214,6 +222,7 @@
         => !isBusy
            && preview is not null
            && currentRequest is not null
+           && !isPreviewStale
            && IsCurrentSelectionInSyncWithRequest();
 
     private MessageIntent StatusMessageIntent
@@ -369,16 +378,35 @@
         }
 
         ignoreExtraColumns = value;
-        ResetFlowState();
+        InvalidatePreview("Preview reset after changing CSV options. Validate and preview again.");
     }
 
     private void ResetFlowState()
     {
         parseErrors.Clear();
+        ResetPreviewState();
+        ResetExecutionState();
+        statusMessage = null;
+    }
+
+    private void ResetPreviewState()
+    {
         preview = null;
         currentRequest = null;
+        isPreviewStale = false;
+    }
+
+    private void ResetExecutionState()
+    {
         executionResult = null;
-        statusMessage = null;
+    }
+
+    private void InvalidatePreview(string message)
+    {
+        parseErrors.Clear();
+        ResetPreviewState();
+        ResetExecutionState();
+        statusMessage = message;
     }
 
     private async Task BuildPreviewAsync()
@@ -389,8 +417,8 @@
         }
 
         parseErrors.Clear();
-        preview = null;
-        executionResult = null;
+        ResetPreviewState();
+        ResetExecutionState();
         statusMessage = null;
 
         if (selectedContainer is null)
@@ -430,6 +458,7 @@
                 selectedPlan.Title,
                 parseResult.Rows);
             preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
+            isPreviewStale = false;
             statusMessage = "Preview generated. Review actions, then confirm execution.";
         }
         catch (Exception ex)
@@ -460,9 +489,23 @@
                 preview!,
                 CancellationToken.None);
 
+            isPreviewStale = false;
+
             statusMessage = executionResult.Errors.Count == 0
                 ? "Execution completed successfully."
                 : "Execution completed with errors.";
+        }
+        catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
+        {
+            Logger.LogWarning(ex, "Execution blocked because preview is stale.");
+            isPreviewStale = true;
+            statusMessage = ex.Message;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Logger.LogWarning(ex, "Execution blocked by workflow constraints.");
+            isPreviewStale = false;
+            statusMessage = ex.Message;
         }
         catch (Exception ex)
         {
@@ -473,6 +516,7 @@
                 ReusedOrSkipped = [],
                 Errors = ["Execution failed due to an unexpected system error. Check logs and retry."],
                 ManualActions = [],
+                OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false),
             };
 
             statusMessage = "Execution failed.";
@@ -515,7 +559,7 @@
         {
             selectedPlan = null;
             plans.Clear();
-            ResetFlowState();
+            InvalidatePreview("Preview reset after container change. Validate and preview again.");
         }
     }
 
@@ -549,7 +593,7 @@
         selectedPlan ??= plans[0];
         if (!string.Equals(previousPlanId, selectedPlan.Id, StringComparison.OrdinalIgnoreCase))
         {
-            ResetFlowState();
+            InvalidatePreview("Preview reset after plan change. Validate and preview again.");
         }
     }
 

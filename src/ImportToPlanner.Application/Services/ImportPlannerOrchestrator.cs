@@ -1,4 +1,8 @@
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
 
@@ -10,7 +14,7 @@ namespace ImportToPlanner.Application.Services;
 public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : IImportPlannerOrchestrator
 {
     private const string DefaultBucketName = "General";
-    private const string TaskAlreadyExistsReason = "Task already exists in target plan.";
+    private const string TaskAlreadyExistsReason = "already exists";
 
     /// <inheritdoc/>
     public async Task<ImportPlanPreview> BuildPreviewAsync(ImportRequest request, CancellationToken cancellationToken)
@@ -33,6 +37,9 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             .Select(task => task.Title)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+        var requestFingerprint = BuildRequestFingerprint(request);
+        var plannerStateFingerprint = BuildPlannerStateFingerprint(existingBuckets, existingTasks);
+
         var csvSeenTaskNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var taskActions = new List<ImportTaskPlanItem>();
 
@@ -50,7 +57,8 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                     resolvedBucket,
                     ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
-                    "Duplicate task name in CSV."));
+                    "duplicate in CSV",
+                    ReportStatus: "Skipped"));
 
                 continue;
             }
@@ -63,7 +71,8 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                     resolvedBucket,
                     ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
-                    TaskAlreadyExistsReason));
+                    TaskAlreadyExistsReason,
+                    ReportStatus: "Skipped"));
 
                 continue;
             }
@@ -73,7 +82,8 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                 row.TaskName,
                 resolvedBucket,
                 ResolveGoalList(row.Goal),
-                PlannedEntityAction.Create));
+                PlannedEntityAction.Create,
+                ReportStatus: "Pending"));
         }
 
         var requiredBuckets = taskActions
@@ -97,6 +107,10 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             PlanName = existingPlan.Title,
             PlanId = existingPlan.Id,
             PlanAction = PlannedEntityAction.Reuse,
+            HasValidationErrors = false,
+            RequestFingerprint = requestFingerprint,
+            PlannerStateFingerprint = plannerStateFingerprint,
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
             BucketActions = bucketActions,
             TaskActions = taskActions,
         };
@@ -117,6 +131,22 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             throw new InvalidOperationException("Preview does not match request.");
         }
 
+        if (preview.HasValidationErrors)
+        {
+            throw new InvalidOperationException("Execution is blocked because validation errors are unresolved.");
+        }
+
+        if (!string.Equals(BuildRequestFingerprint(request), preview.RequestFingerprint, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Request data changed after preview. Generate a fresh preview before execution.");
+        }
+
+        var stalePreviewReason = await VerifyPreviewFreshnessAsync(request, preview, cancellationToken);
+        if (stalePreviewReason is not null)
+        {
+            throw new StaleImportPreviewException(stalePreviewReason);
+        }
+
         var created = new List<string>();
         var reusedOrSkipped = new List<string>();
         var errors = new List<string>();
@@ -133,7 +163,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
         }
         catch (Exception ex)
         {
-            errors.Add($"Plan operation failed: {ex.Message}");
+            errors.Add($"Plan operation failed: {PlannerGraphErrorMapper.ToUserSafeMessage(ex, "Unable to load selected plan.")}");
             return new ImportExecutionResult
             {
                 PlanId = request.PlanId,
@@ -141,6 +171,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
                 ReusedOrSkipped = reusedOrSkipped,
                 Errors = errors,
                 ManualActions = manualActions,
+                OutcomeSummary = BuildOutcomeSummary(created, reusedOrSkipped, errors, manualActions),
             };
         }
 
@@ -163,7 +194,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             }
             catch (Exception ex)
             {
-                errors.Add($"Bucket '{bucketAction.Key}' failed: {ex.Message}");
+                errors.Add($"Bucket '{bucketAction.Key}' failed: {PlannerGraphErrorMapper.ToUserSafeMessage(ex, "Bucket operation failed.")}");
             }
         }
 
@@ -245,7 +276,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             }
             catch (Exception ex)
             {
-                errors.Add($"Task '{taskAction.TaskName}' failed: {ex.Message}");
+                errors.Add($"Task '{taskAction.TaskName}' failed: {PlannerGraphErrorMapper.ToUserSafeMessage(ex, "Task operation failed.")}");
             }
         }
 
@@ -256,7 +287,80 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             ReusedOrSkipped = reusedOrSkipped,
             Errors = errors,
             ManualActions = manualActions,
+            OutcomeSummary = BuildOutcomeSummary(created, reusedOrSkipped, errors, manualActions),
         };
+    }
+
+    private async Task<string?> VerifyPreviewFreshnessAsync(ImportRequest request, ImportPlanPreview preview, CancellationToken cancellationToken)
+    {
+        var liveBuckets = await plannerGateway.GetBucketsAsync(request.PlanId, cancellationToken);
+        var liveTasks = await plannerGateway.GetTasksAsync(request.PlanId, cancellationToken);
+        var liveStateFingerprint = BuildPlannerStateFingerprint(liveBuckets, liveTasks);
+
+        if (!string.Equals(liveStateFingerprint, preview.PlannerStateFingerprint, StringComparison.Ordinal))
+        {
+            return "Planner state changed after preview. Run a fresh preview before execution.";
+        }
+
+        return null;
+    }
+
+    private static ImportExecutionOutcomeSummary BuildOutcomeSummary(
+        List<string> created,
+        List<string> reusedOrSkipped,
+        List<string> errors,
+        List<ManualAction> manualActions)
+    {
+        var hasSuccessfulActions = created.Count > 0 || reusedOrSkipped.Count > 0;
+        var hasErrors = errors.Count > 0;
+
+        return new ImportExecutionOutcomeSummary(
+            created.Count,
+            reusedOrSkipped.Count,
+            errors.Count,
+            manualActions.Count,
+            hasSuccessfulActions && hasErrors);
+    }
+
+    private static string BuildRequestFingerprint(ImportRequest request)
+    {
+        var lines = new List<string>
+        {
+            request.ContainerId,
+            request.PlanId,
+            request.PlanName,
+            request.ContainerType.ToString(),
+        };
+
+        lines.AddRange(request.Rows
+            .OrderBy(row => row.RowNumber)
+            .Select(row => string.Join("|",
+                row.RowNumber,
+                row.TaskName.Trim(),
+                row.Description?.Trim() ?? string.Empty,
+                row.Priority?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+                row.Bucket?.Trim() ?? string.Empty,
+                row.Goal?.Trim() ?? string.Empty)));
+
+        return ComputeFingerprint(string.Join("\n", lines));
+    }
+
+    private static string BuildPlannerStateFingerprint(
+        IReadOnlyCollection<PlannerBucket> buckets,
+        IReadOnlyCollection<PlannerTaskSnapshot> tasks)
+    {
+        var stateLines = buckets
+            .Select(bucket => $"B:{bucket.Name.Trim()}")
+            .Concat(tasks.Select(task => $"T:{task.Title.Trim()}"))
+            .OrderBy(line => line, StringComparer.OrdinalIgnoreCase);
+
+        return ComputeFingerprint(string.Join("\n", stateLines));
+    }
+
+    private static string ComputeFingerprint(string value)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(bytes);
     }
 
     private static string ResolveDefaultBucketName()
@@ -301,7 +405,7 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
 
     private static bool IsTaskAlreadyExistsReason(string? reason)
     {
-        return string.Equals(reason, TaskAlreadyExistsReason, StringComparison.Ordinal);
+        return string.Equals(reason, TaskAlreadyExistsReason, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class GoalTaskLinkComparer : IEqualityComparer<(string Goal, string TaskName)>

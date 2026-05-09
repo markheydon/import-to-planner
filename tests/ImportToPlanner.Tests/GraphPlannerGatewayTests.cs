@@ -329,6 +329,27 @@ public sealed class GraphPlannerGatewayTests
     }
 
     [Fact]
+    public async Task CreateTaskAsync_WhenTransientFailureOccurs_RetriesOnceThenSucceeds()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskTransient",
+            request => request.URI?.AbsolutePath.EndsWith("/planner/tasks", StringComparison.OrdinalIgnoreCase) == true,
+            CreateApiException(503),
+            new GraphPlannerTask { Id = "task-retried", Title = "Task A", PlanId = "plan-1" });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("task-retried", result.Id);
+        Assert.Equal(2, adapter.GetCallCount("createTaskTransient"));
+    }
+
+    [Fact]
     public async Task GetAvailableContainersAsync_WhenGraphReturns401_ThrowsPlannerAuthenticationException()
     {
         // Arrange

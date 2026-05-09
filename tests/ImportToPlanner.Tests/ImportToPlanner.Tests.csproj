@@ -16,6 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Fixtures/**/*.csv">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Domain\ImportToPlanner.Domain.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Infrastructure.Graph\ImportToPlanner.Infrastructure.Graph.csproj" />

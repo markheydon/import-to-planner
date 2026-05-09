@@ -32,6 +32,26 @@ public sealed record ImportPlanPreview
     public required IReadOnlyDictionary<string, PlannedEntityAction> BucketActions { get; init; }
 
     /// <summary>
+    /// Gets or sets a value indicating whether preview was generated with unresolved validation errors.
+    /// </summary>
+    public bool HasValidationErrors { get; init; }
+
+    /// <summary>
+    /// Gets or sets the request fingerprint used to validate execution request parity.
+    /// </summary>
+    public required string RequestFingerprint { get; init; }
+
+    /// <summary>
+    /// Gets or sets the planner state fingerprint captured during preview.
+    /// </summary>
+    public required string PlannerStateFingerprint { get; init; }
+
+    /// <summary>
+    /// Gets or sets when the preview was generated.
+    /// </summary>
+    public DateTimeOffset GeneratedAtUtc { get; init; }
+
+    /// <summary>
     /// Gets or sets the per-task actions.
     /// </summary>
     public required IReadOnlyList<ImportTaskPlanItem> TaskActions { get; init; }

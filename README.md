@@ -153,6 +153,16 @@ Review architecture,Validate boundaries,5,Architecture,Quality
 Prepare release notes,,Low,,Communication
 ```
 
+## Import Behaviour Notes
+
+- Dry-run preview is non-destructive and required before execution.
+- Existing task matches use task name only.
+- Matched rows are skipped and reported as `already exists`.
+- If planner state changes between preview and execution, execution is blocked and a fresh preview is required.
+- Row failures do not stop the full import run; remaining rows continue and the report reflects partial success.
+- Transient Graph row-level failures are retried once before the row is marked failed.
+- Runtime-mode semantics are aligned between in-memory and Graph gateways for preview and execution outcomes.
+
 ## Important Notes
 
 ### Graph API Version
