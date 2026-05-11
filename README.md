@@ -106,6 +106,15 @@ dotnet build apphost.cs --no-restore
 
 Hosted deployment implementation is not included yet. The current internal documentation records a production-readiness baseline and configuration handoff expectations for future hosted rollout.
 
+### Hosted Aspire Production-Readiness Summary
+
+- Keep `apphost.cs` scoped to the single `web` resource unless explicitly approved scaling requirements are introduced.
+- Track hosted handoff for `PlannerGateway:UseGraph`, `AzureAd:*`, certificate credential source, and `OTEL_EXPORTER_OTLP_ENDPOINT`.
+- Keep `/health` and `/alive` disabled in non-development environments unless private or authenticated exposure is explicitly implemented.
+- Keep CI parity for hosted-readiness planning with solution build/tests and AppHost restore/build.
+
+For the full checklist and environment-specific matrix, see [docs-internal/README.md](docs-internal/README.md).
+
 ## Project Structure
 
 ```text

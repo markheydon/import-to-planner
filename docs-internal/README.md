@@ -8,12 +8,12 @@ It is intended for use by developers and maintainers of the project, and may inc
 
 ## Aspire Production-Readiness Checklist (Planning Only)
 
-This issue tracks deployment preparation only. It does **not** add new runtime resources or change current implementation behaviour.
+This section tracks deployment preparation only. It does **not** add new runtime resources or change current implementation behaviour.
 
 - [ ] Keep `apphost.cs` scope to a single `web` resource unless scaling requirements are explicitly approved.
 - [ ] Confirm hosted environment secrets/config handoff for `PlannerGateway:UseGraph`, `AzureAd:*`, certificate credential source, and `OTEL_EXPORTER_OTLP_ENDPOINT`.
 - [ ] Keep `/health` and `/alive` unexposed in non-development environments unless an authenticated or private ingress policy is in place.
-- [ ] Ensure CI keeps validating current scope: `dotnet build ImportToPlanner.slnx`, `dotnet test ImportToPlanner.slnx`, and `dotnet build apphost.cs --no-restore`.
+- [ ] Ensure CI keeps validating current scope: `dotnet build ImportToPlanner.slnx`, `dotnet test ImportToPlanner.slnx`, `dotnet restore apphost.cs`, and `dotnet build apphost.cs --no-restore`.
 - [ ] Record deployment handoff ownership for AppHost settings and web app secrets before enabling hosted rollout.
 
 ### Runtime configuration by environment

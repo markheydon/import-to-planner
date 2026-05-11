@@ -1,6 +1,6 @@
 ---
 name: repo-readme-generator
-description: 'Intelligent README.md generation prompt that analyzes project documentation structure and creates comprehensive repository documentation. Scans repository documentation files and copilot-instructions.md to extract project information, technology stack, architecture, development workflow, coding standards, and testing approaches while generating well-structured markdown documentation with proper formatting, cross-references, and developer-focused content.'
+description: 'Intelligent README.md generation prompt that analyses project documentation structure and creates comprehensive repository documentation. Scans repository documentation files and copilot-instructions.md to extract project information, technology stack, architecture, development workflow, coding standards, and testing approaches while generating well-structured markdown documentation with proper formatting, cross-references, and developer-focused content.'
 ---
 
 # README Generator Prompt
@@ -45,7 +45,7 @@ Generate a comprehensive README.md for this repository by analysing repository-n
 - Source from `README.md`, feature `quickstart.md` files under `specs/`, and relevant app configuration examples.
 
 ## Project Structure
-- Brief overview of the folder organization.
+- Brief overview of the folder organisation.
 - Source from the repository root layout (`src/`, `tests/`, `docs/`, `docs-internal/`, `specs/`, and AppHost files).
 
 ## Key Features
@@ -71,7 +71,7 @@ Generate a comprehensive README.md for this repository by analysing repository-n
 - Reference any code exemplars for guidance.
 - Source from `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `AGENTS.md`, and `.github/copilot-instructions.md`.
 
-## License
+## Licence
 - Include license information if available.
 
 Format the README with proper Markdown, including the following.
