@@ -1,19 +1,14 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 -> 1.0.0
+- Version change: 1.0.0 -> 1.0.1
 - Modified principles:
-	- II. Mandatory Testing Standards -> II. Mandatory Testing Standards
-	- IV. Performance and Responsiveness Budgets -> IV. Performance and Responsiveness Budgets
-	- V. Observability and Safe Operations -> V. Observability and Safe Operations
+	- None
 - Added sections:
 	- None
 - Removed sections:
 	- None
 - Templates requiring updates:
-	- ✅ updated .specify/templates/plan-template.md
-	- ✅ updated .specify/templates/spec-template.md
-	- ✅ updated .specify/templates/tasks-template.md
-	- ✅ not applicable .specify/templates/commands/*.md (no command templates exist in this repository)
+	- ✅ none required (no constitutional gate changes)
 - Follow-up TODOs:
 	- None
 -->
@@ -105,7 +100,9 @@ external Graph services and user data.
 
 ## Governance
 
-This constitution supersedes conflicting local practices for this repository.
+This constitution defines the Spec Kit governance baseline for this repository.
+Where guidance conflicts, repository precedence defined in `.github/copilot-instructions.md`
+and `AGENTS.md` governs conflict resolution.
 
 Amendment process:
 1. Propose the amendment with a clear rationale and impacted principles/sections.
@@ -121,4 +118,4 @@ Compliance review expectations:
 - Constitution compliance MUST be checked in planning and pull request review.
 - Non-compliance MUST be tracked as explicit follow-up work or resolved before release.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-09
+**Version**: 1.0.1 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-11
