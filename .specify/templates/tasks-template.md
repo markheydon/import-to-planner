@@ -53,6 +53,7 @@ integration, and regression tasks as applicable to the scope.
 - [ ] T002 Initialize [language] project with [framework] dependencies
 - [ ] T003 [P] Configure linting and formatting tools
 - [ ] T004 Define feature-level quality gates (architecture, testing, UX consistency, performance, runtime mode compatibility, CI/AppHost parity)
+- [ ] T005 Confirm applicable custom-agent delegation from AGENTS.md and record any approved exceptions
 
 ---
 
@@ -64,12 +65,12 @@ integration, and regression tasks as applicable to the scope.
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T005 Setup database schema and migrations framework
-- [ ] T006 [P] Implement authentication/authorization framework
-- [ ] T007 [P] Setup API routing and middleware structure
-- [ ] T008 Create base models/entities that all stories depend on
-- [ ] T009 Configure error handling and logging infrastructure
-- [ ] T010 Setup environment configuration management
+- [ ] T006 Setup database schema and migrations framework
+- [ ] T007 [P] Implement authentication/authorization framework
+- [ ] T008 [P] Setup API routing and middleware structure
+- [ ] T009 Create base models/entities that all stories depend on
+- [ ] T010 Configure error handling and logging infrastructure
+- [ ] T011 Setup environment configuration management
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

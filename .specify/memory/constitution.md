@@ -1,14 +1,17 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.0 -> 1.0.1
+- Version change: 1.0.1 -> 1.1.0
 - Modified principles:
-	- None
+	- VI. Agent Delegation Discipline (added)
 - Added sections:
 	- None
 - Removed sections:
 	- None
 - Templates requiring updates:
-	- ✅ none required (no constitutional gate changes)
+	- ✅ updated: .specify/templates/plan-template.md
+	- ✅ updated: .specify/templates/spec-template.md
+	- ✅ updated: .specify/templates/tasks-template.md
+	- ✅ updated: AGENTS.md
 - Follow-up TODOs:
 	- None
 -->
@@ -72,6 +75,16 @@ expected impact and mitigation when beta API behaviour changes.
 Rationale: Strong observability and safe failure modes are required when integrating with
 external Graph services and user data.
 
+### VI. Agent Delegation Discipline
+Where repository-registered custom agents exist for a task category, implementation
+workflow commands MUST use those agents for applicable work. For this repository,
+coding, architecture, and test implementation tasks MUST be delegated to the C# Expert
+agent unless a task falls outside its scope or a maintainer-approved exception is
+documented in the related plan or pull request.
+
+Rationale: Explicit delegation keeps implementation behaviour consistent with repository
+skills and reduces drift between governance intent and execution practice.
+
 ## Engineering Guardrails
 
 - Language and framework decisions MUST remain aligned to the current .NET and Blazor
@@ -94,6 +107,8 @@ external Graph services and user data.
 	testing, UX consistency, and performance expectations.
 - Changes that affect hosting/orchestration MUST preserve AppHost build viability and CI
 	parity for both solution-level and AppHost validation paths.
+- Implementation planning and execution MUST include an agent-delegation check against
+	`AGENTS.md`, and any exception MUST be documented with rationale.
 - Reviewers MUST block merges when constitutional gates are unmet or unsupported by
 	evidence.
 - Large or risky changes SHOULD be delivered incrementally with verifiable checkpoints.
@@ -118,4 +133,4 @@ Compliance review expectations:
 - Constitution compliance MUST be checked in planning and pull request review.
 - Non-compliance MUST be tracked as explicit follow-up work or resolved before release.
 
-**Version**: 1.0.1 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-11
+**Version**: 1.1.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-11
