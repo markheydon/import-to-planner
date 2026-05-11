@@ -11,7 +11,7 @@ Run tests
 Run the solution tests:
 
 ```bash
-dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj
+dotnet test ImportToPlanner.slnx
 ```
 
 Coverage (optional)
@@ -20,7 +20,7 @@ Use `dotnet-coverage` to collect coverage reports locally:
 
 ```bash
 dotnet tool install -g dotnet-coverage
-dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test
+dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test ImportToPlanner.slnx
 ```
 
 Repository testing notes

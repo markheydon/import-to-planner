@@ -22,8 +22,8 @@ This repository contains a single-purpose Blazor app with the sole function of i
 
 Refer to the following discipline-specific instruction files aligned with work type:
 
-- [`.github/instructions/csharp-clean-architecture.instructions.md`](.github/instructions/csharp-clean-architecture.instructions.md) - Governs C# code organisation, design, and Clean Architecture principles
-- [`.github/instructions/blazor-fluentui.instructions.md`](.github/instructions/blazor-fluentui.instructions.md) - Governs Blazor component patterns and Fluent UI usage
+- `.github/instructions/csharp-clean-architecture.instructions.md` - Governs C# code organisation, design, and Clean Architecture principles
+- `.github/instructions/blazor-fluentui.instructions.md` - Governs Blazor component patterns and Fluent UI usage
 
 ## Applicable skills and agent registry
 
@@ -37,12 +37,12 @@ This file no longer lists skills inline. See `AGENTS.md` at the repository root 
 
 ## Microsoft Graph Guidelines
 
-See [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md) for implementation guidance on using Microsoft Graph in this repository.
+See `docs-internal/microsoft-graph-guidelines.md` for implementation guidance on using Microsoft Graph in this repository.
 
 
 ## Testing & Coverage
 
-See [tests/README.md](tests/README.md) for test-running and coverage guidance. Mandatory testing standards (for example, verifying both `PlannerGateway:UseGraph` runtime modes when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
+See `tests/README.md)` for test-running and coverage guidance. Mandatory testing standards (for example, verifying both `PlannerGateway:UseGraph` runtime modes when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
 
 
 ## PR Review Comment Handling
