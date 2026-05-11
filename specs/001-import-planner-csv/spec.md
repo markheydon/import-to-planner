@@ -7,13 +7,24 @@
 
 ## Clarifications
 
-### Session 2026-05-09
+### Session 2026-05-09 (original)
 
 - Q: For execution, how should the system handle a CSV row that matches an existing Planner task? -> A: Skip matched existing tasks and report them as already exists.
 - Q: How should the system determine that a CSV row matches an existing Planner task? -> A: Match by task name only.
 - Q: If execution encounters failures on some rows, what should happen to the rest of the import? -> A: Continue processing remaining rows and report partial success/failure.
 - Q: For transient Microsoft Graph errors during execution, what retry policy should apply per row? -> A: Retry once, then mark row failed.
 - Q: If planner state changes after preview but before confirmation, what should execution do? -> A: Block execution and require a fresh preview.
+
+### Reality alignment 2026-05-10 (post-implementation review)
+
+- Q: What is the default behaviour when extra CSV columns are present? -> A: In the web UI, the `Ignore extra columns` option defaults to **enabled** (`ignoreExtraColumns = true`), so extra columns produce no validation errors unless the operator disables that option. The parser API signature still defaults `ignoreExtraColumns` to `false`; non-UI callers must set the flag explicitly.
+- Q: Is there a file size limit for uploaded CSV files? -> A: Yes. The UI enforces a 10 MB maximum file size. Files exceeding this limit are rejected before parsing.
+- Q: What happens when a CSV row specifies no bucket? -> A: The system resolves the task to the **`General`** bucket. This is a fixed default; it is not configurable per request.
+- Q: How are textual priority values mapped? -> A: The parser accepts both numeric values (0–10) and the following text tokens (case-insensitive): `Urgent` → 1, `Important` → 3, `Medium` → 5, `Low` → 9. Any other non-numeric, non-empty priority value is a validation error.
+- Q: On what basis is stale-preview detection performed? -> A: The orchestrator computes two SHA-256-based fingerprints at preview time: a **request fingerprint** (derived from the import request content) and a **planner-state fingerprint** (derived from live bucket and task titles). Before execution, both fingerprints are recomputed and compared. Execution is blocked if either has changed.
+- Q: What are the exact manual actions emitted during execution? -> A: Two action types are emitted. **`EnsureGoalExists`** is emitted for every distinct goal across all tasks scheduled to be created or already-existing-matched tasks (so the operator confirms the goal/category exists in Planner). **`LinkTaskToGoal`** is emitted for each (goal, task) pair for both newly created tasks and already-existing-matched tasks, so the operator can link tasks to goals manually.
+- Q: How does the system guard against duplicate execution of the same confirmation event (User Story 2)? -> A: The guard is **freshness-only**: execution is blocked when either the request fingerprint or the planner-state fingerprint no longer matches the preview. There is no separate one-time token; fingerprint mismatch is the sole protection.
+- Q: How should FR-011 mode-specific behaviour differences be indicated? -> A: Mode differences are surfaced through **behaviour and messaging**, not a persistent runtime-mode label in the UI. In Graph mode, an unauthenticated session triggers an automatic sign-in redirect before the import UI is reachable. In in-memory mode, no authentication is required and the container/plan list is populated from in-memory stubs. No explicit "current mode" badge is shown.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -140,6 +151,31 @@ the report includes totals, per-row outcomes, and manual actions.
   tenant-sensitive values in user-facing messages.
 - **FR-011**: System MUST support operation in both available runtime modes and clearly
   indicate any mode-specific behaviour differences.
+- **FR-012**: System MUST enforce a 10 MB maximum file size on CSV uploads and reject
+  oversized files before any parsing occurs.
+- **FR-013**: In the web UI workflow, `ignoreExtraColumns` MUST default to enabled,
+  and CSV files with extra columns MUST pass validation unless the operator disables that
+  option. For non-UI callers of the parser abstraction, the `ignoreExtraColumns` flag
+  MUST be set explicitly to avoid ambiguity. When extra-column checking is enabled, any
+  unrecognised column MUST produce a file-level validation error that blocks execution.
+- **FR-014**: The system MUST resolve tasks with no specified bucket to the fixed default
+  bucket name `General`.
+- **FR-015**: The CSV parser MUST accept priority values as a numeric (0–10) or as one
+  of the following case-insensitive text tokens: `Urgent` (→ 1), `Important` (→ 3),
+  `Medium` (→ 5), `Low` (→ 9). Any other non-empty priority value MUST produce a
+  row-level validation error.
+- **FR-016**: Stale-preview detection MUST be based on two independent fingerprints: a
+  request fingerprint derived from the import request content, and a planner-state
+  fingerprint derived from live bucket and task titles at preview time. Execution MUST
+  be blocked when either fingerprint no longer matches the recomputed live value.
+- **FR-017**: The execution report MUST emit `EnsureGoalExists` manual actions for every
+  distinct goal associated with tasks that are scheduled for creation or matched as
+  already-existing. The report MUST also emit `LinkTaskToGoal` manual actions for each
+  (goal, task) pair for both newly created tasks and already-existing-matched tasks.
+- **FR-018**: In Graph mode, the system MUST redirect unauthenticated sessions to sign-in
+  before the import UI is accessible. In in-memory mode, no authentication is required.
+  Mode differences are communicated through behaviour and messaging, not a persistent
+  mode label in the UI.
 
 ### Quality and Non-Functional Requirements *(mandatory)*
 
@@ -161,6 +197,9 @@ the report includes totals, per-row outcomes, and manual actions.
   approved multi-tenant scope expansion is explicitly documented.
 - **NFR-007 AppHost and CI**: Feature MUST preserve solution-level and AppHost build/
   validation expectations in CI workflows.
+- **NFR-008 Auth and Session Verification**: Tests and documentation MUST explicitly
+  verify the mode-entry behaviour defined in FR-018 (Graph mode sign-in gate and
+  in-memory mode no-auth access), including sign-in/sign-out UX consistency.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -204,3 +243,7 @@ the report includes totals, per-row outcomes, and manual actions.
   for live tenant execution.
 - Manual action support is acceptable for planner capabilities that are not fully
   automatable in the current scope.
+- The `General` bucket default is fixed by the implementation; operators must be aware
+  that rows without an explicit bucket will be assigned to `General`.
+- Priority text tokens (`Urgent`, `Important`, `Medium`, `Low`) map to Planner numeric
+  values; operators using a numeric priority column bypass the text lookup.

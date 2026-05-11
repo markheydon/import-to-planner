@@ -17,11 +17,11 @@
 
 **Purpose**: Project initialization and shared scaffolding for feature delivery
 
-- [X] T001 Create feature test fixture CSV files in tests/ImportToPlanner.Tests/Fixtures/
-- [X] T002 Add test helper for CSV fixture loading in tests/ImportToPlanner.Tests/TestData/CsvFixtureLoader.cs
-- [X] T003 [P] Add planner import scenario constants for tests in tests/ImportToPlanner.Tests/TestData/ImportScenarioConstants.cs
-- [X] T004 Define feature-level quality gates and traceability notes in specs/001-import-planner-csv/quickstart.md
-- [X] T005 Define preview performance measurement protocol (500 rows, p95 <10s) in specs/001-import-planner-csv/quickstart.md
+- [ ] T001 Create feature CSV fixtures in tests/ImportToPlanner.Tests/Fixtures/
+- [ ] T002 Add CSV fixture loader helper in tests/ImportToPlanner.Tests/TestData/CsvFixtureLoader.cs
+- [ ] T003 [P] Add import scenario constants in tests/ImportToPlanner.Tests/TestData/ImportScenarioConstants.cs
+- [ ] T004 Define feature quality gates and traceability checklist in specs/001-import-planner-csv/quickstart.md
+- [ ] T005 Define preview performance protocol (including IMPORT_TO_PLANNER_RUN_PERF_TESTS) in specs/001-import-planner-csv/quickstart.md
 
 ---
 
@@ -31,12 +31,13 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [X] T006 Add preview freshness metadata model fields in src/ImportToPlanner.Application/Models/ImportPlanPreview.cs
-- [X] T007 Update preview/task model metadata for staleness and report status in src/ImportToPlanner.Application/Models/ImportTaskPlanItem.cs
-- [X] T008 [P] Add execution outcome helper model for report consistency in src/ImportToPlanner.Application/Models/ImportExecutionResult.cs
-- [X] T009 Implement shared stale-preview verification utility in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
-- [X] T010 [P] Add foundational model regression tests in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
-- [X] T011 Add foundational UI state reset helpers for preview/execution transitions in src/ImportToPlanner.Web/Components/Pages/Home.razor
+- [ ] T006 Add preview freshness fields (request/planner fingerprints, timestamps, validation marker) in src/ImportToPlanner.Application/Models/ImportPlanPreview.cs
+- [ ] T007 Add preview report metadata fields and invariants in src/ImportToPlanner.Application/Models/ImportTaskPlanItem.cs
+- [ ] T008 [P] Add execution outcome summary model fields and helpers in src/ImportToPlanner.Application/Models/ImportExecutionResult.cs
+- [ ] T009 Implement shared stale-preview verification utility in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
+- [ ] T010 [P] Implement startup auth/session mode wiring and certificate compatibility fallback in src/ImportToPlanner.Web/Program.cs
+- [ ] T011 Add foundational regression tests for preview metadata and stale-preview guards in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T012 Add foundational UI state reset helpers for preview/execution transitions in src/ImportToPlanner.Web/Components/Pages/Home.razor
 
 **Checkpoint**: Foundation ready - user story implementation can now begin
 
@@ -50,17 +51,17 @@
 
 ### Tests for User Story 1 (MANDATORY when behaviour changes)
 
-- [X] T012 [P] [US1] Add parser validation tests for required fields and format rules in tests/ImportToPlanner.Tests/CsvImportParserTests.cs
-- [X] T013 [P] [US1] Add parser tests for ignore-extra-columns behaviour in tests/ImportToPlanner.Tests/CsvImportParserTests.cs
-- [X] T014 [P] [US1] Add orchestrator preview tests for name-only match and skip-on-match in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
-- [X] T015 [P] [US1] Add regression test for duplicate task-name handling in preview in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T013 [P] [US1] Add parser validation tests for required fields and file-level header handling in tests/ImportToPlanner.Tests/CsvImportParserTests.cs
+- [ ] T014 [P] [US1] Add parser tests for ignore-extra-columns UI-default behaviour in tests/ImportToPlanner.Tests/CsvImportParserTests.cs
+- [ ] T015 [P] [US1] Add parser tests for priority token mapping (Urgent/Important/Medium/Low) in tests/ImportToPlanner.Tests/CsvImportParserTests.cs
+- [ ] T016 [P] [US1] Add preview tests for name-only match, duplicate-in-CSV skip, and default bucket resolution in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
 
 ### Implementation for User Story 1
 
-- [X] T016 [US1] Implement/adjust CSV parsing and row-level validation behaviours in src/ImportToPlanner.Application/Services/CsvImportParser.cs
-- [X] T017 [US1] Implement preview plan generation with name-only match semantics in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
-- [X] T018 [US1] Update preview action reason strings (`already exists`) in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
-- [X] T019 [US1] Implement preview UI flow updates (validation states, dry-run messaging, CTA states) in src/ImportToPlanner.Web/Components/Pages/Home.razor
+- [ ] T017 [US1] Implement CSV parsing and validation behaviour (including priority mapping) in src/ImportToPlanner.Application/Services/CsvImportParser.cs
+- [ ] T018 [US1] Implement preview planning rules (name-only matching, duplicate skip, General bucket fallback) in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
+- [ ] T019 [US1] Implement upload file-size limit and parser option defaults in src/ImportToPlanner.Web/Components/Pages/Home.razor
+- [ ] T020 [US1] Implement preview UI states and dry-run messaging updates in src/ImportToPlanner.Web/Components/Pages/Home.razor
 
 **Checkpoint**: User Story 1 should be fully functional and independently testable
 
@@ -74,19 +75,19 @@
 
 ### Tests for User Story 2 (MANDATORY when behaviour changes)
 
-- [X] T020 [P] [US2] Add execution confirmation and validation-block tests in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
-- [X] T021 [P] [US2] Add stale-preview blocking tests in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
-- [X] T022 [P] [US2] Add partial-success continuation tests for per-row failures in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
-- [X] T023 [P] [US2] Add transient Graph row-failure retry-once tests in tests/ImportToPlanner.Tests/GraphPlannerGatewayTests.cs
-- [X] T024 [P] [US2] Add runtime-mode parity tests (in-memory vs graph gateway behaviour) in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T021 [P] [US2] Add execution confirmation and unresolved-validation block tests in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T022 [P] [US2] Add stale-preview fingerprint mismatch block tests in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T023 [P] [US2] Add partial-success continuation tests for per-row failures in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T024 [P] [US2] Add transient Graph row-failure retry-once tests in tests/ImportToPlanner.Tests/GraphPlannerGatewayTests.cs
+- [ ] T025 [P] [US2] Add runtime-mode parity tests (in-memory vs Graph) for execution outcomes in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
 
 ### Implementation for User Story 2
 
-- [X] T025 [US2] Implement execution gating and stale-preview enforcement in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
-- [X] T026 [US2] Implement row-failure continuation with aggregate partial result reporting in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
-- [X] T027 [US2] Implement transient Graph retry-once policy for row operations in src/ImportToPlanner.Infrastructure.Graph/GraphPlannerGateway.cs
-- [X] T028 [US2] Align in-memory gateway behaviour with clarified execution semantics in src/ImportToPlanner.Infrastructure.Graph/InMemoryPlannerGateway.cs
-- [X] T029 [US2] Update execute button-state and stale-preview handling UX in src/ImportToPlanner.Web/Components/Pages/Home.razor
+- [ ] T026 [US2] Implement execution gating and stale-preview enforcement in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
+- [ ] T027 [US2] Implement row-failure continuation and aggregate result reporting in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
+- [ ] T028 [US2] Implement Graph transient retry-once row operation policy in src/ImportToPlanner.Infrastructure.Graph/GraphPlannerGateway.cs
+- [ ] T029 [US2] Align in-memory gateway semantics with execution rules in src/ImportToPlanner.Infrastructure.Graph/InMemoryPlannerGateway.cs
+- [ ] T030 [US2] Implement execute-state UX and stale-preview blocking messaging in src/ImportToPlanner.Web/Components/Pages/Home.razor
 
 **Checkpoint**: User Stories 1 and 2 should both work independently
 
@@ -100,15 +101,19 @@
 
 ### Tests for User Story 3 (MANDATORY when behaviour changes)
 
-- [X] T030 [P] [US3] Add execution report aggregation tests for created/reused/errors/manual actions in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
-- [X] T031 [P] [US3] Add regression test ensuring user-facing errors exclude secret/tenant-sensitive values in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
-- [ ] T032 [P] [US3] Add UI rendering tests for execution report sections in tests/ImportToPlanner.Tests/HomePageWorkflowTests.cs
+- [ ] T031 [P] [US3] Add execution report aggregation tests for created/reused/errors/manual actions and outcome summary in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T032 [P] [US3] Add regression tests ensuring user-facing errors exclude secrets/tenant-sensitive values in tests/ImportToPlanner.Tests/ImportPlannerOrchestratorTests.cs
+- [ ] T033 [US3] Create dedicated Blazor UI test project in tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj and add it to ImportToPlanner.slnx
+- [ ] T034 [P] [US3] Configure UI test dependencies (`bunit`, `xunit`, `Microsoft.NET.Test.Sdk`, `coverlet.collector`) and reference src/ImportToPlanner.Web/ImportToPlanner.Web.csproj in tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj
+- [ ] T035 [US3] Add shared Blazor test bootstrap utilities for Home page rendering in tests/ImportToPlanner.Web.Tests/TestInfrastructure/
+- [ ] T036 [US3] Add Home page smoke render test in tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs
+- [ ] T037 [US3] Add execution-report section rendering workflow tests in tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs
 
 ### Implementation for User Story 3
 
-- [X] T033 [US3] Finalize execution report composition and manual-action formatting in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
-- [X] T034 [US3] Update execution report UI grids and status messaging in src/ImportToPlanner.Web/Components/Pages/Home.razor
-- [X] T035 [US3] Normalize user-safe error message mapping in src/ImportToPlanner.Application/Exceptions/PlannerGraphExceptions.cs
+- [ ] T038 [US3] Implement execution report composition and manual-action formatting (EnsureGoalExists/LinkTaskToGoal) in src/ImportToPlanner.Application/Services/ImportPlannerOrchestrator.cs
+- [ ] T039 [US3] Implement execution report UI grids and status messaging in src/ImportToPlanner.Web/Components/Pages/Home.razor
+- [ ] T040 [US3] Implement user-safe Graph error normalization in src/ImportToPlanner.Application/Exceptions/PlannerGraphExceptions.cs
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -118,13 +123,14 @@
 
 **Purpose**: Cross-story hardening, documentation, and verification
 
-- [X] T036 [P] Update implementation notes and operator checkpoints in specs/001-import-planner-csv/quickstart.md
-- [X] T037 Run full test suite for feature validation in tests/ImportToPlanner.Tests/
-- [X] T038 Run solution and AppHost CI parity commands and capture outcomes in specs/001-import-planner-csv/quickstart.md
-- [X] T039 [P] Update README behaviour notes to reflect clarified matching/retry/staleness semantics in README.md
-- [X] T040 [P] Capture accessibility and responsive validation outcomes for validation/preview/execute/report flows in specs/001-import-planner-csv/quickstart.md
-- [X] T041 Verify single-tenant scope boundary remains unchanged and document confirmation in specs/001-import-planner-csv/quickstart.md
-- [X] T042 Run and record preview performance measurement (500 rows, p95 under 10s) in specs/001-import-planner-csv/quickstart.md
+- [ ] T041 [P] Update operator implementation notes and checkpoints in specs/001-import-planner-csv/quickstart.md
+- [ ] T042 [P] Update README runtime behaviour notes (matching/retry/staleness/mode semantics) in README.md
+- [ ] T043 [P] Capture accessibility and responsive validation outcomes for validation/preview/execute/report flows in specs/001-import-planner-csv/quickstart.md
+- [ ] T044 Verify single-tenant scope boundary and document confirmation in specs/001-import-planner-csv/quickstart.md
+- [ ] T045 Run and record preview performance measurement (500 rows, p95 under 10s) in specs/001-import-planner-csv/quickstart.md
+- [ ] T046 Run core test suite in tests/ImportToPlanner.Tests/
+- [ ] T047 Run UI test suite in tests/ImportToPlanner.Web.Tests/
+- [ ] T048 Run solution and AppHost parity commands and record outcomes in specs/001-import-planner-csv/quickstart.md
 
 ---
 
@@ -135,29 +141,30 @@
 - **Setup (Phase 1)**: No dependencies - can start immediately
 - **Foundational (Phase 2)**: Depends on Setup completion - blocks all user stories
 - **User Story Phases (3-5)**: Depend on Foundational completion
-- **Polish (Phase 6)**: Depends on completion of selected user stories
+- **Polish (Phase 6)**: Depends on completion of user stories
 
 ### User Story Dependencies
 
 - **User Story 1 (P1)**: Starts after Phase 2; no dependency on other stories
-- **User Story 2 (P2)**: Starts after Phase 2; depends on US1 preview artefacts for execution path
-- **User Story 3 (P3)**: Starts after Phase 2; can progress in parallel with late US2 implementation once report contracts are stable
+- **User Story 2 (P2)**: Starts after Phase 2; depends on US1 preview artefacts and validation flow
+- **User Story 3 (P3)**: Starts after Phase 2; depends on US2 execution/report contracts for stable UI report binding
+- **US3 UI test prerequisites**: T037 depends on T033, T034, T035, and T036
 
 ### Within Each User Story
 
 - Tests first, verify failing behaviour, then implementation
-- Model updates before orchestration/service behaviour
+- Model/contract updates before orchestration/service behaviour
 - Service behaviour before UI binding and messaging
 - Story complete before phase checkpoint
 
 ## Parallel Opportunities
 
-- Phase 1: T003 can run parallel to T001/T002
-- Phase 2: T008 and T010 can run in parallel after T006/T007 model updates are merged
-- US1: T012-T015 can run in parallel; T019 follows T017
-- US2: T020-T024 can run in parallel; T027 and T028 can run in parallel
-- US3: T030-T032 can run in parallel; T034 can start after T033 contract shape is fixed
-- Polish: T036, T039, and T040 can run in parallel
+- Setup: T003 can run in parallel with T001 and T002
+- Foundational: T008 and T010 can run in parallel after model shape is agreed
+- US1: T013-T016 can run in parallel; T019 and T020 follow parser/orchestrator updates
+- US2: T021-T025 can run in parallel; T028 and T029 can run in parallel
+- US3: T031 and T032 can run in parallel; T033 and T034 can run in parallel; T038 and T039 can proceed once T031-T037 stabilise report contracts
+- Polish: T041-T043 can run in parallel; T046 and T047 can run in parallel
 
 ---
 
@@ -165,27 +172,33 @@
 
 ```bash
 # Parallel test tasks:
-T012, T013, T014, T015
+T013, T014, T015, T016
 
-# UI follow-up task (after core orchestrator changes):
-T019
+# Follow-up implementation tasks:
+T017, T018, T019, T020
 ```
 
 ## Parallel Example: User Story 2
 
 ```bash
 # Parallel test tasks:
-T020, T021, T022, T023, T024
+T021, T022, T023, T024, T025
 
-# Parallel gateway implementation tasks:
-T027, T028
+# Parallel gateway tasks:
+T028, T029
 ```
 
 ## Parallel Example: User Story 3
 
 ```bash
-# Parallel reporting tests:
-T030, T031, T032
+# Parallel report tests:
+T031, T032
+
+# Parallel UI test host foundation:
+T033, T034
+
+# Then complete prerequisites and workflow test:
+T035 -> T036 -> T037
 ```
 
 ---
@@ -195,26 +208,28 @@ T030, T031, T032
 ### MVP First (User Story 1)
 
 1. Complete Phase 1 and Phase 2
-2. Deliver User Story 1 (T012-T019)
+2. Deliver User Story 1 (T013-T020)
 3. Validate preview-only non-destructive flow end-to-end
 
 ### Incremental Delivery
 
 1. Add User Story 2 for controlled execution semantics
 2. Add User Story 3 for complete reporting and manual-action visibility
-3. Polish with documentation and CI/AppHost parity checks
+3. Complete new UI test host and execution-report workflow rendering tests
+4. Polish with documentation, performance evidence, and CI/AppHost parity checks
 
 ### Parallel Team Strategy
 
-1. Developer A: Parser + preview path (US1)
-2. Developer B: Execution semantics + gateway retry/mode parity (US2)
-3. Developer C: Reporting + UI messaging (US3)
+1. Developer A: Parser and preview path (US1)
+2. Developer B: Execution semantics, retry policy, runtime parity (US2)
+3. Developer C: Reporting and UI plus UI-test-host/test workflows (US3)
 
 ---
 
 ## Notes
 
-- [P] tasks denote independent files/no direct unfinished dependencies
-- Story labels map each task to one user story for traceability
+- [P] tasks denote independent files with no direct unfinished dependency
+- [Story] labels map each task to one user story for traceability
 - All behaviour-changing tasks include corresponding automated tests
-- Stale preview protection and runtime-mode parity are mandatory acceptance concerns
+- Runtime-mode parity and stale-preview protection are mandatory acceptance concerns
+- UI rendering workflow coverage for execution reports is implemented as a first-class task (T037), not deferred

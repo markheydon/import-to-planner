@@ -91,12 +91,23 @@ Recorded result (2026-05-09):
 
 Protocol:
 
-1. Run the focused performance test 20 times in a single execution:
+1. Set the opt-in environment variable that enables the performance test (it is skipped by default in CI to avoid flaky timing failures):
 ```bash
-dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --filter "FullyQualifiedName~BuildPreviewAsync_WithFiveHundredRows_MeetsP95UnderTenSeconds" --logger "console;verbosity=detailed"
+export IMPORT_TO_PLANNER_RUN_PERF_TESTS=true
 ```
-2. Record the printed `Preview p95 for 500 rows` value.
-3. Validate p95 is below 10,000 ms.
+2. Run the focused performance test 20 times in a single execution:
+```bash
+dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj \
+	--filter "FullyQualifiedName~BuildPreviewAsync_WithFiveHundredRows_MeetsP95UnderTenSeconds" \
+	--logger "console;verbosity=detailed"
+```
+3. Record the printed `Preview p95 for 500 rows` value.
+4. Validate p95 is below 10,000 ms.
+
+> **Note**: Without `IMPORT_TO_PLANNER_RUN_PERF_TESTS=true` the test is skipped. This
+> variable must be set in any environment (local or CI) where performance validation is
+> required. Do not enable it in standard CI runs unless the agent has dedicated compute
+> capacity that can reliably meet the 10-second threshold.
 
 Recorded result (2026-05-09): `Preview p95 for 500 rows: 11ms`.
 
