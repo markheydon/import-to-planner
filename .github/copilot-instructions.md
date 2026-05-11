@@ -42,7 +42,7 @@ See `docs-internal/microsoft-graph-guidelines.md` for implementation guidance on
 
 ## Testing & Coverage
 
-See `tests/README.md)` for test-running and coverage guidance. Mandatory testing standards (for example, verifying both `PlannerGateway:UseGraph` runtime modes when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
+See `tests/README.md` for test-running and coverage guidance. Mandatory testing standards (for example, verifying both `PlannerGateway:UseGraph` runtime modes when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
 
 
 ## PR Review Comment Handling
