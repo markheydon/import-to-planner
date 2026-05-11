@@ -1,15 +1,15 @@
 # Research: CSV To Planner Import Workflow
 
 ## Decision 1: Platform and UI stack
-- Decision: Keep the feature in the existing .NET 10 LTS Blazor web app and Fluent UI component model.
-- Rationale: The repository is already structured around .NET 10, Blazor pages, and Fluent UI controls; reusing this stack preserves consistency and delivery speed.
+- Decision: Implement the feature in .NET 10 LTS Blazor web app using Fluent UI components.
+- Rationale: The application is structured around .NET 10, Blazor pages, and Fluent UI controls; this stack ensures consistency and delivery speed.
 - Alternatives considered:
   - Introduce a separate CLI tool: rejected because current user workflow is browser-based with explicit confirmation/reporting.
   - Build a separate frontend stack: rejected due to unnecessary complexity and architecture drift.
 
 ## Decision 2: Runtime mode compatibility
-- Decision: Preserve behavioural parity across in-memory and Graph gateway modes for validation, preview, and execution outcomes.
-- Rationale: The repository actively supports both modes, with in-memory default for local validation and Graph for live tenant operations.
+- Decision: Ensure behavioural parity across in-memory and Graph gateway modes for validation, preview, and execution outcomes.
+- Rationale: Both modes must be supported—in-memory for local validation and development, Graph for live tenant operations.
 - Alternatives considered:
   - Graph-only behaviour: rejected because it breaks local development/test workflows.
   - In-memory-only behaviour: rejected because production utility requires Graph execution.

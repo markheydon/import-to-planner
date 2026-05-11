@@ -5,8 +5,8 @@ hooks:
   before_constitution:
   - extension: git
     command: speckit.git.initialize
-    enabled: false
-    optional: true
+    enabled: true
+    optional: false
     prompt: Execute speckit.git.initialize?
     description: Initialize Git repository before constitution setup
     condition: null

@@ -7,24 +7,21 @@
 
 ## Clarifications
 
-### Session 2026-05-09 (original)
+### Requirements Clarifications
 
-- Q: For execution, how should the system handle a CSV row that matches an existing Planner task? -> A: Skip matched existing tasks and report them as already exists.
-- Q: How should the system determine that a CSV row matches an existing Planner task? -> A: Match by task name only.
-- Q: If execution encounters failures on some rows, what should happen to the rest of the import? -> A: Continue processing remaining rows and report partial success/failure.
-- Q: For transient Microsoft Graph errors during execution, what retry policy should apply per row? -> A: Retry once, then mark row failed.
-- Q: If planner state changes after preview but before confirmation, what should execution do? -> A: Block execution and require a fresh preview.
-
-### Reality alignment 2026-05-10 (post-implementation review)
-
-- Q: What is the default behaviour when extra CSV columns are present? -> A: In the web UI, the `Ignore extra columns` option defaults to **enabled** (`ignoreExtraColumns = true`), so extra columns produce no validation errors unless the operator disables that option. The parser API signature still defaults `ignoreExtraColumns` to `false`; non-UI callers must set the flag explicitly.
-- Q: Is there a file size limit for uploaded CSV files? -> A: Yes. The UI enforces a 10 MB maximum file size. Files exceeding this limit are rejected before parsing.
-- Q: What happens when a CSV row specifies no bucket? -> A: The system resolves the task to the **`General`** bucket. This is a fixed default; it is not configurable per request.
-- Q: How are textual priority values mapped? -> A: The parser accepts both numeric values (0–10) and the following text tokens (case-insensitive): `Urgent` → 1, `Important` → 3, `Medium` → 5, `Low` → 9. Any other non-numeric, non-empty priority value is a validation error.
-- Q: On what basis is stale-preview detection performed? -> A: The orchestrator computes two SHA-256-based fingerprints at preview time: a **request fingerprint** (derived from the import request content) and a **planner-state fingerprint** (derived from live bucket and task titles). Before execution, both fingerprints are recomputed and compared. Execution is blocked if either has changed.
-- Q: What are the exact manual actions emitted during execution? -> A: Two action types are emitted. **`EnsureGoalExists`** is emitted for every distinct goal across all tasks scheduled to be created or already-existing-matched tasks (so the operator confirms the goal/category exists in Planner). **`LinkTaskToGoal`** is emitted for each (goal, task) pair for both newly created tasks and already-existing-matched tasks, so the operator can link tasks to goals manually.
-- Q: How does the system guard against duplicate execution of the same confirmation event (User Story 2)? -> A: The guard is **freshness-only**: execution is blocked when either the request fingerprint or the planner-state fingerprint no longer matches the preview. There is no separate one-time token; fingerprint mismatch is the sole protection.
-- Q: How should FR-011 mode-specific behaviour differences be indicated? -> A: Mode differences are surfaced through **behaviour and messaging**, not a persistent runtime-mode label in the UI. In Graph mode, an unauthenticated session triggers an automatic sign-in redirect before the import UI is reachable. In in-memory mode, no authentication is required and the container/plan list is populated from in-memory stubs. No explicit "current mode" badge is shown.
+- Q: For execution, how should the system handle a CSV row that matches an existing Planner task? → A: Skip matched existing tasks and report them as already exists.
+- Q: How should the system determine that a CSV row matches an existing Planner task? → A: Match by task name only.
+- Q: If execution encounters failures on some rows, what should happen to the rest of the import? → A: Continue processing remaining rows and report partial success/failure.
+- Q: For transient Microsoft Graph errors during execution, what retry policy should apply per row? → A: Retry once, then mark row failed.
+- Q: If planner state changes after preview but before confirmation, what should execution do? → A: Block execution and require a fresh preview.
+- Q: What is the default behaviour when extra CSV columns are present? → A: In the web UI, the `Ignore extra columns` option MUST default to enabled (`ignoreExtraColumns = true`), so extra columns produce no validation errors unless the operator disables that option. The parser API signature MUST default `ignoreExtraColumns` to `false`; non-UI callers must set the flag explicitly.
+- Q: Is there a file size limit for uploaded CSV files? → A: Yes. The UI MUST enforce a 10 MB maximum file size. Files exceeding this limit are rejected before parsing.
+- Q: What happens when a CSV row specifies no bucket? → A: The system MUST resolve the task to the `General` bucket. This is a fixed default; it is not configurable per request.
+- Q: How are textual priority values mapped? → A: The parser MUST accept both numeric values (0–10) and the following text tokens (case-insensitive): `Urgent` → 1, `Important` → 3, `Medium` → 5, `Low` → 9. Any other non-numeric, non-empty priority value is a validation error.
+- Q: On what basis is stale-preview detection performed? → A: The orchestrator MUST compute two SHA-256-based fingerprints at preview time: a request fingerprint (derived from the import request content) and a planner-state fingerprint (derived from live bucket and task titles). Before execution, both fingerprints are recomputed and compared. Execution is blocked if either has changed.
+- Q: What are the exact manual actions emitted during execution? → A: Two action types are emitted. `EnsureGoalExists` is emitted for every distinct goal across all tasks scheduled for creation or already-existing-matched tasks. `LinkTaskToGoal` is emitted for each (goal, task) pair for both newly created tasks and already-existing-matched tasks.
+- Q: How does the system guard against duplicate execution of the same confirmation event? → A: Execution is blocked when either the request fingerprint or the planner-state fingerprint no longer matches the preview. Fingerprint mismatch is the sole protection (no separate one-time token).
+- Q: How should mode-specific behaviour differences be indicated? → A: Mode differences are surfaced through behaviour and messaging, not a persistent runtime-mode label in the UI. In Graph mode, an unauthenticated session triggers an automatic sign-in redirect before the import UI is reachable. In in-memory mode, no authentication is required and the container/plan list is populated from in-memory stubs.
 
 ## User Scenarios & Testing *(mandatory)*
 

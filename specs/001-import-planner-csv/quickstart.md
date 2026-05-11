@@ -31,7 +31,8 @@ dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
 ```
 
-Recorded result (2026-05-09): all commands completed successfully.
+Expected:
+- All tests pass.
 
 ## 2. Run in in-memory mode (default)
 ```bash
@@ -77,15 +78,7 @@ dotnet build apphost.cs --no-restore
 ```
 
 Expected:
-- Solution and AppHost paths both remain healthy.
-
-Recorded result (2026-05-09):
-
-- `dotnet restore ImportToPlanner.slnx` succeeded.
-- `dotnet build ImportToPlanner.slnx --no-restore` succeeded.
-- `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj` succeeded (42/42 tests).
-- `dotnet restore apphost.cs` succeeded.
-- `dotnet build apphost.cs --no-restore` succeeded.
+- Solution and AppHost paths both build successfully.
 
 ## 6. Preview Performance Protocol (500 rows, p95 < 10s)
 
@@ -109,22 +102,22 @@ dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj \
 > required. Do not enable it in standard CI runs unless the agent has dedicated compute
 > capacity that can reliably meet the 10-second threshold.
 
-Recorded result (2026-05-09): `Preview p95 for 500 rows: 11ms`.
+Expected: p95 is below 10,000 ms (10 seconds).
 
-## 7. Accessibility And Responsive Smoke Outcomes
+## 7. Accessibility And Responsive Validation
 
-Validation run (2026-05-09) in in-memory mode (`PlannerGateway__UseGraph=false`):
+Validate in in-memory mode (`PlannerGateway__UseGraph=false`):
 
-1. Desktop smoke (`http://localhost:5126`): import form controls expose visible labels and disabled/enabled states for CTA buttons.
-2. Mobile viewport smoke (390x844): layout remained functional with all primary controls reachable and visible.
-3. Status messaging smoke: preview reset and stale-preview warning states render as Fluent message bars.
+1. Desktop (`http://localhost:5126`): import form controls expose visible labels and disabled/enabled states for CTA buttons.
+2. Mobile viewport (390x844): layout is functional with all primary controls reachable and visible.
+3. Status messaging: preview reset and stale-preview warning states render as Fluent message bars.
 
-## 8. Single-Tenant Scope Confirmation
+## 8. Single-Tenant Scope Verification
 
-Confirmed unchanged on 2026-05-09:
+Verify that:
 
-- No multi-tenant feature paths were added.
-- Existing single-tenant Entra/Graph configuration assumptions remain unchanged.
+- No multi-tenant feature paths are implemented.
+- Single-tenant Entra/Graph configuration remains unchanged.
 - Graph/Kiota boundary remains infrastructure-local, with application logic depending on `Microsoft.Graph`-aligned abstractions only.
 
 ## 9. Optional Aspire run
