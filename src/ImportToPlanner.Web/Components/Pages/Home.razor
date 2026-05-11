@@ -132,57 +132,7 @@
         </FluentStack>
     }
 
-    @if (executionResult is not null)
-    {
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-            <FluentLabel Typo="Typography.PaneHeader">Execution Report</FluentLabel>
-
-            @if (executionResult.PlanId is not null)
-            {
-                <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">
-                    Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@executionResult.PlanId"
-                                        target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
-                </FluentMessageBar>
-            }
-
-            <FluentLabel Typo="Typography.Header">Created</FluentLabel>
-            <FluentDataGrid Items="@executionResult.Created.AsQueryable()" TGridItem="string">
-                <PropertyColumn Property="@(item => item)" Title="Item" />
-            </FluentDataGrid>
-
-            <FluentLabel Typo="Typography.Header">Reused Or Skipped</FluentLabel>
-            <FluentDataGrid Items="@executionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
-                <PropertyColumn Property="@(item => item)" Title="Item" />
-            </FluentDataGrid>
-
-            <FluentLabel Typo="Typography.Header">Errors</FluentLabel>
-            @if (executionResult.Errors.Count == 0)
-            {
-                <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
-            }
-            else
-            {
-                <FluentDataGrid Items="@executionResult.Errors.AsQueryable()" TGridItem="string">
-                    <PropertyColumn Property="@(item => item)" Title="Error" />
-                </FluentDataGrid>
-            }
-
-            <FluentLabel Typo="Typography.Header">Manual Actions</FluentLabel>
-            @if (executionResult.ManualActions.Count == 0)
-            {
-                <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
-            }
-            else
-            {
-                <FluentDataGrid Items="@executionResult.ManualActions.AsQueryable()" TGridItem="ManualAction">
-                    <PropertyColumn Property="@(item => item.ActionType)" Title="Action Type" />
-                    <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
-                    <PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
-                    <PropertyColumn Property="@(item => item.Details)" Title="Details" />
-                </FluentDataGrid>
-            }
-        </FluentStack>
-    }
+    <HomeExecutionReport ExecutionResult="@executionResult" />
 </FluentStack>
 
 @code {
@@ -516,7 +466,7 @@
                 ReusedOrSkipped = [],
                 Errors = ["Execution failed due to an unexpected system error. Check logs and retry."],
                 ManualActions = [],
-                OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false),
+                OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true),
             };
 
             statusMessage = "Execution failed.";

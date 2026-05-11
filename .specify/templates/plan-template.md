@@ -47,6 +47,8 @@
 - **Scope Boundary Gate**: Confirm whether single-tenant scope remains unchanged; flag
   explicit approval requirements for multi-tenant expansion.
 - **CI and AppHost Gate**: Confirm solution and AppHost validation paths remain viable.
+- **Agent Delegation Gate**: Confirm whether registered custom agents in `AGENTS.md`
+  apply to implementation tasks and document delegation or approved exceptions.
 
 ## Project Structure
 

@@ -44,9 +44,11 @@ public sealed record ImportExecutionResult
 /// <param name="ErrorCount">The number of failed items.</param>
 /// <param name="ManualActionCount">The number of manual follow-up actions.</param>
 /// <param name="IsPartialSuccess">Indicates whether the run completed with both successes and failures.</param>
+/// <param name="IsFullFailure">Indicates whether the run produced no successful outcomes and at least one error.</param>
 public sealed record ImportExecutionOutcomeSummary(
     int CreatedCount,
     int ReusedOrSkippedCount,
     int ErrorCount,
     int ManualActionCount,
-    bool IsPartialSuccess);
+    bool IsPartialSuccess,
+    bool IsFullFailure);

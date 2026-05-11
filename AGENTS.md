@@ -42,6 +42,13 @@ Typical delegation:
 - Blazor UI work → `fluentui-blazor` skill (C# Expert remains primary for code-level changes)
 - Issue / GitHub workflow tasks → `github-issues` skill
 
+Implementation workflow expectation:
+
+- During `/speckit.implement`, any coding, architecture, and test implementation tasks
+	MUST be delegated to the registered C# Expert agent when available.
+- If a task is not suitable for C# Expert, the exception and rationale MUST be recorded
+	in the plan/PR notes.
+
 ## How to request or change delegation
 
 - Add or modify agent entries by editing `AGENTS.md` and opening a PR.

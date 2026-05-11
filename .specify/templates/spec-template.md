@@ -106,6 +106,9 @@
   approved multi-tenant scope expansion is explicitly documented.
 - **NFR-007 AppHost and CI**: Feature MUST preserve solution-level and AppHost build/
   validation expectations in CI workflows.
+- **NFR-008 Agent Delegation**: Feature implementation workflow MUST identify applicable
+  repository-registered custom agents and use them unless an approved exception is
+  documented.
 
 *Example of marking unclear requirements:*
 
