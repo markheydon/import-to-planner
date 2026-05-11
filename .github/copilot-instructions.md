@@ -55,5 +55,5 @@ See `AGENTS.md` for agent delegation. By default, coding, architecture, and test
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read specs/001-import-planner-csv/plan.md
+shell commands, and other important information, read specs/002-ui-ux-redesign/plan.md
 <!-- SPECKIT END -->
