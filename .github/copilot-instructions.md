@@ -5,6 +5,15 @@ applyTo: 'All contributions'
 
 # Copilot Instructions for markheydon/import-to-planner
 
+**Repository precedence:** When guidance or instructions conflict, follow this authoritative order:
+
+1. `.github/copilot-instructions.md` (this file) — repository-wide policy (highest authority)
+2. `AGENTS.md` (root) — repo-level agent delegation and skill mapping
+3. `.specify/memory/constitution.md` — Spec Kit governance
+4. Other instruction, skill, or agent files (for example, files under `.github/instructions/`, `.github/skills/`)
+
+Refer to `AGENTS.md` for the authoritative agent registry and skill delegation. Avoid editing third-party-sourced skill/instruction files directly; prefer adding overrides here or in `AGENTS.md`.
+
 ## Repository Overview
 
 This repository contains a single-purpose Blazor app with the sole function of importing tasks from CSV into Microsoft Planner.
@@ -13,19 +22,12 @@ This repository contains a single-purpose Blazor app with the sole function of i
 
 Refer to the following discipline-specific instruction files aligned with work type:
 
-- [`.github/instructions/csharp-clean-architecture.instructions.md`](.github/instructions/csharp-clean-architecture.instructions.md) - Governs C# code organisation, design, and Clean Architecture principles
-- [`.github/instructions/blazor-fluentui.instructions.md`](.github/instructions/blazor-fluentui.instructions.md) - Governs Blazor component patterns and Fluent UI usage
+- `.github/instructions/csharp-clean-architecture.instructions.md` - Governs C# code organisation, design, and Clean Architecture principles
+- `.github/instructions/blazor-fluentui.instructions.md` - Governs Blazor component patterns and Fluent UI usage
 
-## Applicable Skills
+## Applicable skills and agent registry
 
-Use the following skills for domain-specific guidance when working on relevant tasks:
-
-- **`csharp-xunit`**: Unit test work and test framework patterns
-- **`csharp-docs`**: Public API documentation and XML comments
-- **`csharp-async`**: Async/await patterns and best practices
-- **`fluentui-blazor`**: Fluent UI component usage and troubleshooting
-- **`dotnet-best-practices-repo`**: General .NET and repository-aligned practices
-- **`github-issues`**: Issue management, labelling, and GitHub workflows
+This file no longer lists skills inline. See `AGENTS.md` at the repository root for the authoritative agent registry and the list of applicable skills and their delegation.
 
 ## Language & Style
 
@@ -35,30 +37,21 @@ Use the following skills for domain-specific guidance when working on relevant t
 
 ## Microsoft Graph Guidelines
 
-This app uses Microsoft Graph API to access Microsoft Planner and related assets. Observe these principles:
+See `docs-internal/microsoft-graph-guidelines.md` for implementation guidance on using Microsoft Graph in this repository.
 
-- Treat `Microsoft.Graph` as the primary contract for domain and application logic.
-- Keep Kiota as an internal SDK implementation detail, do not expose Kiota types in domain or application code.
-- Remove explicit Kiota usage from your code where practical.
-- Accept that `Microsoft.Graph` v5 may bring Kiota transitively; this is acceptable.
 
 ## Testing & Coverage
 
-- Unit tests are in `tests/ImportToPlanner.Tests/` using xUnit framework.
-- Mock `IPlannerGateway` implementations when testing orchestration logic.
-- Prefer integration tests for Graph API interactions using `InMemoryPlannerGateway` in test scenarios.
-- Refer to the `csharp-xunit` skill for test patterns and data-driven test guidance.
+See `tests/README.md)` for test-running and coverage guidance. Mandatory testing standards (for example, verifying both `PlannerGateway:UseGraph` runtime modes when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
+
 
 ## PR Review Comment Handling
 
-- When addressing pull request review threads, reply in-thread only.
-- Never use top-level PR/issue comments as a substitute for thread replies.
-- If tooling cannot post an in-thread reply, stop and report the limitation with draft reply text per thread.
-- Do not resolve a review thread unless an in-thread reply has been posted.
+See `CONTRIBUTING.md` for PR review reply policy and guidance on handling review threads.
 
 ## C# Agent Support
 
-For complex C# coding work, defer to the **C# Expert** agent. It has deep expertise in .NET architecture and can handle refactoring, design decisions, and implementation at scale.
+See `AGENTS.md` for agent delegation. By default, coding, architecture, and test tasks should be delegated to `.github/agents/CSharpExpert.agent.md` unless AGENTS.md indicates otherwise.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
