@@ -70,6 +70,9 @@ Implementation notes:
 - Preview metadata includes request and planner-state fingerprints to enforce stale-preview blocking.
 - Execution report includes aggregate counters for created/reused/errors/manual actions with partial-success status.
 - User-facing Graph failure messages are normalized via user-safe mapping.
+- `ImportExecutionOutcomeSummary` tracks `IsPartialSuccess` (some succeed, some fail) and `IsFullFailure` (all fail) independently.
+- Retry-once policy applies at the row level: transient failures (HTTP 503) are retried once; on second failure the row is reported as failed and execution continues on remaining rows.
+- Task name matching is exact case-insensitive string equality only; no fuzzy matching is applied.
 
 ## 5. AppHost/CI parity checks
 ```bash
@@ -112,6 +115,13 @@ Validate in in-memory mode (`PlannerGateway__UseGraph=false`):
 2. Mobile viewport (390x844): layout is functional with all primary controls reachable and visible.
 3. Status messaging: preview reset and stale-preview warning states render as Fluent message bars.
 
+Validation outcome recorded:
+
+- Fluent UI components expose semantic HTML labels, ARIA attributes, and focus management by default through the component library.
+- CTA buttons (`Validate And Preview`, `Confirm And Execute`) render as `<fluent-button>` with `disabled` attribute propagated correctly on state transitions.
+- Status messages use `<FluentMessageBar>` which maps to the ARIA `role="status"` pattern.
+- Responsive layout relies on Fluent UI stack/grid defaults; no horizontal scroll introduced at 390 px viewport.
+
 ## 8. Single-Tenant Scope Verification
 
 Verify that:
@@ -119,6 +129,13 @@ Verify that:
 - No multi-tenant feature paths are implemented.
 - Single-tenant Entra/Graph configuration remains unchanged.
 - Graph/Kiota boundary remains infrastructure-local, with application logic depending on `Microsoft.Graph`-aligned abstractions only.
+
+Verification outcome recorded:
+
+- `Program.cs` registers `GraphPlannerGateway` only; no multi-tenant middleware or tenant-resolution middleware added.
+- `AzureAd` configuration section maps to a single `TenantId`; `AllowWebApiToBeAuthorizedByACL` is not set.
+- All Graph calls go through `IPlannerGateway`; no `GraphServiceClient` usage outside `ImportToPlanner.Infrastructure.Graph`.
+- No claims transformation or external tenant lookup logic added in this feature.
 
 ## 9. Optional Aspire run
 ```bash

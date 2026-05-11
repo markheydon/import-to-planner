@@ -11,6 +11,13 @@ This repository includes both runtime modes:
 
 Switch modes with `PlannerGateway:UseGraph` in configuration.
 
+Runtime behaviour notes:
+
+- **Task matching**: existing Planner tasks are matched by task name only (exact, case-insensitive). No fuzzy matching or external ID tracking is used. Matched tasks are skipped and reported as `already exists`.
+- **Retry-once policy**: transient row-level failures (HTTP 503) are retried once per row. If the retry also fails, the row is reported as an error and execution continues on remaining rows. Throttling (HTTP 429) uses a separate retry budget of up to 3 attempts with back-off.
+- **Stale-preview enforcement**: after preview is generated, any change to the target Planner's tasks, buckets, or plan is detected via a SHA-256 fingerprint comparison on execution. If the state has changed, execution is blocked and the user must refresh the preview.
+- **Mode semantics**: in-memory mode is functionally equivalent to Graph mode for all preview and execution behaviour; the gateway abstraction (`IPlannerGateway`) ensures identical application logic runs in both modes. Runtime parity is verified by the test suite.
+
 Implemented solution components:
 
 - Web app: `src/ImportToPlanner.Web`
@@ -18,6 +25,7 @@ Implemented solution components:
 - Domain models: `src/ImportToPlanner.Domain`
 - Graph infrastructure: `src/ImportToPlanner.Infrastructure.Graph`
 - Tests: `tests/ImportToPlanner.Tests`
+- UI component tests: `tests/ImportToPlanner.Web.Tests`
 
 ## Prerequisites
 

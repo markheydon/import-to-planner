@@ -319,7 +319,8 @@ public sealed class ImportPlannerOrchestrator(IPlannerGateway plannerGateway) : 
             reusedOrSkipped.Count,
             errors.Count,
             manualActions.Count,
-            hasSuccessfulActions && hasErrors);
+            IsPartialSuccess: hasSuccessfulActions && hasErrors,
+            IsFullFailure: !hasSuccessfulActions && hasErrors);
     }
 
     private static string BuildRequestFingerprint(ImportRequest request)

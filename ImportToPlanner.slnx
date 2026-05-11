@@ -8,5 +8,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj" />
+    <Project Path="tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj" />
   </Folder>
 </Solution>
