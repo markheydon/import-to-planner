@@ -1,0 +1,56 @@
+@if (ExecutionResult is not null)
+{
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
+        <FluentLabel Typo="Typography.PaneHeader">Execution Report</FluentLabel>
+
+        @if (ExecutionResult.PlanId is not null)
+        {
+            <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">
+                Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@ExecutionResult.PlanId"
+                                    target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
+            </FluentMessageBar>
+        }
+
+        <FluentLabel Typo="Typography.Header">Created</FluentLabel>
+        <FluentDataGrid Items="@ExecutionResult.Created.AsQueryable()" TGridItem="string">
+            <PropertyColumn Property="@(item => item)" Title="Item" />
+        </FluentDataGrid>
+
+        <FluentLabel Typo="Typography.Header">Reused Or Skipped</FluentLabel>
+        <FluentDataGrid Items="@ExecutionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
+            <PropertyColumn Property="@(item => item)" Title="Item" />
+        </FluentDataGrid>
+
+        <FluentLabel Typo="Typography.Header">Errors</FluentLabel>
+        @if (ExecutionResult.Errors.Count == 0)
+        {
+            <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
+        }
+        else
+        {
+            <FluentDataGrid Items="@ExecutionResult.Errors.AsQueryable()" TGridItem="string">
+                <PropertyColumn Property="@(item => item)" Title="Error" />
+            </FluentDataGrid>
+        }
+
+        <FluentLabel Typo="Typography.Header">Manual Actions</FluentLabel>
+        @if (ExecutionResult.ManualActions.Count == 0)
+        {
+            <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
+        }
+        else
+        {
+            <FluentDataGrid Items="@ExecutionResult.ManualActions.AsQueryable()" TGridItem="ManualAction">
+                <PropertyColumn Property="@(item => item.ActionType)" Title="Action Type" />
+                <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
+                <PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
+                <PropertyColumn Property="@(item => item.Details)" Title="Details" />
+            </FluentDataGrid>
+        }
+    </FluentStack>
+}
+
+@code {
+    [Parameter]
+    public ImportExecutionResult? ExecutionResult { get; set; }
+}

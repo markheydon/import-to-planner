@@ -1,7 +1,4 @@
-using System.Reflection;
-using Bunit;
 using ImportToPlanner.Application.Models;
-using Microsoft.AspNetCore.Components;
 using ImportToPlanner.Web.Components.Pages;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
 
@@ -9,23 +6,8 @@ namespace ImportToPlanner.Web.Tests;
 
 public sealed class HomePageWorkflowTests
 {
-    private static readonly FieldInfo ExecutionResultField =
-        typeof(Home).GetField("executionResult", BindingFlags.NonPublic | BindingFlags.Instance)!;
-
-    private static readonly System.Reflection.MethodInfo StateHasChangedMethod =
-        typeof(ComponentBase).GetMethod("StateHasChanged", BindingFlags.NonPublic | BindingFlags.Instance)!;
-
-    private static async Task InjectExecutionResultAsync(IRenderedComponent<Home> cut, ImportExecutionResult result)
-    {
-        await cut.InvokeAsync(() =>
-        {
-            ExecutionResultField.SetValue(cut.Instance, result);
-            StateHasChangedMethod.Invoke(cut.Instance, null);
-        });
-    }
-
     [Fact]
-    public async Task HomePage_WithCreatedAndManualActions_RendersExecutionReportSections()
+    public void HomeExecutionReport_WithCreatedAndManualActions_RendersExecutionReportSections()
     {
         // Arrange
         using var ctx = new HomePageTestContext();
@@ -43,10 +25,9 @@ public sealed class HomePageWorkflowTests
             OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 0, 2, false, false),
         };
 
-        var cut = ctx.Render<Home>();
-
-        // Act — inject execution result directly to test report rendering without a real file upload
-        await InjectExecutionResultAsync(cut, result);
+        // Act
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, result));
 
         // Assert — execution report sections are present
         Assert.Contains("Execution Report", cut.Markup, StringComparison.OrdinalIgnoreCase);
@@ -57,7 +38,7 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
-    public async Task HomePage_WithPartialFailure_RendersErrorsSection()
+    public void HomeExecutionReport_WithPartialFailure_RendersErrorsSection()
     {
         // Arrange
         using var ctx = new HomePageTestContext();
@@ -71,10 +52,9 @@ public sealed class HomePageWorkflowTests
             OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 1, 0, true, false),
         };
 
-        var cut = ctx.Render<Home>();
-
         // Act
-        await InjectExecutionResultAsync(cut, result);
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, result));
 
         // Assert — errors section renders with the failure message
         Assert.Contains("Execution Report", cut.Markup, StringComparison.OrdinalIgnoreCase);
@@ -82,7 +62,7 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
-    public async Task HomePage_WithReusedOrSkippedItems_RendersReusedOrSkippedSection()
+    public void HomeExecutionReport_WithReusedOrSkippedItems_RendersReusedOrSkippedSection()
     {
         // Arrange
         using var ctx = new HomePageTestContext();
@@ -96,10 +76,9 @@ public sealed class HomePageWorkflowTests
             OutcomeSummary = new ImportExecutionOutcomeSummary(0, 1, 0, 0, false, false),
         };
 
-        var cut = ctx.Render<Home>();
-
         // Act
-        await InjectExecutionResultAsync(cut, result);
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, result));
 
         // Assert
         Assert.Contains("Execution Report", cut.Markup, StringComparison.OrdinalIgnoreCase);
@@ -107,4 +86,3 @@ public sealed class HomePageWorkflowTests
         Assert.Contains("Reused Or Skipped", cut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 }
-
