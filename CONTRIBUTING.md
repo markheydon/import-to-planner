@@ -82,6 +82,16 @@ Open a [GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new
 
 ---
 
+## PR Review Comment Handling
+
+- When addressing pull request review threads, reply in-thread only.
+- Never use top-level PR/issue comments as a substitute for thread replies.
+- If tooling cannot post an in-thread reply, stop and report the limitation with draft reply text for the affected thread(s).
+- Do not resolve a review thread unless an in-thread reply has been posted.
+
+
+---
+
 ## Coding Standards
 
 ### C# conventions
