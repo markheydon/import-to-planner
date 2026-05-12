@@ -20,10 +20,29 @@ The stepped layout requires the component to track derived state for each step. 
 | Step index | Name | Active when (derived condition) |
 | ---------- | ---- | ------------------------------- |
 | 0 | Select Container | Always active on page load |
-| 1 | Select Plan | `selectedContainer is not null` |
-| 2 | Upload CSV & Options | `selectedPlan is not null` |
+| 1 | Select Plan | `selectedContainer is not null`¹ |
+| 2 | Upload CSV & Options | `selectedPlan is not null`¹ |
 | 3 | Validate & Preview | `!string.IsNullOrWhiteSpace(csvContent)` |
 | 4 | Confirm & Import | `preview is not null && !isPreviewStale` |
+
+¹ Non-null state is set **only** via the `SelectedOptionsChanged` callback in the searchable selector component. No implicit first-option pre-selection occurs on page load or after a list refresh (FR-013, FR-014).
+
+### Selector State Model (FR-013 / FR-014 / FR-015)
+
+Step 1 and Step 2 use `FluentAutocomplete<T>` instead of `FluentSelect`, introducing the following state considerations:
+
+| Field | Type | Initialised to | Set by |
+| ----- | ---- | -------------- | ------ |
+| `selectedContainer` | `PlannerContainer?` | `null` | `SelectedOptionsChanged` callback on explicit user pick; cleared to `null` on container-list refresh |
+| `selectedPlan` | `PlannerPlan?` | `null` | `SelectedOptionsChanged` callback on explicit user pick; cleared to `null` on container change or plan-list refresh |
+
+No new C# fields are added; these are the existing fields already present in `Home.razor`. The change is in **how** they are set: from `@bind-Value` on `FluentSelect` to `SelectedOptionsChanged` on `FluentAutocomplete<T>`. This ensures:
+
+- The fields remain `null` on initial page load (placeholder state visible).
+- The fields remain `null` after a list refresh (user must re-select).
+- Setting the field to the first item in the list does not happen automatically.
+
+See Research Decision 10 for the component-selection rationale and v4 API validation requirements.
 
 ### Step visual state derivation
 

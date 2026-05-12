@@ -14,6 +14,8 @@ description: >
 
 This skill teaches how to correctly use the **Microsoft.FluentUI.AspNetCore.Components** (version 4) NuGet package in Blazor applications.
 
+> Scope note: this skill is v4-focused. For v5-guided patterns and MCP-aligned usage, prefer `.github/skills/fluentui-blazor-usage/`.
+
 ## Critical Rules
 
 ### 1. No manual `<script>` or `<link>` tags needed

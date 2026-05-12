@@ -22,6 +22,8 @@ A user opens the app and is immediately presented with a clear, numbered step la
 3. **Given** a container and plan have been selected, **When** the user has not yet uploaded a CSV, **Then** Step 3 (Upload & Options) becomes active; Step 4 onwards remain inactive.
 4. **Given** all required inputs are complete, **When** the user activates validation, **Then** Step 4 (Validate & Preview) shows results inline within that step.
 5. **Given** a successful preview exists, **When** the user confirms execution, **Then** Step 5 (Results) displays the execution report within that step without navigating away.
+6. **Given** Step 1 or Step 2 is newly activated, **When** the user has not made an explicit selection in that step, **Then** the selector shows an unselected placeholder state and the next step remains locked.
+7. **Given** the first real option in Step 1 or Step 2 is the option the user wants, **When** the user selects that first option explicitly, **Then** the next step unlocks without requiring the user to select a different option first.
 
 ---
 
@@ -56,12 +58,30 @@ If the user changes the container, plan, or CSV file after a preview has been ge
 
 ---
 
+### User Story 4 — Searchable selectors for large tenant datasets (Priority: P2)
+
+When a tenant has many groups or plans, the user can quickly locate a target container and plan using search-enabled selection controls instead of manually scrolling long lists.
+
+**Why this priority**: Large Microsoft 365 tenants can have substantial group and plan counts; searchable selection prevents friction and reduces input errors.
+
+**Independent Test**: Can be tested by loading fixture data with large container and plan lists and verifying that typing in each selector filters options and allows selecting the first matching result.
+
+**Acceptance Scenarios**:
+
+1. **Given** Step 1 has many containers, **When** the user types into the selector search input, **Then** matching containers are filtered in the option list.
+2. **Given** Step 2 has many plans, **When** the user types into the selector search input, **Then** matching plans are filtered in the option list.
+3. **Given** a user navigates selector options with keyboard input, **When** they confirm a highlighted option, **Then** that option becomes selected and step progression behaves the same as pointer selection.
+
+---
+
 ### Edge Cases
 
 - What happens when no containers are available on load? Step 1 must show an informational prompt directing the user to create a Microsoft 365 group or check membership, without blocking the page layout.
 - What happens when a plan has no buckets or tasks after execution? The results step must still render clearly, with an appropriate "nothing to report" message per section.
 - What happens when the user selects a container that has no plans? Step 2 must show an inline warning within that step prompting the user to create a plan in Planner first.
 - How does the layout behave on narrow viewports? The stepped layout must remain usable at narrower screen widths without horizontal scrolling, even if the visual complexity is reduced.
+- What happens when the first real option in a selector is the intended value? The workflow must treat explicit selection of that first option as a valid progression event.
+- What happens when container or plan lists are very large? Selectors must provide search/filter behaviour so the user is not required to scroll entire lists.
 
 ## Requirements *(mandatory)*
 
@@ -69,7 +89,7 @@ If the user changes the container, plan, or CSV file after a preview has been ge
 
 - **FR-001**: The import page MUST present the workflow as a sequence of clearly numbered, visually distinct steps rendered vertically down the page.
 - **FR-002**: Each step MUST become interactive only when its prerequisite inputs from the previous step(s) are satisfied; steps not yet reachable MUST be visually locked.
-- **FR-003**: A completed step MUST display a visual completed indicator and optionally collapse to a compact summary of the user's selection, with the ability to expand or change it.
+- **FR-003**: A completed step MUST display a visual completed indicator and a compact inline summary of the user's selection. Interactive expand/collapse of completed steps is deferred to a follow-up iteration (see Research Decision 7).
 - **FR-004**: Step 1 MUST allow the user to select a container and refresh the container list; it MUST display an informational message when no containers are found.
 - **FR-005**: Step 2 MUST allow the user to select a plan from the chosen container and refresh the plan list; it MUST display an inline warning when no plans exist for the selected container.
 - **FR-006**: Step 3 MUST allow the user to upload a CSV file and toggle the "Ignore extra columns" option; the selected file name MUST be displayed once chosen.
@@ -79,6 +99,9 @@ If the user changes the container, plan, or CSV file after a preview has been ge
 - **FR-010**: The overall visual design MUST align with a modern Fluent UI aesthetic: consistent use of card-like containers, appropriate use of accent colours for active steps, neutral or muted styling for locked steps, and clear typographic hierarchy.
 - **FR-011**: All existing functional behaviour (container/plan loading, CSV parsing, preview generation, execution, error display, authentication redirect) MUST be preserved without regression.
 - **FR-012**: The layout header MUST retain user identity display and sign-in/sign-out actions, consistent with the current design.
+- **FR-013**: Container and plan selectors MUST initialise in an unselected placeholder state and MUST NOT default-select the first real option.
+- **FR-014**: Step progression MUST require an explicit user selection event for Step 1 and Step 2; selecting the first real option explicitly MUST unlock the next step.
+- **FR-015**: Container and plan selectors MUST support searchable filtering suitable for large datasets.
 
 ### Quality and Non-Functional Requirements *(mandatory)*
 
@@ -90,6 +113,7 @@ If the user changes the container, plan, or CSV file after a preview has been ge
 - **NFR-006 Scope Boundary**: Feature MUST preserve current single-tenant scope; no multi-tenant or multi-plan-simultaneous-import capability is introduced.
 - **NFR-007 AppHost and CI**: Feature MUST preserve solution-level and AppHost build/validation expectations in CI workflows.
 - **NFR-008 Agent Delegation**: Implementation MUST be delegated to the C# Expert agent registered in `AGENTS.md` for all Blazor component and code changes.
+- **NFR-009 Fluent-First Inputs**: Selector behaviour MUST be implemented with Fluent UI component capabilities first; custom HTML/CSS input workarounds are allowed only as documented last resort.
 
 ## Success Criteria *(mandatory)*
 
@@ -101,6 +125,8 @@ If the user changes the container, plan, or CSV file after a preview has been ge
 - **SC-004**: The stale-preview warning appears correctly in 100% of cases where the user changes selections after generating a preview, verified by automated scenario tests.
 - **SC-005**: No architecture boundary violations are introduced; the presentation layer remains the sole location of UI state and rendering changes.
 - **SC-006**: The layout renders without horizontal scrolling on a 1024-pixel-wide viewport.
+- **SC-007**: In Step 1 and Step 2, the first real option can be selected as the initial selection and unlocks the next step in 100% of tested runs.
+- **SC-008**: With large fixture lists, users can locate and select a container/plan via search input without full-list manual scrolling.
 
 ## Assumptions
 
@@ -108,6 +134,7 @@ If the user changes the container, plan, or CSV file after a preview has been ge
 - The redesign is scoped to the single import page (`Home.razor`) and the shared layout (`MainLayout.razor`); no new pages or routes are required.
 - Steps are rendered as a vertical sequence on a single page (not a traditional multi-page wizard with navigation between pages); the user can see earlier steps by scrolling up.
 - The design system follows the Fluent UI Blazor design tokens already configured via `FluentDesignTheme`; custom CSS additions must be minimal and consistent with existing patterns.
+- The design system follows existing Fluent UI Blazor patterns for the currently installed package version in this repository; migration to v5 is treated as separate scope unless explicitly approved.
 - Mobile/touch optimisation is out of scope for this iteration; the primary target viewport is desktop browser at or above 1024 px wide.
 - The existing `HomeExecutionReport` component may be refactored or incorporated inline as part of Step 5, at the implementer's discretion, provided no functional behaviour is lost.
 - No changes are required to any back-end services, domain models, or infrastructure layers; all changes are confined to the Blazor web front-end project.

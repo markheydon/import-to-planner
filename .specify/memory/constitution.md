@@ -1,17 +1,14 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.1 -> 1.1.0
+- Version change: 1.1.0 -> 1.1.1
 - Modified principles:
-	- VI. Agent Delegation Discipline (added)
+	- None
 - Added sections:
 	- None
 - Removed sections:
 	- None
 - Templates requiring updates:
-	- ✅ updated: .specify/templates/plan-template.md
-	- ✅ updated: .specify/templates/spec-template.md
-	- ✅ updated: .specify/templates/tasks-template.md
-	- ✅ updated: AGENTS.md
+	- None
 - Follow-up TODOs:
 	- None
 -->
@@ -97,6 +94,13 @@ skills and reduces drift between governance intent and execution practice.
 	introduced without an explicit constitution amendment or approved scope decision.
 - End-user and contributor documentation, including comments intended for users, MUST use
 	UK English.
+- User interface implementation MUST prefer Fluent UI Blazor components, parameters, and
+	composition patterns over custom HTML/CSS. Custom CSS or hand-authored HTML overrides
+	MUST be treated as a last resort and only used where Fluent capabilities are insufficient
+	or where a known issue is documented.
+- Where Fluent UI MCP guidance is available, implementation choices for Fluent component
+	behaviour and workarounds MUST align with that guidance. Any deviation MUST be documented
+	with rationale.
 - Security-sensitive values (credentials, certificate material, tenant identifiers)
 	MUST NOT be committed and MUST be handled through approved configuration paths.
 
@@ -109,6 +113,8 @@ skills and reduces drift between governance intent and execution practice.
 	parity for both solution-level and AppHost validation paths.
 - Implementation planning and execution MUST include an agent-delegation check against
 	`AGENTS.md`, and any exception MUST be documented with rationale.
+- Pull requests with custom HTML/CSS workarounds in Fluent UI workflows MUST include
+	evidence that component-native and MCP-guided options were evaluated first.
 - Reviewers MUST block merges when constitutional gates are unmet or unsupported by
 	evidence.
 - Large or risky changes SHOULD be delivered incrementally with verifiable checkpoints.
@@ -133,4 +139,4 @@ Compliance review expectations:
 - Constitution compliance MUST be checked in planning and pull request review.
 - Non-compliance MUST be tracked as explicit follow-up work or resolved before release.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-11
+**Version**: 1.1.1 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-12

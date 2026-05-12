@@ -32,6 +32,7 @@ The following skills are expected to be used by agents handling related tasks. E
 - `csharp-docs`
 - `csharp-async`
 - `fluentui-blazor`
+- `fluentui-blazor-usage`
 - `dotnet-best-practices-repo`
 - `github-issues`
 - `aspire`
@@ -39,7 +40,7 @@ The following skills are expected to be used by agents handling related tasks. E
 Typical delegation:
 
 - Coding, architecture, and tests → C# Expert agent (uses `csharp-async`, `csharp-docs`, `csharp-xunit`, `dotnet-best-practices-repo`)
-- Blazor UI work → `fluentui-blazor` skill (C# Expert remains primary for code-level changes)
+- Blazor UI work → check installed package major version first; prefer `fluentui-blazor-usage` only when project targets v5, otherwise use `fluentui-blazor` for v4 implementation and use v5 skill for migration planning only
 - Issue / GitHub workflow tasks → `github-issues` skill
 
 Implementation workflow expectation:
