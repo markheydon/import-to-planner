@@ -1,162 +1,251 @@
-# Research: UI/UX Redesign — Stepped Import Workflow
+# Research: UI/UX Redesign — Stepped Import Workflow (MudBlazor)
 
 **Feature**: 002-ui-ux-redesign  
-**Date**: 2026-05-11  
+**Date**: 2026-05-12  
 **Status**: Complete — all unknowns resolved
 
 ## Summary
 
-All technical unknowns have been resolved through inspection of the existing codebase and the official Fluent UI Blazor documentation at https://www.fluentui-blazor.net/.
+All technical unknowns have been resolved through inspection of the existing codebase and
+the repository-local MudBlazor skill (`.github/skills/mudblazor/`).
 
-Additional validation for implementation readiness was completed against the Fluent UI Blazor v5 MCP documentation (`/Mcp/GetStarted`) and AI skills documentation (`/Mcp/AISkills`).
+This replanning supersedes the 2026-05-11 research which was Fluent UI-specific. All
+component decisions now reference MudBlazor. No attempt has been made to map Fluent UI
+components one-for-one; each decision selects the MudBlazor component that is most
+appropriate for the UI need.
 
 ---
 
 ## Decision 1: Vertical step layout strategy
 
-**Decision**: Custom vertical stepper built from Fluent UI primitives (`FluentCard`, `FluentBadge`, `FluentIcon`, `FluentStack`), **not** `FluentWizard`.
+**Decision**: Custom vertical stepper built from MudBlazor layout primitives:
+`MudStack` (vertical, outer container), one `MudPaper` per step, with `MudAvatar` for
+the step indicator and `MudText` for headings. No wizard widget or accordion component.
 
-**Rationale**: `FluentWizard` is designed as a contained widget with a fixed `Height` (default 400 px). Its content area scrolls internally, showing only the active step's content at once. The user requirement is explicitly "down the page" — meaning all steps are visible on the page with different visual states, and the user scrolls through the full vertical flow. The custom approach is the only one that satisfies this requirement while staying within Fluent UI primitives.
-
-**Alternatives considered**:
-- `FluentWizard` with `StepperPosition.Top` and `Height="auto"`: Rejected because the component is not designed for open-ended vertical stacking; height auto behaviour is not documented and layout would be unpredictable.
-- `FluentWizard` with `StepperPosition.Left`: Rejected for same reasons — places step navigation in a sidebar column, not a top-to-bottom step flow.
-- Third-party stepper library: Rejected by NFR-001 (Fluent UI must be the sole UI library).
-
----
-
-## Decision 2: Visual state differentiation for steps
-
-**Decision**: Three visual states for each step card:
-
-| State | Visual treatment |
-| ----- | ---------------- |
-| **Locked** | `FluentCard` with `MinimalStyle="true"`, muted header text, `FluentIcon` showing a lock or circle-outline, step number in neutral `FluentBadge`, controls disabled. |
-| **Active** | `FluentCard` with default styling, accent-coloured left border via scoped CSS, `FluentIcon` showing a play/chevron-right, step number in `FluentBadge` with `Appearance.Accent`. |
-| **Complete** | `FluentCard` with `MinimalStyle="true"`, muted text, `FluentIcon` showing a checkmark-circle (`CheckmarkCircle20Filled`), step number in `FluentBadge` with `Appearance.Neutral`. Optional compact summary of user's selection shown inline. |
-
-**Rationale**: Using `FluentCard` + `FluentBadge` + `FluentIcon` keeps all visual differentiation within the Fluent Design System. The `MinimalStyle` property on `FluentCard` reduces the CSS footprint for the many repeated locked/complete cards.
-
-**Alternatives considered**: Using Fluent accent border tokens directly on `<div>` elements — rejected because it bypasses the Fluent card elevation/shadow semantics that the user wants for "modern looking".
-
----
-
-## Decision 3: Execution report UI — tabs for result categories
-
-**Decision**: Use `FluentTabs` + `FluentTab` within Step 5 (Confirm & Results) to categorise the execution report into:
-
-| Tab | Content | Badge |
-| --- | ------- | ----- |
-| Summary | Created items grid + Reused/Skipped items grid | — |
-| Manual Actions | `FluentDataGrid` of `ManualAction` items | Count badge if > 0 |
-| Errors | `FluentDataGrid` of error strings | Count badge if > 0 |
-
-**Rationale**: The user explicitly suggested tabs for manual actions. `FluentTabs` with custom headers (`Header` parameter accepting `RenderFragment`) supports `FluentBadge` in the tab title, making it easy to draw attention to non-zero counts. This is a significant UX improvement over the current flat list.
-
-**Alternatives considered**: Accordion (FluentAccordion) for each section — rejected because tabs are a better fit for mutually exclusive sections of a completed operation. Flat rendering (current approach) — rejected as it produces a long, undifferentiated list.
-
----
-
-## Decision 4: Step connector line
-
-**Decision**: A vertical connector line between step cards is implemented using a single scoped CSS pseudo-element on a wrapper `<div>` with class `step-connector`. It uses `--neutral-stroke-rest` Fluent design token for the line colour to ensure automatic light/dark mode adaptation.
-
-**Rationale**: CSS-only approach keeps the Razor markup clean. Using the Fluent design token ensures the line colour follows the theme without hard-coding hex values.
-
-**Alternatives considered**: `FluentDivider` with vertical orientation — rejected because it produces a full-width horizontal rule, not a narrow left-aligned vertical connector. SVG lines — rejected as overly complex for a static layout element.
-
----
-
-## Decision 5: No new packages required
-
-**Decision**: All required components (`FluentWizard` was considered but rejected; `FluentTabs`, `FluentCard`, `FluentBadge`, `FluentIcon` are all used) are available in the currently installed `Microsoft.FluentUI.AspNetCore.Components` version **4.14.1**. No package updates or additions are required.
-
-**Rationale**: Version 4.14.1 includes all components used in the design. The `FluentIcons` package (`Microsoft.FluentUI.AspNetCore.Components.Icons` 4.14.1) is already referenced and provides the icon variants needed (`CheckmarkCircle20Filled`, `LockClosed20Regular`, `ChevronRight20Regular`).
-
----
-
-## Decision 6: HomeExecutionReport.razor refactoring scope
-
-**Decision**: `HomeExecutionReport.razor` will be refactored in-place to use `FluentTabs` for the three result categories. The component `[Parameter]` interface (`ExecutionResult`) remains unchanged, preserving compatibility with the parent `Home.razor`.
-
-**Rationale**: The component's external API does not need to change; only its internal rendering logic changes. Keeping it as a separate component preserves testability.
-
----
-
-## Decision 7: Step collapse/expand (completed steps)
-
-**Decision**: Completed steps will show a compact single-line summary (e.g. "Container: My Group (Group)") but will **not** implement an interactive expand/collapse toggle in this iteration.
-
-**Rationale**: Interactive collapsing would require additional state tracking and event handling. The spec marks this as "optionally collapse" (FR-003). For a first iteration, a fixed compact summary is sufficient and keeps complexity low. A follow-up feature can add expand/collapse.
-
----
-
-## Decision 8: MCP-first implementation guardrail
-
-**Decision**: Configure and use the Fluent UI Blazor MCP server (`fluentui-mcp`) before UI implementation/refinement work.
-
-**Rationale**: Recent implementation attempts encountered FluentSelect dropdown visibility issues that triggered repeated CSS trial-and-error. MCP tools provide component-aware guidance and reduce reliance on speculative CSS changes.
+**Rationale**: The user requirement is a vertically scrolling "steps down the page"
+layout, not a contained wizard widget. `MudPaper` cards give each step a clean, elevated
+surface; the visual state (locked / active / complete) is expressed entirely through
+MudBlazor properties (`Elevation`, `Color`, `Disabled`) and a single scoped CSS utility
+class for the active-step accent border — the only custom CSS in this feature, used as a
+last resort per the MudBlazor skill decision order. `MudAvatar` for the step circle is
+intent-driven: `Color.Default` (locked), `Color.Primary` (active), `Color.Success`
+(complete, with a checkmark icon replacing the number).
 
 **Alternatives considered**:
-- Continue with manual trial-and-error in CSS: Rejected due to repeated regressions and time loss.
-- Ignore MCP until after implementation: Rejected because it does not mitigate the known planning risk.
+- `MudExpansionPanels` for collapsible steps: Rejected — the requirement is a static
+  vertical sequence, not a collapsed/expanded accordion. Collapsible behaviour is
+  explicitly deferred to a follow-up iteration (FR-003).
+- A third-party Blazor stepper: Rejected — MudBlazor primitives are sufficient and
+  keeping a single UI library is the correct scope boundary.
 
 ---
 
-## Decision 9: Replace v4-focused skill usage with v5 AI skill pack for guidance
+## Decision 2: Step visual state differentiation
 
-**Decision**: Add and prefer a repository-local `fluentui-blazor-usage` skill pack (`SKILL.md`, `references/SETUP.md`, `references/DATAGRID.md`, `references/THEMING.md`) sourced from the official v5 AI Skills guidance page.
+**Decision**: Three visual states rendered via MudBlazor component properties:
 
-**Rationale**: The v5 skill pack explicitly calls out common v4/v5 API confusion (`FluentNavMenu` vs `FluentNav`, `SelectedOptions` vs `SelectedItems`, `FluentDesignTheme` removal). These are high-value guardrails even while this feature remains implemented against current project constraints.
+| State    | `MudPaper` Elevation | `MudAvatar` Color | Avatar content | Content state |
+|----------|----------------------|-------------------|----------------|---------------|
+| Locked   | 0                    | `Color.Default`   | Step number    | Controls disabled, muted title text |
+| Active   | 4                    | `Color.Primary`   | Step number    | Controls enabled, left-accent border via `Home.razor.css` |
+| Complete | 1                    | `Color.Success`   | Checkmark icon | Compact summary text, inputs hidden |
+
+The active-step left-accent border is the only custom CSS required, applied via a scoped
+`Home.razor.css` `.step-active` class using `var(--mud-palette-primary)` so it follows
+the MudBlazor theme automatically.
 
 **Alternatives considered**:
-- Keep only the existing v4-focused `fluentui-blazor` skill: Rejected because it does not capture the new MCP-oriented guidance model.
-- No project-local skill updates: Rejected because agent behaviour then depends on stale/default assumptions.
+- Using `MudCard` instead of `MudPaper`: `MudCard` imposes its own header/content/action
+  slot structure that adds unnecessary nesting for a step card. `MudPaper` with
+  `Class="pa-4"` is cleaner.
+- Applying `Opacity` style to locked steps: Partial opacity on the whole card obscures
+  content too aggressively. Disabling individual controls and using `mud-text-disabled` on
+  the heading produces a more readable locked state.
 
 ---
 
-## Decision 10: Searchable selector component strategy (FR-013 / FR-014 / FR-015)
+## Decision 3: Execution report UI — tabbed categories
 
-**Decision**: Replace `FluentSelect` in Step 1 and Step 2 with `FluentAutocomplete<T>`. The component is configured to satisfy all three selector requirements:
+**Decision**: `MudTabs` + `MudTabPanel` inside Step 5 (Confirm & Import) to categorise
+the execution report. Tab headers include `MudBadge` for non-zero count indicators:
 
-- `SelectedOptions` is initialised empty — enforces FR-013 (no first-option auto-selection).
-- `SelectedOptionsChanged` is the sole callback driving step progression — enforces FR-014 (explicit selection only).
-- Built-in filter-as-you-type behaviour over the bound options collection — satisfies FR-015 (searchable filtering for large datasets).
+| Tab            | Source property              | Badge condition          |
+|----------------|------------------------------|-------------------------|
+| Summary        | `Created` + `ReusedOrSkipped`| — (no badge)            |
+| Manual Actions | `ManualActions`              | Count when `> 0`        |
+| Errors         | `Errors`                     | Count when `> 0`        |
 
-**Rationale**: `FluentAutocomplete<T>` is the only Fluent UI Blazor v4 component that combines all three properties:
-1. An explicit change callback pattern (`SelectedOptionsChanged`) that does not fire on render.
-2. Built-in filtered search input over a bound `IQueryable<T>` or `IEnumerable<T>`.
-3. No implicit preselection when `SelectedOptions` is initialised as an empty collection.
-
-A plain `FluentSelect` cannot satisfy FR-013/FR-014 without brittle workarounds because it can auto-select the first rendered option when no selected value matches — this is the known bug that drove those requirements.
-
-**Implementation constraints**:
-- `FluentAutocomplete<TOption>` parameterised with `PlannerContainer` (Step 1) and `PlannerPlan` (Step 2).
-- `NameSelector` extracts the display name for filtering.
-- `MaximumSelectedOptions="1"` enforces single selection semantics.
-- `SelectedOptions` initial value is `[]` (no pre-selection on load or list refresh).
-- `Placeholder` is set to a descriptive prompt (e.g. "Select or search for a container…").
-- `SelectedOptionsChanged` callback sets `selectedContainer`/`selectedPlan` and calls `StateHasChanged`.
-- `selectedContainer` and `selectedPlan` are cleared to `null` on container-change or list-refresh to ensure FR-014 consistency.
-
-**Validation required at T006**: The C# Expert agent must confirm the exact v4 API signature (`SelectedOptions`, `SelectedOptionsChanged`, `NameSelector`, `MaximumSelectedOptions`) during the foundation phase (T006/T028–T029). Consult the Fluent UI MCP server for v4-accurate guidance.
+Each tab title is a `RenderFragment` wrapping a `MudBadge` around a `MudText` label —
+the standard MudBlazor approach for badged tab headings.
 
 **Alternatives considered**:
-- `FluentCombobox`: Rejected — in v4 it lacks the `SelectedOptionsChanged` pattern that unambiguously separates explicit selection from binding initialisation, and it does not expose a clean single-selection change event.
-- `FluentSelect` with null-sentinel option: Rejected — requires adding a dummy null option to the bound collection and brittle `@bind-Value` initialisation; violates the Fluent-first principle and adds maintenance debt.
-- `FluentSelect` with explicit `@onchange` handler: Rejected — the underlying Fluent select element may still fire a change event on first render when the initial value is unset, perpetuating the FR-013 bug.
+- `MudExpansionPanels` for each result section: Rejected — tabs are the correct
+  affordance for mutually exclusive result categories. Accordions require active user
+  effort to discover errors.
+- Flat rendering (current approach): Rejected — produces an undifferentiated long list
+  that grows with each category and makes errors easy to miss.
 
 ---
 
-## Codebase Facts Confirmed
+## Decision 4: Container and plan selectors (searchable, no preselection)
 
-| Fact | Value |
-| ---- | ----- |
-| FluentUI version | 4.14.1 |
-| Icons package version | 4.14.1 |
-| App is single-page | Yes — `Home.razor` at `/` is the only user-facing page |
-| Existing Home.razor lines | ~465 |
-| Existing CSS scoped files in Pages | None (Home.razor has no `.razor.css` today) |
-| No external API contract | Confirmed — all changes are front-end only |
-| Both runtime modes (Graph + InMemory) | UI is mode-agnostic; mode-specific logic in `OnInitializedAsync` is unchanged |
-| Test projects | `ImportToPlanner.Web.Tests` uses bUnit for component tests |
+**Decision**: `MudAutocomplete<T>` for Step 1 (container) and Step 2 (plan).
+
+Configuration:
+- `SearchFunc` is `Func<string, CancellationToken, Task<IEnumerable<T>>>` returning
+  via `Task.FromResult(...)` for synchronous in-memory filtering.
+- `ValueChanged` callback is the sole driver of step progression. `Value` starts as
+  `null` and is cleared to `null` on container change or list refresh.
+- `ToStringFunc` extracts the display string for rendering and filtering.
+- `Variant="Variant.Outlined"` for consistent input styling with the overall form.
+- `Placeholder` is set to a descriptive prompt (e.g., "Search or select a container…").
+
+This satisfies all three selector requirements:
+- FR-013: No preselection — `Value` is `null` on initialisation.
+- FR-014: Explicit selection only — `ValueChanged` is the sole callback; nothing fires on render.
+- FR-015: Searchable — `SearchFunc` filters the in-memory list as the user types.
+
+**Alternatives considered**:
+- `MudSelect<T>`: Rejected — does not provide search-as-you-type for large lists
+  without additional manual filtering wiring. Can preselect the first item when the
+  bound collection has a default value.
+- Custom text input + dropdown: Rejected — MudBlazor has a first-class component;
+  custom solutions violate the skill's decision-order principle.
+
+---
+
+## Decision 5: File upload (CSV)
+
+**Decision**: `MudFileUpload<IBrowserFile>` with `Accept=".csv,text/csv"` and
+`MaximumFileCount="1"`. The `OnFilesChanged` callback receives the selected file;
+the file name is displayed in a `MudText` element below the upload button.
+
+A `MudButton` inside the `<ButtonTemplate>` acts as the visible upload trigger,
+styled with `Variant.Outlined`.
+
+**Alternatives considered**:
+- Raw `<InputFile>` element: Rejected — `MudFileUpload<T>` is the MudBlazor-native
+  equivalent and integrates with the component decision order.
+
+---
+
+## Decision 6: Inline alerts and messages
+
+**Decision**: `MudAlert` for all inline contextual messages.
+
+Severity mapping:
+- `Severity.Info` — instructional messages, "no containers found" prompt.
+- `Severity.Warning` — no plans for container; stale-preview warning.
+- `Severity.Error` — validation errors present.
+- `Severity.Success` — execution complete with link to plan in Planner.
+
+`MudAlert` renders inline inside the relevant step card, keeping contextual messaging
+co-located with the step it relates to.
+
+**Alternatives considered**:
+- `ISnackbar` for persistent state messages (stale preview, no plans found): Rejected —
+  snackbars are ephemeral and unsuitable for conditions that must remain visible until
+  resolved. `ISnackbar` is reserved for transient operation outcomes.
+
+---
+
+## Decision 7: Preview and report tables
+
+**Decision**: Use the lightest MudBlazor table component appropriate to each use:
+
+| Location              | Component       | Rationale |
+|-----------------------|-----------------|-----------|
+| Bucket actions (preview) | `MudSimpleTable` | Small static list (1–10 rows), read-only, no interaction needed |
+| Task actions (preview)   | `MudDataGrid<T>` with `Dense="true"` | Potentially large list; benefits from density and column width |
+| Validation errors (Step 4) | `MudDataGrid<T>` with `Dense="true"` | Potentially many rows; consistent with task actions presentation |
+| Summary tab (execution report) | `MudSimpleTable` | Short read-only created/reused counts |
+| Manual Actions tab    | `MudDataGrid<T>` | Multiple columns; benefits from column alignment |
+| Errors tab            | `MudDataGrid<T>` | Consistent with manual actions rendering |
+
+**Alternatives considered**:
+- `MudDataGrid<T>` for everything: Over-engineered for 1–10 row static lists.
+- `MudTable<T>` throughout: Heavier than `MudSimpleTable` for fully static read-only tables.
+
+---
+
+## Decision 8: MainLayout shell
+
+**Decision**: Replace the custom `app-shell` div + `app-header` div layout with the
+standard MudBlazor shell:
+
+- `MudLayout` — outer shell
+- `MudAppBar Elevation="1"` — top bar with app title, user identity, sign-in/sign-out
+- `MudMainContent Class="pa-4"` — page content area
+
+Providers in `MainLayout.razor`:
+```razor
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+```
+
+The `app.css` global stylesheet retains only Blazor reconnect/error overlay styles.
+All shell layout CSS in `MainLayout.razor.css` and `.import-grid` utility classes in
+`app.css` are removed — MudBlazor utility classes and `MudStack` replace them.
+
+**Alternatives considered**:
+- Keep the existing custom header div: Rejected — it requires maintaining custom CSS
+  that MudBlazor handles natively via `MudLayout`/`MudAppBar`/`MudMainContent`.
+
+---
+
+## Decision 9: Busy state / loading indicator
+
+**Decision**: A `MudProgressLinear Indeterminate="true"` bar positioned immediately below
+the `MudAppBar` (or at the top of the main content area) is shown when `isBusy` is true.
+Individual action buttons remain disabled during busy state (existing behaviour preserved).
+
+**Rationale**: A top-of-page linear progress bar follows the Material Design convention
+for page-level async operations and gives clear global feedback without obscuring step
+content. Existing button-disable logic provides secondary confirmation.
+
+---
+
+## Decision 10: Package changes required
+
+**Decision**: The following changes are required:
+
+**`Directory.Packages.props`**:
+- Remove `Microsoft.FluentUI.AspNetCore.Components` 4.14.1
+- Remove `Microsoft.FluentUI.AspNetCore.Components.Icons` 4.14.1
+- Add `MudBlazor` (latest stable compatible with .NET 10)
+
+**`ImportToPlanner.Web.csproj`**:
+- Remove `<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />`
+- Remove `<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />`
+- Add `<PackageReference Include="MudBlazor" />`
+
+**`_Imports.razor`**:
+- Replace `@using Microsoft.FluentUI.AspNetCore.Components` with `@using MudBlazor`
+
+**`Program.cs`**:
+- Remove `using Microsoft.FluentUI.AspNetCore.Components;`
+- Replace `builder.Services.AddFluentUIComponents();` with `builder.Services.AddMudServices();`
+
+**`App.razor`**:
+- Add `<link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />` to `<head>`
+  (MudBlazor requires the CSS link to be explicitly present in the host page).
+
+---
+
+## Decision 11: HomeExecutionReport refactoring scope
+
+**Decision**: `HomeExecutionReport.razor` is refactored in-place to use `MudTabs` as
+described in Decision 3. The external `[Parameter]` surface
+(`ImportExecutionResult? ExecutionResult`) remains unchanged, preserving compatibility
+with `Home.razor` and all existing tests.
+
+---
+
+## Decision 12: Step collapse/expand (deferred)
+
+**Decision**: Completed steps show a compact single-line summary (e.g., "Container: My
+Group (Group)") rendered as `MudText Typo="Typo.body2"` inside the step `MudPaper`, but
+do not implement interactive expand/collapse. FR-003 defers this explicitly. No state
+complexity or additional components are required for the first iteration.

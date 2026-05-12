@@ -96,7 +96,7 @@ When a tenant has many groups or plans, the user can quickly locate a target con
 - **FR-007**: Step 4 MUST allow the user to trigger validation and preview; validation errors MUST be shown inline within this step; the dry-run preview (bucket actions and task actions) MUST be shown within this step on success.
 - **FR-008**: Step 5 MUST allow the user to confirm and execute the import; the execution report (created, reused/skipped, errors, manual actions, and a link to the plan) MUST appear within this step on completion.
 - **FR-009**: A stale-preview warning MUST appear within Step 4 when the user's current selections differ from those used to generate the most recent preview, and execution MUST be disabled until a fresh preview is generated.
-- **FR-010**: The overall visual design MUST align with a modern Fluent UI aesthetic: consistent use of card-like containers, appropriate use of accent colours for active steps, neutral or muted styling for locked steps, and clear typographic hierarchy.
+- **FR-010**: The overall visual design MUST align with modern MudBlazor component patterns: consistent use of card-like containers, appropriate use of accent colours for active steps, neutral or muted styling for locked steps, and clear typographic hierarchy.
 - **FR-011**: All existing functional behaviour (container/plan loading, CSV parsing, preview generation, execution, error display, authentication redirect) MUST be preserved without regression.
 - **FR-012**: The layout header MUST retain user identity display and sign-in/sign-out actions, consistent with the current design.
 - **FR-013**: Container and plan selectors MUST initialise in an unselected placeholder state and MUST NOT default-select the first real option.
@@ -108,12 +108,12 @@ When a tenant has many groups or plans, the user can quickly locate a target con
 - **NFR-001 Code Quality**: Solution MUST preserve defined architectural boundaries and avoid introducing unnecessary coupling.
 - **NFR-002 Testing**: Behaviour changes MUST define required automated tests (unit, integration, regression as applicable).
 - **NFR-003 UX Consistency**: User-facing changes MUST define expected copy, interaction, and accessibility consistency with existing flows.
-- **NFR-004 Performance**: The stepped layout MUST not introduce perceptible additional render delay compared to the current flat layout; interactive steps MUST respond within the same performance envelope as before.
+- **NFR-004 Performance**: The stepped layout MUST define measurable UI responsiveness expectations for front-end interactions controlled by this feature (for example, step unlock and preview-state rendering) and MUST not introduce perceptible additional render delay compared to the current flat layout. Third-party component internals and back-end/API latency are out of scope for this feature.
 - **NFR-005 Runtime Modes**: The redesigned UI MUST function correctly in both in-memory and Graph runtime modes, including correct authentication redirect and container/plan loading behaviour for each mode.
 - **NFR-006 Scope Boundary**: Feature MUST preserve current single-tenant scope; no multi-tenant or multi-plan-simultaneous-import capability is introduced.
 - **NFR-007 AppHost and CI**: Feature MUST preserve solution-level and AppHost build/validation expectations in CI workflows.
 - **NFR-008 Agent Delegation**: Implementation MUST be delegated to the C# Expert agent registered in `AGENTS.md` for all Blazor component and code changes.
-- **NFR-009 Fluent-First Inputs**: Selector behaviour MUST be implemented with Fluent UI component capabilities first; custom HTML/CSS input workarounds are allowed only as documented last resort.
+- **NFR-009 MudBlazor-First Inputs**: Selector behaviour MUST be implemented with MudBlazor component capabilities first; custom HTML/CSS input workarounds are allowed only as documented last resort.
 
 ## Success Criteria *(mandatory)*
 
@@ -124,17 +124,15 @@ When a tenant has many groups or plans, the user can quickly locate a target con
 - **SC-003**: No existing functional behaviour is regressed; the full automated test suite (unit and integration tests) passes without modification to test logic.
 - **SC-004**: The stale-preview warning appears correctly in 100% of cases where the user changes selections after generating a preview, verified by automated scenario tests.
 - **SC-005**: No architecture boundary violations are introduced; the presentation layer remains the sole location of UI state and rendering changes.
-- **SC-006**: The layout renders without horizontal scrolling on a 1024-pixel-wide viewport.
 - **SC-007**: In Step 1 and Step 2, the first real option can be selected as the initial selection and unlocks the next step in 100% of tested runs.
 - **SC-008**: With large fixture lists, users can locate and select a container/plan via search input without full-list manual scrolling.
 
 ## Assumptions
 
-- Fluent UI Blazor component library (`Microsoft.FluentUI.AspNetCore.Components`) remains the sole UI component library; no additional third-party UI libraries will be introduced.
+- MudBlazor (`MudBlazor`) is the sole UI component library for this redesign; no additional third-party UI libraries will be introduced.
 - The redesign is scoped to the single import page (`Home.razor`) and the shared layout (`MainLayout.razor`); no new pages or routes are required.
 - Steps are rendered as a vertical sequence on a single page (not a traditional multi-page wizard with navigation between pages); the user can see earlier steps by scrolling up.
-- The design system follows the Fluent UI Blazor design tokens already configured via `FluentDesignTheme`; custom CSS additions must be minimal and consistent with existing patterns.
-- The design system follows existing Fluent UI Blazor patterns for the currently installed package version in this repository; migration to v5 is treated as separate scope unless explicitly approved.
-- Mobile/touch optimisation is out of scope for this iteration; the primary target viewport is desktop browser at or above 1024 px wide.
+- The design system follows MudBlazor patterns and theme tokens configured for this repository; custom CSS additions must be minimal and consistent with existing patterns.
+- Mobile and touch usage remain in scope for primary workflow usability, while desktop browser at or above 1024 px remains the primary target viewport.
 - The existing `HomeExecutionReport` component may be refactored or incorporated inline as part of Step 5, at the implementer's discretion, provided no functional behaviour is lost.
 - No changes are required to any back-end services, domain models, or infrastructure layers; all changes are confined to the Blazor web front-end project.

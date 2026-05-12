@@ -1,251 +1,241 @@
-# Tasks: UI/UX Redesign — Stepped Import Workflow
+# Tasks: UI/UX Redesign — Stepped Import Workflow (MudBlazor)
 
-**Input**: Design documents from `specs/002-ui-ux-redesign/`  
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, quickstart.md  
+**Input**: Design documents from `/specs/002-ui-ux-redesign/`  
+**Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `quickstart.md`  
 **Tests**: Included and required (behaviour changes and regression coverage).  
-**Agent delegation**: All coding, architecture, and test implementation tasks MUST be delegated to the C# Expert agent per `AGENTS.md`.
+**Agent delegation**: All coding, architecture, and test implementation tasks MUST be delegated to the C# Expert agent per `AGENTS.md`. The `mudblazor` skill is the primary UI reference.
 
-## Format: `[ID] [P?] [Story] Description with file path`
+## Format: `[ID] [P?] [Story?] Description with file path`
 
 - **[P]**: Can run in parallel (different files, no incomplete dependencies)
-- **[US1/US2/US3/US4]**: User story label from spec.md
+- **[US1/US2/US3/US4]**: User story label from spec.md; setup and foundational tasks have no story label
+
+---
 
 ## Phase 1: Setup
 
-**Purpose**: Confirm feature governance and implementation constraints before code changes.
+**Purpose**: Confirm feature governance, execution references, and quality gates before code changes.
 
-- [ ] T001 Confirm C# Expert delegation and record any approved exceptions in `specs/002-ui-ux-redesign/plan.md`
-- [ ] T002 Confirm constitution gates and Fluent-first/CSS-last-resort guardrails are reflected in `specs/002-ui-ux-redesign/plan.md`
-- [ ] T003 Confirm Fluent UI MCP server is configured in `.vscode/mcp.json` and available for implementation guidance in this workspace
+- [ ] T001 Update feature-level quality gates for architecture, testing, UX consistency, performance, runtime-mode compatibility, and CI/AppHost parity in `specs/002-ui-ux-redesign/plan.md`
+- [ ] T002 Confirm C# Expert delegation and MudBlazor skill usage for implementation in `AGENTS.md`
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Establish shared implementation foundations required by all user stories.
+**Purpose**: Package swap and global registrations that every Razor file depends on. No user-story implementation can begin until this phase is complete.
 
-**Critical**: No user-story implementation starts before this phase is complete.
+**⚠️ CRITICAL**: Complete all T003–T009 before any Phase 3+ work starts.
 
-- [ ] T004 [P] Create scoped stylesheet `src/ImportToPlanner.Web/Components/Pages/Home.razor.css` with step shell classes (`.step-list`, `.step-connector`, `.step--active`, `.step--complete`, `.step--locked`) using Fluent design tokens
-- [ ] T005 [P] Refactor `src/ImportToPlanner.Web/Components/Pages/HomeExecutionReport.razor` to `FluentTabs` layout while keeping the existing `ExecutionResult` parameter contract unchanged
-- [ ] T006 Define and document selector strategy for v4 implementation in `specs/002-ui-ux-redesign/research.md` (unselected placeholders, explicit selection progression, searchable component choice)
+- [ ] T003 Update MudBlazor package versions and remove Fluent UI package versions in `Directory.Packages.props`
+- [ ] T004 [P] Replace Fluent UI package references with MudBlazor in `src/ImportToPlanner.Web/ImportToPlanner.Web.csproj`
+- [ ] T005 [P] Replace `AddFluentUIComponents()` with `AddMudServices()` in `src/ImportToPlanner.Web/Program.cs`
+- [ ] T006 [P] Replace Fluent UI imports with MudBlazor imports in `src/ImportToPlanner.Web/Components/_Imports.razor`
+- [ ] T007 [P] Add the MudBlazor stylesheet reference to `src/ImportToPlanner.Web/Components/App.razor`
+- [ ] T008 Rewrite the application shell using `MudLayout`, `MudAppBar`, `MudMainContent`, and required providers in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor`
+- [ ] T009 Remove superseded shell and import-grid CSS while retaining Blazor error overlay styles in `src/ImportToPlanner.Web/wwwroot/app.css`
 
-**Checkpoint**: Shared step styling, tabbed report component, and selector strategy are in place.
+**Checkpoint**: Solution builds, providers are registered, and the UI shell baseline is ready for feature work.
 
 ---
 
 ## Phase 3: User Story 1 — Guided Step-by-Step Import (Priority: P1) 🎯 MVP
 
-**Goal**: Deliver five vertical workflow steps with progressive unlock behaviour and no regression to existing import functionality.
+**Goal**: The user can complete a full end-to-end import through five vertically stacked step cards that unlock in sequence.
 
-**Independent Test**: Complete full import flow from Step 1 to Step 5 in in-memory mode and verify sequential unlock behaviour.
+**Independent Test**: Start the app in in-memory mode, complete the five-step flow using a representative CSV fixture, and verify that Step 5 shows the execution report inline without navigation.
 
-### Tests for User Story 1 (write first, verify failing)
+### Tests for User Story 1 ⚠️
 
-- [ ] T007 [P] [US1] Add failing render test for five step regions with role/aria labels in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
-- [ ] T008 [P] [US1] Add failing workflow test for initial lock state (only Step 1 active) in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T009 [P] [US1] Add failing workflow test for step progression container→plan→file→preview→execute in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T010 [P] [US1] Update MudBlazor shell and smoke assertions in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
+- [ ] T011 [US1] Replace workflow selectors and add step-sequence assertions for Step 1 through Step 5 in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T012 [US1] Add regression coverage for null placeholder selector state on initial render in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T013 [US1] Add regression coverage for explicit first-option selection unlocking the next step in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Replace flat page structure with five vertical step cards in `src/ImportToPlanner.Web/Components/Pages/Home.razor` while preserving existing code-behind behaviour
-- [ ] T011 [US1] Implement Step 1 (container selection + refresh + empty-state message) in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T012 [US1] Implement Step 2 (plan selection + refresh + empty-state message) in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T013 [US1] Implement Step 3 (CSV upload + options + selected filename) in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T014 [US1] Implement Step 4 (validate/preview, parse errors, dry-run grids) in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T015 [US1] Implement Step 5 (execute action + `HomeExecutionReport`) in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T014 [US1] Rewrite the stepped page scaffold with five `MudPaper` cards and derived step-state helpers in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T015 [US1] Implement Step 1 container selection, refresh action, and empty-state alert in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T016 [US1] Implement Step 2 plan selection, refresh action, no-plan warning, and explicit state reset logic in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T017 [US1] Implement Step 3 CSV upload, file-name display, and ignore-extra-columns toggle in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T018 [US1] Implement Step 4 validate-and-preview actions, inline validation errors, preview tables, and busy-state rendering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T019 [US1] Refactor Step 5 execution reporting to `MudTabs` with summary, manual actions, and errors in `src/ImportToPlanner.Web/Components/Pages/HomeExecutionReport.razor`
+- [ ] T020 [US1] Wire Step 5 confirm-and-execute flow and inline success reporting in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
-**Checkpoint**: MVP flow is fully usable and independently testable.
+**Checkpoint**: The complete five-step import flow is functional and independently testable in in-memory mode.
 
 ---
 
-## Phase 4: User Story 2 — Clear Visual Status And Progress (Priority: P2)
+## Phase 4: User Story 2 — Clear Visual Status and Progress (Priority: P2)
 
-**Goal**: Make active, complete, and locked step status obvious at a glance.
+**Goal**: Users can distinguish completed, active, and locked steps at a glance without reading the full body content.
 
-**Independent Test**: Partial workflow completion shows complete/active/locked states accurately without reading step content.
+**Independent Test**: Complete Steps 1 and 2 only, then verify completed indicators, active-step emphasis, and locked-step styling remain visually distinct.
 
-### Tests for User Story 2 (write first, verify failing)
+### Tests for User Story 2 ⚠️
 
-- [ ] T016 [P] [US2] Add failing test for `step--active` class and active status icon in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T017 [P] [US2] Add failing test for `step--complete` class and complete status icon in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T018 [P] [US2] Add failing test for `step--locked` class and disabled controls in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T021 [US2] Add coverage for `MudPaper` elevation values across locked, active, and complete states in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T022 [US2] Add coverage for avatar colour, checkmark rendering, and step-number rendering in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Add computed per-step state helpers in `src/ImportToPlanner.Web/Components/Pages/Home.razor` derived from existing state variables only
-- [ ] T020 [US2] Bind step CSS classes and badge appearance based on computed state in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T021 [US2] Add status icons (active/complete/locked) in step headers in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T022 [US2] Add compact summaries for completed steps in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T023 [US2] Finalise status visuals in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
+- [ ] T023 [P] [US2] Add the active-step accent rule in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
+- [ ] T024 [US2] Finalize active, locked, and complete visual state helpers and summary text rendering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
-**Checkpoint**: Visual progression cues are correct and independently validated.
+**Checkpoint**: Visual progress states are verifiable by automated tests and manual inspection.
 
 ---
 
-## Phase 5: User Story 4 — Searchable Selectors For Large Tenant Datasets (Priority: P2)
+## Phase 5: User Story 4 — Searchable Selectors for Large Tenant Datasets (Priority: P2)
 
-**Goal**: Enable quick, searchable selection for containers and plans in large Microsoft 365 datasets.
+**Goal**: Users can search container and plan lists and select results with keyboard or pointer input.
 
-**Independent Test**: With large fixture lists, users can search and select target container/plan without full-list scrolling.
+**Independent Test**: Load a large fixture list, type partial search text into both selectors, and verify filtering plus keyboard-driven selection unlock the next step.
 
-### Tests for User Story 4 (write first, verify failing)
+### Tests for User Story 4 ⚠️
 
-- [ ] T024 [P] [US4] Add failing test for unselected placeholder initial state in Step 1 and Step 2 selectors in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T025 [P] [US4] Add failing regression test that explicit first-option selection unlocks next step in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T026 [P] [US4] Add failing test for searchable filtering behaviour in container and plan selectors in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T027 [P] [US4] Add failing keyboard-selection parity test for searchable selectors in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T025 [US4] Add coverage for container search filtering with a large fixture list in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T026 [US4] Add coverage for keyboard or `ValueChanged`-driven plan selection unlocking Step 3 in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 4
 
-- [ ] T028 [US4] Replace Step 1 selector with Fluent searchable selector pattern suitable for v4 (for example `FluentAutocomplete`/`FluentCombobox`) in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T029 [US4] Replace Step 2 selector with Fluent searchable selector pattern suitable for v4 in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T030 [US4] Ensure both selectors initialise with explicit unselected placeholder state and no implicit first-option selection in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T031 [US4] Ensure progression logic advances only on explicit user selection events, including first-option selection, in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T032 [US4] Add lightweight UX copy hints for searchable selectors (e.g., search prompt text) in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T027 [US4] Implement `SearchContainers` and `SearchPlans` for case-insensitive filtering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
-**Checkpoint**: Selector usability scales for large datasets and first-option regression is eliminated.
+**Checkpoint**: Search filtering and explicit selection behaviour are functional for large lists.
 
 ---
 
-## Phase 6: User Story 3 — Stale Preview Warning Inline With Execute Step (Priority: P3)
+## Phase 6: User Story 3 — Stale Preview Warning (Priority: P3)
 
-**Goal**: Keep stale-preview messaging contextual and execution safety enforced.
+**Goal**: If the user changes selections after generating a preview, the execute step locks again and a contextual stale-preview warning appears inline in Step 4.
 
-**Independent Test**: Generate preview, change upstream selection, verify stale warning appears in Step 4 and Step 5 relocks until re-validation.
+**Independent Test**: Generate a preview, change the selected plan or container, verify the stale-preview warning appears in Step 4 and the execute action disables, then re-validate to clear the warning.
 
-### Tests for User Story 3 (write first, verify failing)
+### Tests for User Story 3 ⚠️
 
-- [ ] T033 [P] [US3] Add failing test for stale warning placement within Step 4 content in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T034 [P] [US3] Add failing test for Step 5 lock/unlock transitions driven by stale preview state in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T028 [US3] Add coverage for stale-preview warning visibility and disabled execute action after selection changes in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [ ] T029 [US3] Add coverage for re-validation clearing the stale-preview warning and re-enabling execution in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 3
 
-- [ ] T035 [US3] Place stale-preview warning inline inside Step 4 content flow in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T036 [US3] Confirm Step 5 lock state remains derived from existing `preview` and `isPreviewStale` invariants in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T030 [US3] Render the stale-preview warning inline in Step 4 and keep Step 5 execution guarded by preview freshness in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
-**Checkpoint**: Stale-preview behaviour is contextual, safe, and independently testable.
+**Checkpoint**: Preview freshness safeguards are visible, contextual, and verified.
 
 ---
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-**Purpose**: Final quality, accessibility, runtime-mode checks, and regression pass.
-
-- [ ] T037 [P] Add or verify `role="region"` and per-step `aria-label` attributes in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T038 [P] Review user-facing copy for UK English consistency in `src/ImportToPlanner.Web/Components/Pages/Home.razor` and `src/ImportToPlanner.Web/Components/Pages/HomeExecutionReport.razor`
-- [ ] T039 [P] Validate 1024px viewport behaviour and prevent horizontal scrolling in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
-- [ ] T040 Run full automated test suite via `dotnet test` from repository root and resolve regressions
-- [ ] T041 Verify both runtime modes (in-memory and Graph) per `specs/002-ui-ux-redesign/quickstart.md`
-- [ ] T042 [P] Confirm NFR-004 performance is not regressed: run the bUnit test suite and verify no new slow-render warnings; record baseline render assertion evidence in `specs/002-ui-ux-redesign/quickstart.md`
-- [ ] T043 [P] Confirm NFR-007 AppHost and CI parity: run `dotnet build` from repo root and from the AppHost project and confirm both succeed without errors or new warnings
+- [ ] T031 [P] Verify `MudProgressLinear` appears for `isBusy` operations in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [ ] T032 [P] Audit UK English copy, alert text, button labels, and placeholders in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor`
+- [ ] T033 [P] Validate the end-to-end five-step workflow can be completed within 5 minutes using an in-memory run and a representative CSV fixture from `specs/002-ui-ux-redesign/quickstart.md`
+- [ ] T034 [P] Capture measurable UI responsiveness evidence for step unlock and preview-state rendering in `specs/002-ui-ux-redesign/quickstart.md`
+- [ ] T035 [P] Validate primary-flow mobile/touch usability and responsive behaviour in `specs/002-ui-ux-redesign/quickstart.md`
+- [ ] T036 [P] Run solution build and all tests, then record runtime-mode validation outcomes for both in-memory and Graph paths in `specs/002-ui-ux-redesign/quickstart.md`
+- [ ] T037 [P] Update Dependabot NuGet group definitions by replacing Fluent UI package grouping with MudBlazor package grouping in `.github/dependabot.yml`
+- [ ] T038 [P] Capture SC-005 architecture-boundary verification evidence for PR notes and mirror a concise evidence summary in `specs/002-ui-ux-redesign/quickstart.md`
 
 ---
 
 ## Dependencies & Execution Order
 
-### Phase dependencies
+### Phase Dependencies
 
-- Phase 1 → Phase 2
-- Phase 2 blocks all user-story phases
-- User stories proceed in priority order for incremental delivery: US1 → US2 → US4 → US3
-- Polish phase depends on completion of all selected user stories
+- **Phase 1 (Setup)**: No dependencies
+- **Phase 2 (Foundational)**: Depends on Phase 1 and blocks all user stories
+- **Phase 3 (US1)**: Depends on Phase 2 and delivers the MVP
+- **Phase 4 (US2)**: Depends on T014 from US1 because visual-state helpers live in `Home.razor`
+- **Phase 5 (US4)**: Depends on T015–T016 because searchable selectors extend the Step 1 and Step 2 controls in `Home.razor`
+- **Phase 6 (US3)**: Depends on T018 and T020 because stale-preview protection builds on preview and execute flow state
+- **Phase 7 (Polish)**: Depends on all implemented user stories
 
-### Story dependencies
+### User Story Dependencies
 
-- **US1** depends on foundational tasks only
-- **US2** depends on US1 structure being present
-- **US4** depends on US1 step shell and selector placement
-- **US3** depends on US1 step shell and preview/execute placement
+- **US1 (P1)**: Starts immediately after Foundational and is independently valuable
+- **US2 (P2)**: Builds on the US1 step scaffold but remains independently testable once visual-state work is applied
+- **US4 (P2)**: Builds on the US1 selector controls but remains independently testable once filtering is applied
+- **US3 (P3)**: Builds on the US1 preview and execute flow but remains independently testable once stale-preview protection is applied
 
-### Key task dependencies
+### Within Each User Story
 
-- T004 → T010, T023
-- T005 → T015
-- T007-T009 before T010-T015
-- T016-T018 before T019-T023
-- T024-T027 before T028-T032
-- T033-T034 before T035-T036
-- T040 after all implementation and test tasks
-- T041 after T040
-- T042 after T040
-- T043 after T040
+- Tests before implementation wherever practical
+- Step scaffold before step-specific UI work
+- Preview flow before stale-preview protections
+- Story-specific verification before cross-cutting polish
 
----
+### Parallel Opportunities
 
-## Parallel Opportunities
-
-### Setup/Foundation
-
-- T004 and T005 can run in parallel
-
-### US1
-
-- T007, T008, T009 can run in parallel
-
-### US2
-
-- T016, T017, T018 can run in parallel
-
-### US4
-
-- T024, T025, T026, T027 can run in parallel
-
-### US3
-
-- T033 and T034 can run in parallel
-
-### Polish
-
-- T037, T038, T039, T042, T043 can run in parallel (after T040)
+- T004, T005, T006, and T007 can run in parallel after T003
+- T010 can run in parallel with T014 because they touch different files
+- T023 can run in parallel with T021–T022 because CSS and test work touch different files
+- T031–T038 can run in parallel once feature implementation is complete
 
 ---
 
-## Parallel Example: User Story 4
+## Parallel Execution Examples
 
-```bash
-# Parallel test authoring tasks
-T024: Placeholder initial-state regression test
-T025: First-option explicit-selection regression test
-T026: Search filtering behaviour test
-T027: Keyboard-selection parity test
+### Phase 2 (after T003)
 
-# Parallel implementation tasks (after tests fail)
-T028: Searchable Step 1 selector
-T029: Searchable Step 2 selector
+```text
+T004 (Web csproj)  ║  T005 (Program.cs)  ║  T006 (_Imports.razor)  ║  T007 (App.razor)
+then:
+T008 (MainLayout.razor)  →  T009 (app.css)
+```
+
+### Phase 3 (after T014)
+
+```text
+T010 (smoke tests)  ║  T015 (Step 1)  →  T016 (Step 2)  →  T017 (Step 3)
+then:
+T018 (Step 4)  →  T019 (execution-report tabs)  →  T020 (Step 5 wiring)
+```
+
+### Phase 7 (after all story phases)
+
+```text
+T031 (busy-state verification)  ║  T032 (copy audit)  ║  T033 (5-minute walkthrough)
+T034 (UI responsiveness evidence)  ║  T035 (mobile/touch validation)  ║  T036 (build, tests, runtime-mode checks)
+T037 (Dependabot group update)
+T038 (architecture-boundary evidence)
 ```
 
 ---
 
 ## Implementation Strategy
 
-### MVP first (US1)
+### MVP First (User Story 1 Only)
 
-1. Complete Phase 1 and Phase 2.
-2. Complete US1 (T007-T015).
-3. Validate independently using quickstart flow.
+1. Complete Phase 1: Setup
+2. Complete Phase 2: Foundational
+3. Complete Phase 3: User Story 1
+4. Validate the complete in-memory five-step workflow
 
-### Incremental delivery
+### Incremental Delivery
 
-1. Add US2 visual progression.
-2. Add US4 searchable-selector and first-option regression fixes.
-3. Add US3 stale-preview contextual warning behaviour.
-4. Complete polish and full regression validation.
+1. Setup + Foundational establish the MudBlazor baseline
+2. US1 delivers the working stepped workflow
+3. US2 improves visual progress clarity
+4. US4 improves large-list search and selection
+5. US3 adds stale-preview protection
+6. Polish captures validation evidence and final quality checks
 
-### Suggested immediate scope for next implement run
+### Parallel Team Strategy
 
-- Foundation + US1 + US4 first (addresses both primary UX flow and known selector bug risk early).
+1. One engineer completes Setup + Foundational
+2. After US1 scaffold work lands, another engineer can take US2 visual-state work while a third takes test updates in separate files
+3. Polish verification tasks can be split across team members once implementation stabilises
 
 ---
 
 ## Summary
 
-- Total tasks: 43
-- Setup/Foundation tasks: 6
-- US1 tasks: 9
-- US2 tasks: 8
-- US4 tasks: 9
-- US3 tasks: 4
-- Polish tasks: 7
+- **Total tasks**: 38
+- **Setup + Foundational**: 9 (T001–T009)
+- **US1**: 11 (T010–T020)
+- **US2**: 4 (T021–T024)
+- **US4**: 3 (T025–T027)
+- **US3**: 3 (T028–T030)
+- **Polish**: 8 (T031–T038)
+- **Parallel [P] tasks**: 14 of 38
 
-All tasks follow required checklist format with IDs, labels, and concrete file paths.
+All tasks follow required checklist format: checkbox ✓, Task ID ✓, [P] marker only where safe ✓, [US?] label for user-story-phase tasks ✓, file path in description ✓.
