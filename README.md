@@ -113,7 +113,7 @@ Hosted deployment implementation is not included yet. The current internal docum
 - Keep `/health` and `/alive` disabled in non-development environments unless private or authenticated exposure is explicitly implemented.
 - Keep CI parity for hosted-readiness planning with solution build/tests and AppHost restore/build.
 
-For the full checklist and environment-specific matrix, see [docs-internal/README.md](docs-internal/README.md).
+For the full checklist and environment-specific matrix, see [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md).
 
 ## Project Structure
 
@@ -136,7 +136,7 @@ apphost.cs
 - `src/` contains the production code, split by architectural layer.
 - `tests/` contains unit, integration-style, and Blazor UI tests.
 - `docs/` is reserved for public-facing documentation.
-- `docs-internal/` contains contributor and operational guidance.
+- `docs-internal/` contains contributor and operational guidance, organised by topic.
 - `specs/` contains Spec Kit artefacts, including the feature spec, plan, tasks, contracts, and quickstart for the CSV import workflow.
 
 ## Development Workflow
@@ -209,6 +209,9 @@ GitHub Codespaces is supported through [.devcontainer/devcontainer.json](.devcon
 - [specs/001-import-planner-csv/data-model.md](specs/001-import-planner-csv/data-model.md)
 - [specs/001-import-planner-csv/contracts/import-workflow-contract.md](specs/001-import-planner-csv/contracts/import-workflow-contract.md)
 - [docs-internal/README.md](docs-internal/README.md)
+- [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
+- [docs-internal/ci-notes.md](docs-internal/ci-notes.md)
+- [docs-internal/roadmap-and-limitations.md](docs-internal/roadmap-and-limitations.md)
 
 ## Licence
 
