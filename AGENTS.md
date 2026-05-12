@@ -28,20 +28,27 @@ Any other work, the standard Copilot agent will be expected to handle, unless sp
 
 The following skills are expected to be used by agents handling related tasks. Exact delegation rules and precedence are defined above.
 
-- `csharp-xunit`
-- `csharp-docs`
+*Note*: The following list is in alphabetical order and does not indicate precedence:
+
+- `aspire`
 - `csharp-async`
+- `csharp-docs`
+- `csharp-xunit`
+- `dotnet-best-practices-repo`
 - `fluentui-blazor`
 - `fluentui-blazor-usage`
-- `dotnet-best-practices-repo`
 - `github-issues`
-- `aspire`
+- `microsoft-docs`
+- `repo-readme-generator`
 
-Typical delegation:
+Expected delegation:
 
-- Coding, architecture, and tests → C# Expert agent (uses `csharp-async`, `csharp-docs`, `csharp-xunit`, `dotnet-best-practices-repo`)
-- Blazor UI work → check installed package major version first; prefer `fluentui-blazor-usage` only when project targets v5, otherwise use `fluentui-blazor` for v4 implementation and use v5 skill for migration planning only
-- Issue / GitHub workflow tasks → `github-issues` skill
+- Coding, architecture, and tests → C# Expert agent (uses `csharp-async`, `csharp-docs`, `csharp-xunit`, `dotnet-best-practices-repo`) for .NET/C# implementation, refactoring, async/reliability fixes, documentation updates, and unit/integration test work; do not use this path for non-.NET stacks unless explicitly requested
+- Blazor UI work → C# Expert agent with Fluent UI skills after checking the installed package major version: use `fluentui-blazor` for v4 implementation and troubleshooting; use `fluentui-blazor-usage` for v5 implementation; on v4 projects, use `fluentui-blazor-usage` only for migration planning and known v5 differences
+- .NET Aspire projects and distributed application architecture → C# Expert agent (uses `aspire`) when tasks involve AppHost/resource orchestration, Aspire CLI operations (`aspire start`, `aspire describe`, `aspire logs`, `aspire otel`, `aspire add`, `aspire doctor`), integrations, or distributed diagnostics; do not use for non-Aspire .NET apps (use `dotnet`), container-only workflows (use Docker/Podman), or Azure deployment execution after local validation
+- Issue / GitHub workflow tasks → `github-issues` skill for issue creation/updates, labelling, dependencies, and workflow metadata; do not use it as the default for PR code-review implementation or general repository coding tasks
+- Microsoft/.NET/Azure documentation research and code-sample lookup → `microsoft-docs` skill for authoritative references, API guidance, and official examples; do not use it as a replacement for repository-specific policy files or local codebase analysis
+- Repository (root only) README generation or significant README restructuring → `repo-readme-generator` skill for documentation synthesis from repository artefacts; do not use it for small targeted content edits where direct manual updates are clearer
 
 Implementation workflow expectation:
 
