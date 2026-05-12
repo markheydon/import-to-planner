@@ -8,7 +8,7 @@ resources or change current implementation behaviour.
 - Keep `apphost.cs` scoped to a single `web` resource unless scaling requirements are explicitly approved.
 - Confirm hosted environment secrets and configuration handoff for `PlannerGateway:UseGraph`, `AzureAd:*`, certificate credential source, and `OTEL_EXPORTER_OTLP_ENDPOINT`.
 - Keep `/health` and `/alive` unexposed in non-development environments unless an authenticated or private ingress policy is in place.
-- Ensure CI keeps validating the current scope: `dotnet build ImportToPlanner.slnx`, `dotnet test ImportToPlanner.slnx`, `dotnet restore apphost.cs`, and `dotnet build apphost.cs --no-restore`.
+- Ensure CI keeps validating the current scope: `dotnet restore ImportToPlanner.slnx`, `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal`, `dotnet build ImportToPlanner.slnx --no-restore`, `dotnet restore apphost.cs`, `dotnet build apphost.cs --no-restore`, and `dotnet test ImportToPlanner.slnx --no-build`.
 - Record deployment handoff ownership for AppHost settings and web app secrets before enabling hosted rollout.
 
 ## Runtime Configuration

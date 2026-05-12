@@ -4,7 +4,7 @@ CI validates both the application and the AppHost.
 
 ## Validation Scope
 
-- Solution restore, build, and test on `ImportToPlanner.slnx`
+- Solution restore, format verification, build, and test on `ImportToPlanner.slnx`
 - Aspire AppHost restore and build via `dotnet restore apphost.cs` and `dotnet build apphost.cs --no-restore`
 
 See `.github/workflows/ci.yml` for the full pipeline.

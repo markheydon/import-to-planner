@@ -53,6 +53,7 @@ The application does not persist imported data locally. Microsoft Planner is the
 
 ```bash
 dotnet restore ImportToPlanner.slnx
+dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
 ```
@@ -103,6 +104,8 @@ CI also validates the AppHost build path:
 dotnet restore apphost.cs
 dotnet build apphost.cs --no-restore
 ```
+
+CI also verifies formatting on the solution before build and test, so running the same `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal` command locally is a good pre-PR check.
 
 Hosted deployment implementation is not included yet. The current internal documentation records a production-readiness baseline and configuration handoff expectations for future hosted rollout.
 

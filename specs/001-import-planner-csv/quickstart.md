@@ -137,7 +137,7 @@ Verification outcome recorded:
 - All Graph calls go through `IPlannerGateway`; no `GraphServiceClient` usage outside `ImportToPlanner.Infrastructure.Graph`.
 - No claims transformation or external tenant lookup logic added in this feature.
 
-## 9. Optional Aspire run
+## 9. Optional Aspire workflow
 ```bash
 aspire start --isolated
 aspire describe

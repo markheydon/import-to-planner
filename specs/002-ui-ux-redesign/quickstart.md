@@ -26,7 +26,7 @@ Then open `https://localhost:PORT` in your browser (port shown in terminal outpu
 
 ```bash
 # From the repository root
-aspire run
+aspire start --isolated
 ```
 
 The Aspire dashboard URL will be printed to the terminal. Click through to the Web frontend resource.

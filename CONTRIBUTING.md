@@ -18,6 +18,7 @@ The repository defaults to the in-memory planner gateway, so you can build, test
 
 ```bash
 dotnet restore ImportToPlanner.slnx
+dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
@@ -38,6 +39,7 @@ If you plan to use AI tooling that benefits from Aspire agent setup, run `aspire
 
 ```bash
 dotnet restore ImportToPlanner.slnx
+dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
 ```
