@@ -1,53 +1,103 @@
 @if (ExecutionResult is not null)
 {
-    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-        <FluentLabel Typo="Typography.PaneHeader">Execution Report</FluentLabel>
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.h6">Execution Report</MudText>
 
         @if (ExecutionResult.PlanId is not null)
         {
-            <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">
+            <MudAlert Severity="Severity.Success" Dense="true">
                 Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@ExecutionResult.PlanId"
                                     target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
-            </FluentMessageBar>
+            </MudAlert>
         }
 
-        <FluentLabel Typo="Typography.Header">Created</FluentLabel>
-        <FluentDataGrid Items="@ExecutionResult.Created.AsQueryable()" TGridItem="string">
-            <PropertyColumn Property="@(item => item)" Title="Item" />
-        </FluentDataGrid>
+        <MudStack Row="true" Spacing="2" Class="mb-2">
+            <MudBadge Content="@ExecutionResult.ManualActions.Count" Color="Color.Warning">
+                <MudText Typo="Typo.body2">Manual actions</MudText>
+            </MudBadge>
+            <MudBadge Content="@ExecutionResult.Errors.Count" Color="Color.Error">
+                <MudText Typo="Typo.body2">Errors</MudText>
+            </MudBadge>
+        </MudStack>
 
-        <FluentLabel Typo="Typography.Header">Reused Or Skipped</FluentLabel>
-        <FluentDataGrid Items="@ExecutionResult.ReusedOrSkipped.AsQueryable()" TGridItem="string">
-            <PropertyColumn Property="@(item => item)" Title="Item" />
-        </FluentDataGrid>
+        <MudTabs Rounded="true" ApplyEffectsToContainer="true">
+            <MudTabPanel Text="Summary">
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Created</td>
+                            <td>@ExecutionResult.Created.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Reused or skipped</td>
+                            <td>@ExecutionResult.ReusedOrSkipped.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Manual actions</td>
+                            <td>@ExecutionResult.ManualActions.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Errors</td>
+                            <td>@ExecutionResult.Errors.Count</td>
+                        </tr>
+                    </tbody>
+                </MudSimpleTable>
 
-        <FluentLabel Typo="Typography.Header">Errors</FluentLabel>
-        @if (ExecutionResult.Errors.Count == 0)
-        {
-            <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
-        }
-        else
-        {
-            <FluentDataGrid Items="@ExecutionResult.Errors.AsQueryable()" TGridItem="string">
-                <PropertyColumn Property="@(item => item)" Title="Error" />
-            </FluentDataGrid>
-        }
+                <MudText Typo="Typo.subtitle2" Class="mt-3">Created</MudText>
+                <MudDataGrid Items="@ExecutionResult.Created" T="string" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(item => item)" Title="Item" />
+                    </Columns>
+                </MudDataGrid>
 
-        <FluentLabel Typo="Typography.Header">Manual Actions</FluentLabel>
-        @if (ExecutionResult.ManualActions.Count == 0)
-        {
-            <FluentMessageBar Intent="MessageIntent.Success" AllowDismiss="false">None</FluentMessageBar>
-        }
-        else
-        {
-            <FluentDataGrid Items="@ExecutionResult.ManualActions.AsQueryable()" TGridItem="ManualAction">
-                <PropertyColumn Property="@(item => item.ActionType)" Title="Action Type" />
-                <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
-                <PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
-                <PropertyColumn Property="@(item => item.Details)" Title="Details" />
-            </FluentDataGrid>
-        }
-    </FluentStack>
+                <MudText Typo="Typo.subtitle2" Class="mt-3">Reused or skipped</MudText>
+                <MudDataGrid Items="@ExecutionResult.ReusedOrSkipped" T="string" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(item => item)" Title="Item" />
+                    </Columns>
+                </MudDataGrid>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Manual Actions">
+                @if (ExecutionResult.ManualActions.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">None</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="@ExecutionResult.ManualActions" T="ManualAction" Dense="true" ReadOnly="true">
+                        <Columns>
+                            <PropertyColumn Property="@(item => item.ActionType)" Title="Action type" />
+                            <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
+                            <PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
+                            <PropertyColumn Property="@(item => item.Details)" Title="Details" />
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="Errors">
+                @if (ExecutionResult.Errors.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">None</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="@ExecutionResult.Errors" T="string" Dense="true" ReadOnly="true">
+                        <Columns>
+                            <PropertyColumn Property="@(item => item)" Title="Error" />
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </MudStack>
 }
 
 @code {

@@ -1,40 +1,40 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 
-<FluentDesignTheme Mode="DesignThemeModes.System" />
+<MudThemeProvider />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
 
-<div class="app-shell">
-    <header class="app-header">
-        <h1>CSV to Planner Import</h1>
-        <p>Single-use utility for idempotent plan, bucket, and task creation with manual goal follow-up actions.</p>
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h6">CSV to Planner Import</MudText>
+            <MudText Typo="Typo.caption">Single-use utility for idempotent plan, bucket, and task creation with manual goal follow-up actions.</MudText>
+        </MudStack>
+        <MudSpacer />
         <AuthorizeView>
             <Authorized Context="authState">
-                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
-                    <FluentLabel>@authState.User.Identity?.Name</FluentLabel>
-                    <FluentButton OnClick="OnSignOutClicked" Appearance="Appearance.Neutral">Sign out</FluentButton>
-                </FluentStack>
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudText Typo="Typo.body2">@authState.User.Identity?.Name</MudText>
+                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" OnClick="OnSignOutClicked">Sign out</MudButton>
+                </MudStack>
             </Authorized>
             <NotAuthorized>
-                <FluentButton OnClick="OnSignInClicked" Appearance="Appearance.Accent">Sign in</FluentButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnSignInClicked">Sign in</MudButton>
             </NotAuthorized>
         </AuthorizeView>
-    </header>
+    </MudAppBar>
 
-    <main class="app-content">
+    <MudMainContent Class="pa-4">
         @Body
-    </main>
+    </MudMainContent>
+</MudLayout>
 
-    <FluentToastProvider />
-    <FluentDialogProvider />
-    <FluentMessageBarProvider />
-    <FluentTooltipProvider />
-    <FluentKeyCodeProvider />
-
-    <div id="blazor-error-ui" data-nosnippet>
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
-        <span class="dismiss">x</span>
-    </div>
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">x</span>
 </div>
 
 @code {

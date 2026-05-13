@@ -9,131 +9,224 @@
 
 <PageTitle>Import To Planner</PageTitle>
 
-<FluentStack Orientation="Orientation.Vertical" VerticalGap="16" class="import-grid">
-    <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-        <FluentLabel Typo="Typography.PaneHeader">Import Input</FluentLabel>
+<MudStack Spacing="3">
+    @if (isBusy)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
 
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-            <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
+    @if (!string.IsNullOrWhiteSpace(statusMessage))
+    {
+        <MudAlert Severity="@StatusMessageSeverity" Dense="true">@statusMessage</MudAlert>
+    }
+
+    <MudPaper Elevation="@GetStepElevation(1)" Class="@GetStepClass(1)">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(1)">@GetStepAvatarContent(1)</MudAvatar>
+            <MudText Typo="Typo.h6">Step 1 · Select Container</MudText>
+        </MudStack>
+        @if (IsStepComplete(1))
+        {
+            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(1)</MudText>
+        }
+
+        <MudStack Spacing="2" Class="mt-3">
+            <MudAlert Severity="Severity.Info" Dense="true">
                 Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
-            </FluentMessageBar>
+            </MudAlert>
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudAutocomplete T="PlannerContainer"
+                                 Value="@selectedContainer"
+                                 ValueChanged="OnSelectedContainerChangedAsync"
+                                 SearchFunc="SearchContainers"
+                                 ToStringFunc="FormatContainer"
+                                 Label="Container"
+                                 Placeholder="Search or select a container"
+                                 Variant="Variant.Outlined"
+                                 Clearable="true"
+                                 Dense="true"
+                                 CoerceValue="false"
+                                 ResetValueOnEmptyText="true"
+                                 Disabled="@isBusy" />
+                <MudButton Variant="Variant.Outlined" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
+                    Refresh containers
+                </MudButton>
+            </MudStack>
 
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
-                         VerticalAlignment="VerticalAlignment.Center">
-                <FluentSelect Items="@containers"
-                              OptionText="@(container => container is null ? string.Empty : $"{container.DisplayName} ({container.Type})")"
-                              OptionSelected="@(container => container?.Id == selectedContainer?.Id)"
-                              SelectedOption="@selectedContainer"
-                              SelectedOptionChanged="@((PlannerContainer? container) => OnSelectedContainerChangedAsync(container))"
-                              Label="Container" />
-                <FluentButton Appearance="Appearance.Outline" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
-                    Refresh Containers
-                </FluentButton>
-            </FluentStack>
             @if (isUsingGraphGateway && noGroupsFound)
             {
-                <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
+                <MudAlert Severity="Severity.Info" Dense="true">
                     No groups found. Ensure you are a member of at least one Microsoft 365 group.
-                </FluentMessageBar>
+                </MudAlert>
             }
+        </MudStack>
+    </MudPaper>
 
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
-                         VerticalAlignment="VerticalAlignment.Center">
-                <FluentSelect Items="@plans" OptionText="@(plan => plan?.Title ?? string.Empty)"
-                              OptionSelected="@(plan => plan?.Id == selectedPlan?.Id)" SelectedOption="@selectedPlan"
-                              SelectedOptionChanged="@((PlannerPlan? plan) => OnSelectedPlanChanged(plan))" Label="Plan" />
-                <FluentButton Appearance="Appearance.Outline" Disabled="@(isBusy || selectedContainer is null)"
-                              OnClick="@RefreshPlansAsync">
-                    Refresh Plans
-                </FluentButton>
-            </FluentStack>
+    <MudPaper Elevation="@GetStepElevation(2)" Class="@GetStepClass(2)">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(2)">@GetStepAvatarContent(2)</MudAvatar>
+            <MudText Typo="Typo.h6">Step 2 · Select Plan</MudText>
+        </MudStack>
+        @if (IsStepComplete(2))
+        {
+            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(2)</MudText>
+        }
+
+        <MudStack Spacing="2" Class="mt-3">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudAutocomplete T="PlannerPlan"
+                                 Value="@selectedPlan"
+                                 ValueChanged="OnSelectedPlanChangedAsync"
+                                 SearchFunc="SearchPlans"
+                                 ToStringFunc="FormatPlan"
+                                 Label="Plan"
+                                 Placeholder="Search or select a plan"
+                                 Variant="Variant.Outlined"
+                                 Clearable="true"
+                                 Dense="true"
+                                 CoerceValue="false"
+                                 ResetValueOnEmptyText="true"
+                                 Disabled="@(isBusy || selectedContainer is null)" />
+                <MudButton Variant="Variant.Outlined" Disabled="@(isBusy || selectedContainer is null)" OnClick="@RefreshPlansAsync">
+                    Refresh plans
+                </MudButton>
+            </MudStack>
 
             @if (selectedContainer is not null && plans.Count == 0)
             {
-                <FluentMessageBar Intent="MessageIntent.Warning" AllowDismiss="false">
-                    No plans were found for this container. Create a plan in Planner, then click Refresh Plans.
-                </FluentMessageBar>
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    No plans were found for this container. Create a plan in Planner, then click Refresh plans.
+                </MudAlert>
             }
+        </MudStack>
+    </MudPaper>
 
-            <FluentInputFile Id="csv-file-input" AnchorId="csv-file-button" OnInputFileChange="OnFileChangedAsync"
-                             Accept=".csv,text/csv" MaximumFileCount="1" DragDropZoneVisible="false" />
-            <FluentSwitch Value="@ignoreExtraColumns"
-                          ValueChanged="@((bool value) => OnIgnoreExtraColumnsChanged(value))" Label="Ignore extra columns" />
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8"
-                         VerticalAlignment="VerticalAlignment.Center">
-                <FluentButton Id="csv-file-button" Appearance="Appearance.Outline">Browse CSV file</FluentButton>
-                <FluentLabel>@selectedFileName</FluentLabel>
-            </FluentStack>
+    <MudPaper Elevation="@GetStepElevation(3)" Class="@GetStepClass(3)">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(3)">@GetStepAvatarContent(3)</MudAvatar>
+            <MudText Typo="Typo.h6">Step 3 · Upload CSV and Options</MudText>
+        </MudStack>
+        @if (IsStepComplete(3))
+        {
+            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(3)</MudText>
+        }
 
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="10">
-                <FluentButton Appearance="Appearance.Accent" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
-                    Validate And Preview
-                </FluentButton>
-                <FluentButton Appearance="Appearance.Neutral" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
-                    Confirm And Execute
-                </FluentButton>
-            </FluentStack>
+        <MudStack Spacing="2" Class="mt-3">
+            <MudFileUpload T="IBrowserFile"
+                           FilesChanged="OnFileChangedAsync"
+                           Accept=".csv,text/csv"
+                           MaximumFileCount="1"
+                           Hidden="false"
+                           Disabled="@(isBusy || IsStepLocked(3))" />
+            <MudText Typo="Typo.body2">Selected file: @selectedFileName</MudText>
+            <MudSwitch T="bool"
+                       Value="@ignoreExtraColumns"
+                       ValueChanged="@OnIgnoreExtraColumnsChanged"
+                       Color="Color.Primary"
+                       Label="Ignore extra columns"
+                       Disabled="@(isBusy || IsStepLocked(3))" />
+        </MudStack>
+    </MudPaper>
+
+    <MudPaper Elevation="@GetStepElevation(4)" Class="@GetStepClass(4)">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(4)">@GetStepAvatarContent(4)</MudAvatar>
+            <MudText Typo="Typo.h6">Step 4 · Validate and Preview</MudText>
+        </MudStack>
+        @if (IsStepComplete(4))
+        {
+            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(4)</MudText>
+        }
+
+        <MudStack Spacing="2" Class="mt-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
+                Validate and preview
+            </MudButton>
 
             @if (isPreviewStale)
             {
-                <FluentMessageBar Intent="MessageIntent.Warning" AllowDismiss="false">
+                <MudAlert Severity="Severity.Warning" Dense="true">
                     Preview is stale because Planner state changed. Generate a fresh preview before execution.
-                </FluentMessageBar>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(statusMessage))
-            {
-                <FluentMessageBar Intent="@StatusMessageIntent" AllowDismiss="false">@statusMessage</FluentMessageBar>
+                </MudAlert>
             }
 
             @if (parseErrors.Count > 0)
             {
-                <FluentLabel Typo="Typography.Header">Validation Errors</FluentLabel>
-                <FluentDataGrid Items="@parseErrors.AsQueryable()" TGridItem="ImportValidationError">
-                    <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
-                    <PropertyColumn Property="@(error => error.Field)" Title="Field" />
-                    <PropertyColumn Property="@(error => error.Message)" Title="Message" />
-                </FluentDataGrid>
+                <MudText Typo="Typo.subtitle2">Validation errors</MudText>
+                <MudDataGrid Items="@parseErrors" T="ImportValidationError" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
+                        <PropertyColumn Property="@(error => error.Field)" Title="Field" />
+                        <PropertyColumn Property="@(error => error.Message)" Title="Message" />
+                    </Columns>
+                </MudDataGrid>
             }
-        </FluentStack>
-    </FluentStack>
 
-    @if (preview is not null)
-    {
-        <FluentStack Orientation="Orientation.Vertical" VerticalGap="12">
-            <FluentLabel Typo="Typography.PaneHeader">Dry-Run Preview</FluentLabel>
-
-            <FluentLabel Typo="Typography.Subject">Plan action: Reuse existing plan</FluentLabel>
-
-            @if (preview.PlanId is not null)
+            @if (preview is not null)
             {
-                <FluentMessageBar Intent="MessageIntent.Info" AllowDismiss="false">
-                    Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.PlanId" target="_blank"
-                                      rel="noopener noreferrer">Open in Planner</a>
-                </FluentMessageBar>
+                <MudText Typo="Typo.subtitle2">Dry-run preview</MudText>
+                <MudText Typo="Typo.body2">Plan action: Reuse existing plan</MudText>
+
+                @if (preview.PlanId is not null)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.PlanId" target="_blank"
+                                          rel="noopener noreferrer">Open in Planner</a>
+                    </MudAlert>
+                }
+
+                <MudText Typo="Typo.subtitle2">Bucket actions</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead>
+                        <tr>
+                            <th>Bucket</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var action in preview.BucketActions)
+                        {
+                            <tr>
+                                <td>@action.Key</td>
+                                <td>@action.Value</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                <MudText Typo="Typo.subtitle2">Task actions</MudText>
+                <MudDataGrid Items="@preview.TaskActions" T="ImportTaskPlanItem" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
+                        <PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
+                        <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
+                        <PropertyColumn Property="@(task => FormatGoals(task.Goals))" Title="Goals" />
+                        <PropertyColumn Property="@(task => task.Action)" Title="Action" />
+                        <PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
+                    </Columns>
+                </MudDataGrid>
             }
+        </MudStack>
+    </MudPaper>
 
-            <FluentLabel Typo="Typography.Header">Bucket Actions</FluentLabel>
-            <FluentDataGrid Items="@preview.BucketActions.AsQueryable()"
-                            TGridItem="KeyValuePair<string, PlannedEntityAction>">
-                <PropertyColumn Property="@(action => action.Key)" Title="Bucket" />
-                <PropertyColumn Property="@(action => action.Value)" Title="Action" />
-            </FluentDataGrid>
+    <MudPaper Elevation="@GetStepElevation(5)" Class="@GetStepClass(5)">
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(5)">@GetStepAvatarContent(5)</MudAvatar>
+            <MudText Typo="Typo.h6">Step 5 · Confirm and Execute</MudText>
+        </MudStack>
+        @if (IsStepComplete(5))
+        {
+            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(5)</MudText>
+        }
 
-            <FluentLabel Typo="Typography.Header">Task Actions</FluentLabel>
-            <FluentDataGrid Items="@preview.TaskActions.AsQueryable()" TGridItem="ImportTaskPlanItem">
-                <PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
-                <PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
-                <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
-                <PropertyColumn Property="@(task => FormatGoals(task.Goals))" Title="Goals" />
-                <PropertyColumn Property="@(task => task.Action)" Title="Action" />
-                <PropertyColumn Property="@(task => task.Reason)" Title="Reason" Tooltip="true" />
-            </FluentDataGrid>
-        </FluentStack>
-    }
-
-    <HomeExecutionReport ExecutionResult="@executionResult" />
-</FluentStack>
+        <MudStack Spacing="2" Class="mt-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
+                Confirm and execute
+            </MudButton>
+            <HomeExecutionReport ExecutionResult="@executionResult" />
+        </MudStack>
+    </MudPaper>
+</MudStack>
 
 @code {
     private readonly List<PlannerContainer> containers = [];
@@ -143,7 +236,7 @@
     private PlannerContainer? selectedContainer;
     private PlannerPlan? selectedPlan;
     private string csvContent = string.Empty;
-    private string selectedFileName = "No file selected.";
+    private string selectedFileName = "No file selected";
     private string? statusMessage;
     private bool isBusy;
     private bool isUsingGraphGateway;
@@ -175,14 +268,30 @@
            && !isPreviewStale
            && IsCurrentSelectionInSyncWithRequest();
 
-    private MessageIntent StatusMessageIntent
+    private Severity StatusMessageSeverity
         => parseErrors.Count > 0
-           ? MessageIntent.Error
+           ? Severity.Error
            : executionResult is null
-               ? MessageIntent.Info
+               ? Severity.Info
                : executionResult.Errors.Count > 0
-                   ? MessageIntent.Warning
-                   : MessageIntent.Success;
+                   ? Severity.Warning
+                   : Severity.Success;
+
+    private int ActiveStep
+    {
+        get
+        {
+            for (var step = 1; step <= 5; step++)
+            {
+                if (!IsStepLocked(step) && !IsStepComplete(step))
+                {
+                    return step;
+                }
+            }
+
+            return 5;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -201,7 +310,6 @@
         try
         {
             await LoadContainersAsync();
-            await LoadPlansAsync();
         }
         catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
         {
@@ -220,7 +328,11 @@
         try
         {
             await LoadContainersAsync();
-            await LoadPlansAsync();
+            if (selectedContainer is not null)
+            {
+                await LoadPlansAsync();
+            }
+
             statusMessage = "Container list refreshed.";
         }
         catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
@@ -262,18 +374,22 @@
         }
     }
 
-    private async Task OnFileChangedAsync(InputFileChangeEventArgs args)
+    private async Task OnFileChangedAsync(IBrowserFile? file)
     {
+        if (file is null)
+        {
+            return;
+        }
+
         ResetFlowState();
 
-        var file = args.File;
         selectedFileName = file.Name;
 
         await using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
         using var reader = new StreamReader(stream);
         csvContent = await reader.ReadToEndAsync();
 
-        statusMessage = "CSV file loaded. Click Validate And Preview.";
+        statusMessage = "CSV file loaded. Click Validate and preview.";
     }
 
     private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
@@ -283,13 +399,21 @@
             return;
         }
 
+        var hadPreview = preview is not null;
         selectedContainer = container;
         selectedPlan = null;
         plans.Clear();
-        ResetFlowState();
+        parseErrors.Clear();
+        ResetExecutionState();
+        MarkPreviewAsStale("Preview is stale because your selected container changed. Generate a fresh preview before execution.");
 
         if (selectedContainer is null)
         {
+            if (!hadPreview)
+            {
+                statusMessage = "Select a container to continue.";
+            }
+
             return;
         }
 
@@ -309,26 +433,38 @@
         }
     }
 
-    private void OnSelectedPlanChanged(PlannerPlan? plan)
+    private Task OnSelectedPlanChangedAsync(PlannerPlan? plan)
     {
         if (selectedPlan?.Id == plan?.Id)
         {
-            return;
+            return Task.CompletedTask;
         }
 
+        var hadPreview = preview is not null;
         selectedPlan = plan;
-        ResetFlowState();
+        parseErrors.Clear();
+        ResetExecutionState();
+        MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before execution.");
+        if (!hadPreview)
+        {
+            statusMessage = selectedPlan is null ? "Select a plan to continue." : null;
+        }
+
+        return Task.CompletedTask;
     }
 
-    private void OnIgnoreExtraColumnsChanged(bool value)
+    private Task OnIgnoreExtraColumnsChanged(bool value)
     {
         if (ignoreExtraColumns == value)
         {
-            return;
+            return Task.CompletedTask;
         }
 
         ignoreExtraColumns = value;
-        InvalidatePreview("Preview reset after changing CSV options. Validate and preview again.");
+        parseErrors.Clear();
+        ResetExecutionState();
+        MarkPreviewAsStale("Preview is stale because CSV options changed. Generate a fresh preview before execution.");
+        return Task.CompletedTask;
     }
 
     private void ResetFlowState()
@@ -356,6 +492,17 @@
         parseErrors.Clear();
         ResetPreviewState();
         ResetExecutionState();
+        statusMessage = message;
+    }
+
+    private void MarkPreviewAsStale(string message)
+    {
+        if (preview is null || currentRequest is null)
+        {
+            return;
+        }
+
+        isPreviewStale = true;
         statusMessage = message;
     }
 
@@ -499,17 +646,19 @@
         }
 
         var preferredContainer = selectedContainer is null
-            ? containers[0]
-            : containers.FirstOrDefault(container => string.Equals(container.Id, selectedContainer.Id,
-                StringComparison.OrdinalIgnoreCase))
-                ?? containers[0];
+            ? null
+            : containers.FirstOrDefault(container =>
+                string.Equals(container.Id, selectedContainer.Id, StringComparison.OrdinalIgnoreCase));
 
         selectedContainer = preferredContainer;
-        if (!string.Equals(previousContainerId, selectedContainer.Id, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(previousContainerId, selectedContainer?.Id, StringComparison.OrdinalIgnoreCase))
         {
             selectedPlan = null;
             plans.Clear();
-            InvalidatePreview("Preview reset after container change. Validate and preview again.");
+            if (!string.IsNullOrWhiteSpace(previousContainerId))
+            {
+                InvalidatePreview("Preview reset after container change. Validate and preview again.");
+            }
         }
     }
 
@@ -537,14 +686,121 @@
         }
 
         selectedPlan = selectedPlan is null
-            ? plans[0]
+            ? null
             : plans.FirstOrDefault(plan => string.Equals(plan.Id, selectedPlan.Id, StringComparison.OrdinalIgnoreCase));
 
-        selectedPlan ??= plans[0];
-        if (!string.Equals(previousPlanId, selectedPlan.Id, StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(previousPlanId, selectedPlan?.Id, StringComparison.OrdinalIgnoreCase))
         {
-            InvalidatePreview("Preview reset after plan change. Validate and preview again.");
+            if (!string.IsNullOrWhiteSpace(previousPlanId))
+            {
+                InvalidatePreview("Preview reset after plan change. Validate and preview again.");
+            }
         }
     }
 
+    private static string FormatContainer(PlannerContainer? container)
+        => container is null ? string.Empty : $"{container.DisplayName} ({container.Type})";
+
+    private static string FormatPlan(PlannerPlan? plan)
+        => plan?.Title ?? string.Empty;
+
+    private Task<IEnumerable<PlannerContainer>> SearchContainers(string value, CancellationToken cancellationToken)
+        => SearchItems(
+            value,
+            containers,
+            static (container, term) => container.DisplayName.Contains(term, StringComparison.OrdinalIgnoreCase)
+                                        || container.Type.ToString().Contains(term, StringComparison.OrdinalIgnoreCase),
+            cancellationToken);
+
+    private Task<IEnumerable<PlannerPlan>> SearchPlans(string value, CancellationToken cancellationToken)
+        => SearchItems(
+            value,
+            plans,
+            static (plan, term) => plan.Title.Contains(term, StringComparison.OrdinalIgnoreCase),
+            cancellationToken);
+
+    private static Task<IEnumerable<TItem>> SearchItems<TItem>(
+        string value,
+        IEnumerable<TItem> source,
+        Func<TItem, string, bool> match,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Task.FromResult(source);
+        }
+
+        return Task.FromResult(source.Where(item => match(item, value)));
+    }
+
+    private bool IsStepLocked(int step)
+        => step switch
+        {
+            1 => false,
+            2 => selectedContainer is null,
+            3 => selectedContainer is null || selectedPlan is null,
+            4 => selectedContainer is null || selectedPlan is null || string.IsNullOrWhiteSpace(csvContent),
+            5 => executionResult is null && !canExecute,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown step."),
+        };
+
+    private bool IsStepComplete(int step)
+        => step switch
+        {
+            1 => selectedContainer is not null,
+            2 => selectedPlan is not null,
+            3 => !string.IsNullOrWhiteSpace(csvContent),
+            4 => preview is not null && parseErrors.Count == 0 && !isPreviewStale && IsCurrentSelectionInSyncWithRequest(),
+            5 => executionResult is not null,
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown step."),
+        };
+
+    private bool IsStepActive(int step) => ActiveStep == step;
+
+    private int GetStepElevation(int step)
+        => IsStepLocked(step) ? 0 : IsStepActive(step) ? 6 : 2;
+
+    private string GetStepClass(int step)
+    {
+        if (IsStepLocked(step))
+        {
+            return "step-card step-card--locked pa-4";
+        }
+
+        if (IsStepActive(step))
+        {
+            return "step-card step-card--active pa-4";
+        }
+
+        return "step-card step-card--complete pa-4";
+    }
+
+    private Color GetStepAvatarColour(int step)
+    {
+        if (IsStepComplete(step))
+        {
+            return Color.Success;
+        }
+
+        return IsStepActive(step) ? Color.Primary : Color.Default;
+    }
+
+    private string GetStepAvatarContent(int step)
+        => IsStepComplete(step)
+            ? "✓"
+            : step.ToString();
+
+    private string GetStepSummary(int step)
+        => step switch
+        {
+            1 => $"Container: {FormatContainer(selectedContainer)}",
+            2 => $"Plan: {FormatPlan(selectedPlan)}",
+            3 => $"CSV: {selectedFileName}",
+            4 => "Preview generated and ready to execute.",
+            5 => executionResult?.Errors.Count > 0
+                ? "Execution finished with warnings."
+                : "Execution completed successfully.",
+            _ => string.Empty,
+        };
 }

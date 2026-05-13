@@ -15,9 +15,9 @@ updates:
         patterns:
           - "Microsoft.Graph"
           - "Microsoft.Identity.Web*"
-      fluentui-packages:
+      mudblazor-packages:
         patterns:
-          - "Microsoft.FluentUI.AspNetCore.Components*"
+          - "MudBlazor*"
       test-packages:
         patterns:
           - "coverlet.collector"

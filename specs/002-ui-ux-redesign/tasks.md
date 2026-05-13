@@ -16,8 +16,8 @@
 
 **Purpose**: Confirm feature governance, execution references, and quality gates before code changes.
 
-- [ ] T001 Update feature-level quality gates for architecture, testing, UX consistency, performance, runtime-mode compatibility, and CI/AppHost parity in `specs/002-ui-ux-redesign/plan.md`
-- [ ] T002 Confirm C# Expert delegation and MudBlazor skill usage for implementation in `AGENTS.md`
+- [X] T001 Update feature-level quality gates for architecture, testing, UX consistency, performance, runtime-mode compatibility, and CI/AppHost parity in `specs/002-ui-ux-redesign/plan.md`
+- [X] T002 Confirm C# Expert delegation and MudBlazor skill usage for implementation in `AGENTS.md`
 
 ---
 
@@ -27,13 +27,13 @@
 
 **⚠️ CRITICAL**: Complete all T003–T009 before any Phase 3+ work starts.
 
-- [ ] T003 Update MudBlazor package versions and remove Fluent UI package versions in `Directory.Packages.props`
-- [ ] T004 [P] Replace Fluent UI package references with MudBlazor in `src/ImportToPlanner.Web/ImportToPlanner.Web.csproj`
-- [ ] T005 [P] Replace `AddFluentUIComponents()` with `AddMudServices()` in `src/ImportToPlanner.Web/Program.cs`
-- [ ] T006 [P] Replace Fluent UI imports with MudBlazor imports in `src/ImportToPlanner.Web/Components/_Imports.razor`
-- [ ] T007 [P] Add the MudBlazor stylesheet reference to `src/ImportToPlanner.Web/Components/App.razor`
-- [ ] T008 Rewrite the application shell using `MudLayout`, `MudAppBar`, `MudMainContent`, and required providers in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor`
-- [ ] T009 Remove superseded shell and import-grid CSS while retaining Blazor error overlay styles in `src/ImportToPlanner.Web/wwwroot/app.css`
+- [X] T003 Update MudBlazor package versions and remove Fluent UI package versions in `Directory.Packages.props`
+- [X] T004 [P] Replace Fluent UI package references with MudBlazor in `src/ImportToPlanner.Web/ImportToPlanner.Web.csproj`
+- [X] T005 [P] Replace `AddFluentUIComponents()` with `AddMudServices()` in `src/ImportToPlanner.Web/Program.cs`
+- [X] T006 [P] Replace Fluent UI imports with MudBlazor imports in `src/ImportToPlanner.Web/Components/_Imports.razor`
+- [X] T007 [P] Add the MudBlazor stylesheet reference to `src/ImportToPlanner.Web/Components/App.razor`
+- [X] T008 Rewrite the application shell using `MudLayout`, `MudAppBar`, `MudMainContent`, and required providers in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor`
+- [X] T009 Remove superseded shell and import-grid CSS while retaining Blazor error overlay styles in `src/ImportToPlanner.Web/wwwroot/app.css`
 
 **Checkpoint**: Solution builds, providers are registered, and the UI shell baseline is ready for feature work.
 
@@ -47,20 +47,20 @@
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T010 [P] [US1] Update MudBlazor shell and smoke assertions in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
-- [ ] T011 [US1] Replace workflow selectors and add step-sequence assertions for Step 1 through Step 5 in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T012 [US1] Add regression coverage for null placeholder selector state on initial render in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T013 [US1] Add regression coverage for explicit first-option selection unlocking the next step in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T010 [P] [US1] Update MudBlazor shell and smoke assertions in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
+- [X] T011 [US1] Replace workflow selectors and add step-sequence assertions for Step 1 through Step 5 in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T012 [US1] Add regression coverage for null placeholder selector state on initial render in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T013 [US1] Add regression coverage for explicit first-option selection unlocking the next step in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Rewrite the stepped page scaffold with five `MudPaper` cards and derived step-state helpers in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T015 [US1] Implement Step 1 container selection, refresh action, and empty-state alert in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T016 [US1] Implement Step 2 plan selection, refresh action, no-plan warning, and explicit state reset logic in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T017 [US1] Implement Step 3 CSV upload, file-name display, and ignore-extra-columns toggle in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T018 [US1] Implement Step 4 validate-and-preview actions, inline validation errors, preview tables, and busy-state rendering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T019 [US1] Refactor Step 5 execution reporting to `MudTabs` with summary, manual actions, and errors in `src/ImportToPlanner.Web/Components/Pages/HomeExecutionReport.razor`
-- [ ] T020 [US1] Wire Step 5 confirm-and-execute flow and inline success reporting in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T014 [US1] Rewrite the stepped page scaffold with five `MudPaper` cards and derived step-state helpers in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T015 [US1] Implement Step 1 container selection, refresh action, and empty-state alert in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T016 [US1] Implement Step 2 plan selection, refresh action, no-plan warning, and explicit state reset logic in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T017 [US1] Implement Step 3 CSV upload, file-name display, and ignore-extra-columns toggle in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T018 [US1] Implement Step 4 validate-and-preview actions, inline validation errors, preview tables, and busy-state rendering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T019 [US1] Refactor Step 5 execution reporting to `MudTabs` with summary, manual actions, and errors in `src/ImportToPlanner.Web/Components/Pages/HomeExecutionReport.razor`
+- [X] T020 [US1] Wire Step 5 confirm-and-execute flow and inline success reporting in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
 **Checkpoint**: The complete five-step import flow is functional and independently testable in in-memory mode.
 
@@ -74,13 +74,13 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T021 [US2] Add coverage for `MudPaper` elevation values across locked, active, and complete states in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T022 [US2] Add coverage for avatar colour, checkmark rendering, and step-number rendering in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T021 [US2] Add coverage for `MudPaper` elevation values across locked, active, and complete states in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T022 [US2] Add coverage for avatar colour, checkmark rendering, and step-number rendering in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 2
 
-- [ ] T023 [P] [US2] Add the active-step accent rule in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
-- [ ] T024 [US2] Finalize active, locked, and complete visual state helpers and summary text rendering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T023 [P] [US2] Add the active-step accent rule in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
+- [X] T024 [US2] Finalize active, locked, and complete visual state helpers and summary text rendering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
 **Checkpoint**: Visual progress states are verifiable by automated tests and manual inspection.
 
@@ -94,12 +94,12 @@
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T025 [US4] Add coverage for container search filtering with a large fixture list in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T026 [US4] Add coverage for keyboard or `ValueChanged`-driven plan selection unlocking Step 3 in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T025 [US4] Add coverage for container search filtering with a large fixture list in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T026 [US4] Add coverage for keyboard or `ValueChanged`-driven plan selection unlocking Step 3 in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 4
 
-- [ ] T027 [US4] Implement `SearchContainers` and `SearchPlans` for case-insensitive filtering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T027 [US4] Implement `SearchContainers` and `SearchPlans` for case-insensitive filtering in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
 **Checkpoint**: Search filtering and explicit selection behaviour are functional for large lists.
 
@@ -113,12 +113,12 @@
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T028 [US3] Add coverage for stale-preview warning visibility and disabled execute action after selection changes in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
-- [ ] T029 [US3] Add coverage for re-validation clearing the stale-preview warning and re-enabling execution in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T028 [US3] Add coverage for stale-preview warning visibility and disabled execute action after selection changes in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T029 [US3] Add coverage for re-validation clearing the stale-preview warning and re-enabling execution in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 3
 
-- [ ] T030 [US3] Render the stale-preview warning inline in Step 4 and keep Step 5 execution guarded by preview freshness in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T030 [US3] Render the stale-preview warning inline in Step 4 and keep Step 5 execution guarded by preview freshness in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
 **Checkpoint**: Preview freshness safeguards are visible, contextual, and verified.
 
@@ -126,14 +126,14 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T031 [P] Verify `MudProgressLinear` appears for `isBusy` operations in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T032 [P] Audit UK English copy, alert text, button labels, and placeholders in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor`
+- [X] T031 [P] Verify `MudProgressLinear` appears for `isBusy` operations in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T032 [P] Audit UK English copy, alert text, button labels, and placeholders in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor`
 - [ ] T033 [P] Validate the end-to-end five-step workflow can be completed within 5 minutes using an in-memory run and a representative CSV fixture from `specs/002-ui-ux-redesign/quickstart.md`
-- [ ] T034 [P] Capture measurable UI responsiveness evidence for step unlock and preview-state rendering in `specs/002-ui-ux-redesign/quickstart.md`
+- [X] T034 [P] Capture measurable UI responsiveness evidence for step unlock and preview-state rendering in `specs/002-ui-ux-redesign/quickstart.md`
 - [ ] T035 [P] Validate primary-flow mobile/touch usability and responsive behaviour in `specs/002-ui-ux-redesign/quickstart.md`
 - [ ] T036 [P] Run solution build and all tests, then record runtime-mode validation outcomes for both in-memory and Graph paths in `specs/002-ui-ux-redesign/quickstart.md`
-- [ ] T037 [P] Update Dependabot NuGet group definitions by replacing Fluent UI package grouping with MudBlazor package grouping in `.github/dependabot.yml`
-- [ ] T038 [P] Capture SC-005 architecture-boundary verification evidence for PR notes and mirror a concise evidence summary in `specs/002-ui-ux-redesign/quickstart.md`
+- [X] T037 [P] Update Dependabot NuGet group definitions by replacing Fluent UI package grouping with MudBlazor package grouping in `.github/dependabot.yml`
+- [X] T038 [P] Capture SC-005 architecture-boundary verification evidence for PR notes and mirror a concise evidence summary in `specs/002-ui-ux-redesign/quickstart.md`
 
 ---
 

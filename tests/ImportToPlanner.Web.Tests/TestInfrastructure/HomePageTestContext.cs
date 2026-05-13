@@ -5,7 +5,7 @@ using ImportToPlanner.Domain;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.FluentUI.AspNetCore.Components;
+using MudBlazor.Services;
 
 namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
@@ -13,7 +13,10 @@ internal sealed class HomePageTestContext : BunitContext
 {
     public HomePageTestContext()
     {
-        Services.AddFluentUIComponents();
+        Services.AddMudServices(configuration =>
+        {
+            configuration.PopoverOptions.CheckForPopoverProvider = false;
+        });
         Services.AddLogging();
 
         var config = new ConfigurationBuilder()
