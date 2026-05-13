@@ -3,11 +3,11 @@ using ImportToPlanner.Application.Services;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web.Components;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 using Microsoft.Kiota.Abstractions.Authentication;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,7 +34,7 @@ if (certificatePathOverrides.Count > 0)
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-builder.Services.AddFluentUIComponents();
+builder.Services.AddMudServices();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddHttpContextAccessor();
 

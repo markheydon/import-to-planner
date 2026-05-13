@@ -91,6 +91,13 @@ Open a [GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new
 - If tooling cannot post an in-thread reply, stop and report the limitation with draft reply text for the affected thread(s).
 - Do not resolve a review thread unless an in-thread reply has been posted.
 
+### UI shell and framework styling checks
+
+- Before requesting a CSS reintroduction for framework-level elements, verify whether styling is already provided by loaded framework or component-library assets.
+- In this repository, `#blazor-error-ui` styling is provided by MudBlazor via `_content/MudBlazor/MudBlazor.min.css`, referenced in `src/ImportToPlanner.Web/Components/App.razor`.
+- Do not add local fallback CSS for `#blazor-error-ui` unless the MudBlazor stylesheet reference is removed or replaced.
+- Prefer validating effective runtime behaviour in the browser before raising review feedback based only on static markup.
+
 
 ---
 

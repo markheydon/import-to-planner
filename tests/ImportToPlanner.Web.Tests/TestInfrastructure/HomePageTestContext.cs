@@ -5,7 +5,7 @@ using ImportToPlanner.Domain;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.FluentUI.AspNetCore.Components;
+using MudBlazor.Services;
 
 namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
@@ -13,7 +13,11 @@ internal sealed class HomePageTestContext : BunitContext
 {
     public HomePageTestContext()
     {
-        Services.AddFluentUIComponents();
+        Services.AddMudServices(configuration =>
+        {
+            configuration.PopoverOptions.CheckForPopoverProvider = false;
+        });
+        AddAuthorization().SetNotAuthorized();
         Services.AddLogging();
 
         var config = new ConfigurationBuilder()
@@ -59,6 +63,10 @@ internal sealed class StubCsvImportParser : ICsvImportParser
 
 internal sealed class StubPlannerGateway : IPlannerGateway
 {
+    public Exception? GetAvailableContainersException { get; set; }
+
+    public Exception? GetPlansException { get; set; }
+
     public IReadOnlyList<PlannerContainer> Containers { get; set; } =
     [
         new PlannerContainer("container-1", "Test Container", ContainerType.Group),
@@ -70,13 +78,27 @@ internal sealed class StubPlannerGateway : IPlannerGateway
     ];
 
     public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
-        => Task.FromResult(Containers);
+    {
+        if (GetAvailableContainersException is not null)
+        {
+            return Task.FromException<IReadOnlyList<PlannerContainer>>(GetAvailableContainersException);
+        }
+
+        return Task.FromResult(Containers);
+    }
 
     public Task<PlannerPlan?> GetPlanByIdAsync(string planId, CancellationToken cancellationToken)
         => Task.FromResult(Plans.FirstOrDefault(p => string.Equals(p.Id, planId, StringComparison.OrdinalIgnoreCase)));
 
     public Task<IReadOnlyList<PlannerPlan>> GetPlansAsync(string containerId, ContainerType containerType, CancellationToken cancellationToken)
-        => Task.FromResult(Plans);
+    {
+        if (GetPlansException is not null)
+        {
+            return Task.FromException<IReadOnlyList<PlannerPlan>>(GetPlansException);
+        }
+
+        return Task.FromResult(Plans);
+    }
 
     public Task<IReadOnlyList<PlannerBucket>> GetBucketsAsync(string planId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<PlannerBucket>>([]);

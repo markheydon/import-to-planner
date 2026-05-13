@@ -109,6 +109,21 @@ dotnet test tests/ImportToPlanner.Web.Tests/
 dotnet test tests/ImportToPlanner.Tests/
 ```
 
+## Verification Evidence (2026-05-12)
+
+- `dotnet build` → **Succeeded** (0 warnings, 0 errors).
+- `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj` → **Succeeded**.
+- `dotnet build tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj` → **Succeeded**.
+- `dotnet vstest tests/ImportToPlanner.Web.Tests/bin/Debug/net10.0/ImportToPlanner.Web.Tests.dll --logger:console;verbosity=minimal` → **Passed** (10/10).
+- Note: `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj` currently exits through `VSTestTask` without surfacing test logs in this environment, so direct `dotnet vstest` is used for reliable reporting.
+- UI responsiveness evidence from the bUnit workflow suite:
+  - Step unlock assertions pass for Step 1 → 2 and Step 2 → 3 transitions.
+  - Stale-preview guard and re-validation path assertions pass.
+  - Execution-report tab rendering assertions pass.
+- SC-005 architecture boundary verification:
+  - Changes are limited to `ImportToPlanner.Web`, web test files, package/config wiring, and feature documentation.
+  - No domain/application/infrastructure behaviour or contracts were modified.
+
 ## Key MudBlazor Provider Checklist
 
 If any of the following UI behaviours are silently broken, check `MainLayout.razor` for
