@@ -7,7 +7,7 @@ Sync Impact Report
 	- III. User Experience Consistency -> III. Boundaries Must Be Explicit and Enforced
 	- IV. Performance and Responsiveness Budgets -> IV. Frameworks and Delivery Mechanisms Are Replaceable
 	- V. Observability and Safe Operations -> V. Architectural Compliance Must Be Measurable
-	- VI. Agent Delegation Discipline and Process Continuity -> Removed (moved to AGENTS.md)
+	- VI. Agent Delegation Discipline and Process Continuity -> Removed (substantive governance moved to docs-internal/engineering-policies.md; AGENTS.md now contains a pointer)
 - Added sections:
 	- Architectural Guardrails
 - Removed sections:
