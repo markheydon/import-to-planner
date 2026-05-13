@@ -1,7 +1,9 @@
 @inherits LayoutComponentBase
+@using ImportToPlanner.Web.Themes
+@inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 
-<MudThemeProvider Theme="@theme" IsDarkMode="isDarkMode" />
+<MudThemeProvider @ref="themeProvider" Theme="@theme" IsDarkMode="isDarkMode" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
@@ -11,6 +13,11 @@
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="DrawerToggle" />
         <MudText Typo="Typo.h6">CSV to Planner Import</MudText>
         <MudSpacer />
+        <MudMenu Label="@GetThemeMenuLabel()" Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode">
+            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
+        </MudMenu>
         <AuthorizeView>
             <Authorized Context="authState">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -40,20 +47,43 @@
 </div>
 
 @code {
+    private const string ThemeModeSessionKey = "import-to-planner-theme-mode";
+
     private bool drawerOpen = true;
-    private bool isDarkMode = true;
-    private MudTheme? theme;
+    private bool isDarkMode;
+    private bool isThemeInitialised;
+    private ThemeMode themeMode = ThemeMode.Auto;
+    private MudThemeProvider? themeProvider;
+    private MudTheme theme = ImportToPlannerTheme.Default;
 
     protected override void OnInitialized()
     {
         base.OnInitialized();
+    }
 
-        theme = new MudTheme
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isThemeInitialised || themeProvider is null)
         {
-            PaletteLight = lightPalette,
-            PaletteDark = darkPalette,
-            LayoutProperties = new LayoutProperties(),
-        };
+            return;
+        }
+
+        string? mode;
+        try
+        {
+            mode = await JSRuntime.InvokeAsync<string?>("importToPlannerThemeStorage.getThemeMode", ThemeModeSessionKey);
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
+        themeMode = ParseThemeMode(mode);
+        await ApplyThemeModeAsync(themeMode);
+        await themeProvider.WatchSystemPreference(OnSystemPreferenceChangedAsync);
+
+        isThemeInitialised = true;
+        await InvokeAsync(StateHasChanged);
     }
 
     private void DrawerToggle()
@@ -72,42 +102,86 @@
         NavigationManager.NavigateTo($"MicrosoftIdentity/Account/SignOut?returnUrl={returnUrl}", forceLoad: true);
     }
 
-    private readonly PaletteLight lightPalette = new()
+    private async Task SetThemeModeAsync(ThemeMode mode)
     {
-        Black = "#110e2d",
-        AppbarText = "#424242",
-        AppbarBackground = "rgba(255,255,255,0.8)",
-        DrawerBackground = "#ffffff",
-        GrayLight = "#e8e8e8",
-        GrayLighter = "#f9f9f9",
-    };
+        await ApplyThemeModeAsync(mode);
 
-    private readonly PaletteDark darkPalette = new()
+        await JSRuntime.InvokeVoidAsync(
+            "importToPlannerThemeStorage.setThemeMode",
+            ThemeModeSessionKey,
+            ToSessionValue(mode));
+    }
+
+    private Task OnSystemPreferenceChangedAsync(bool systemPrefersDarkMode)
     {
-        Primary = "#7e6fff",
-        Surface = "#1e1e2d",
-        Background = "#1a1a27",
-        BackgroundGray = "#151521",
-        AppbarText = "#92929f",
-        AppbarBackground = "rgba(26,26,39,0.8)",
-        DrawerBackground = "#1a1a27",
-        ActionDefault = "#74718e",
-        ActionDisabled = "#9999994d",
-        ActionDisabledBackground = "#605f6d4d",
-        TextPrimary = "#b2b0bf",
-        TextSecondary = "#92929f",
-        TextDisabled = "#ffffff33",
-        DrawerIcon = "#92929f",
-        DrawerText = "#92929f",
-        GrayLight = "#2a2833",
-        GrayLighter = "#1e1e2d",
-        Info = "#4a86ff",
-        Success = "#3dcb6c",
-        Warning = "#ffb545",
-        Error = "#ff3f5f",
-        LinesDefault = "#33323e",
-        TableLines = "#33323e",
-        Divider = "#292838",
-        OverlayLight = "#1e1e2d80",
-    };
+        if (themeMode is not ThemeMode.Auto)
+        {
+            return Task.CompletedTask;
+        }
+
+        isDarkMode = systemPrefersDarkMode;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ApplyThemeModeAsync(ThemeMode mode)
+    {
+        themeMode = mode;
+        if (mode is ThemeMode.Auto && themeProvider is not null)
+        {
+            isDarkMode = await themeProvider.GetSystemPreference();
+            return;
+        }
+
+        isDarkMode = mode is ThemeMode.Dark;
+    }
+
+    private string GetThemeMenuIcon()
+        => themeMode switch
+        {
+            ThemeMode.Auto => Icons.Material.Filled.BrightnessAuto,
+            ThemeMode.Light => Icons.Material.Filled.LightMode,
+            ThemeMode.Dark => Icons.Material.Filled.DarkMode,
+            _ => Icons.Material.Filled.BrightnessAuto,
+        };
+
+    private string GetThemeMenuLabel()
+        => $"Theme: {GetThemeModeDisplayName(themeMode)}";
+
+    private string GetThemeOptionLabel(ThemeMode mode)
+    {
+        var label = GetThemeModeDisplayName(mode);
+        return themeMode == mode ? $"✓ {label}" : label;
+    }
+
+    private static ThemeMode ParseThemeMode(string? mode)
+        => mode?.ToLowerInvariant() switch
+        {
+            "light" => ThemeMode.Light,
+            "dark" => ThemeMode.Dark,
+            _ => ThemeMode.Auto,
+        };
+
+    private static string ToSessionValue(ThemeMode mode)
+        => mode switch
+        {
+            ThemeMode.Light => "light",
+            ThemeMode.Dark => "dark",
+            _ => "auto",
+        };
+
+    private static string GetThemeModeDisplayName(ThemeMode mode)
+        => mode switch
+        {
+            ThemeMode.Auto => "Auto",
+            ThemeMode.Light => "Light",
+            ThemeMode.Dark => "Dark",
+            _ => "Auto",
+        };
+
+    private enum ThemeMode
+    {
+        Auto,
+        Light,
+        Dark,
+    }
 }
