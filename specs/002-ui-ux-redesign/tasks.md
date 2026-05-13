@@ -128,10 +128,10 @@
 
 - [X] T031 [P] Verify `MudProgressLinear` appears for `isBusy` operations in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 - [X] T032 [P] Audit UK English copy, alert text, button labels, and placeholders in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor`
-- [ ] T033 [P] Validate the end-to-end five-step workflow can be completed within 5 minutes using an in-memory run and a representative CSV fixture from `specs/002-ui-ux-redesign/quickstart.md`
+- [X] T033 [P] Validate the end-to-end five-step workflow can be completed within 5 minutes using an in-memory run and a representative CSV fixture from `specs/002-ui-ux-redesign/quickstart.md`
 - [X] T034 [P] Capture measurable UI responsiveness evidence for step unlock and preview-state rendering in `specs/002-ui-ux-redesign/quickstart.md`
-- [ ] T035 [P] Validate primary-flow mobile/touch usability and responsive behaviour in `specs/002-ui-ux-redesign/quickstart.md`
-- [ ] T036 [P] Run solution build and all tests, then record runtime-mode validation outcomes for both in-memory and Graph paths in `specs/002-ui-ux-redesign/quickstart.md`
+- [X] T035 [P] Validate primary-flow mobile/touch usability and responsive behaviour in `specs/002-ui-ux-redesign/quickstart.md`
+- [X] T036 [P] Run solution build and all tests, then record runtime-mode validation outcomes for both in-memory and Graph paths in `specs/002-ui-ux-redesign/quickstart.md`
 - [X] T037 [P] Update Dependabot NuGet group definitions by replacing Fluent UI package grouping with MudBlazor package grouping in `.github/dependabot.yml`
 - [X] T038 [P] Capture SC-005 architecture-boundary verification evidence for PR notes and mirror a concise evidence summary in `specs/002-ui-ux-redesign/quickstart.md`
 
