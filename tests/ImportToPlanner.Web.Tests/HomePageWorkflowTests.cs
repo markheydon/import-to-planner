@@ -109,7 +109,11 @@ public sealed class HomePageWorkflowTests
         {
             Assert.Equal(3, cut.FindAll(".step-card--locked").Count);
             Assert.Contains($"Container: {firstContainer.DisplayName}", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("✓", cut.Markup, StringComparison.Ordinal);
+
+            var stepOneCard = FindStepCard(cut, "Step 1 · Select Container");
+            var stepOneAvatar = stepOneCard.QuerySelector(".mud-avatar");
+            Assert.NotNull(stepOneAvatar);
+            Assert.Equal("✓", stepOneAvatar!.TextContent.Trim());
         });
     }
 
@@ -132,6 +136,17 @@ public sealed class HomePageWorkflowTests
             Assert.Equal(2, cut.FindAll(".step-card--complete").Count);
             Assert.Single(cut.FindAll(".step-card--active"));
             Assert.Equal(2, cut.FindAll(".step-card--locked").Count);
+
+            var stepOneCard = FindStepCard(cut, "Step 1 · Select Container");
+            var stepOneAvatar = stepOneCard.QuerySelector(".mud-avatar");
+            Assert.NotNull(stepOneAvatar);
+            Assert.Equal("✓", stepOneAvatar!.TextContent.Trim());
+
+            var stepTwoCard = FindStepCard(cut, "Step 2 · Select Plan");
+            var stepTwoAvatar = stepTwoCard.QuerySelector(".mud-avatar");
+            Assert.NotNull(stepTwoAvatar);
+            Assert.Equal("✓", stepTwoAvatar!.TextContent.Trim());
+
             Assert.Contains("mud-elevation-6", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("mud-elevation-2", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("mud-elevation-0", cut.Markup, StringComparison.OrdinalIgnoreCase);
@@ -338,5 +353,14 @@ public sealed class HomePageWorkflowTests
         var value = property!.GetValue(target);
         Assert.IsType<bool>(value);
         return (bool)value;
+    }
+
+    private static AngleSharp.Dom.IElement FindStepCard(IRenderedComponent<Home> cut, string stepHeader)
+    {
+        var stepCard = cut.FindAll(".step-card")
+            .SingleOrDefault(card => card.TextContent.Contains(stepHeader, StringComparison.OrdinalIgnoreCase));
+
+        Assert.NotNull(stepCard);
+        return stepCard!;
     }
 }

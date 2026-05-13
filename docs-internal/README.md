@@ -10,3 +10,4 @@ Keep public-facing material in `docs/` and use this folder for implementation no
 - [Aspire production readiness](aspire-production-readiness.md)
 - [CI notes](ci-notes.md)
 - [Roadmap and limitations](roadmap-and-limitations.md)
+- [MudBlazor known quirks](mudblazor-known-quirks.md)
