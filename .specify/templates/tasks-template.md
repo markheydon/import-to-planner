@@ -52,8 +52,8 @@ integration, and regression tasks as applicable to the scope.
 - [ ] T001 Create project structure per implementation plan
 - [ ] T002 Initialize [language] project with [framework] dependencies
 - [ ] T003 [P] Configure linting and formatting tools
-- [ ] T004 Define feature-level quality gates (architecture, testing, UX consistency, performance, runtime mode compatibility, CI/AppHost parity)
-- [ ] T005 Confirm applicable custom-agent delegation from AGENTS.md and record any approved exceptions
+- [ ] T004 Define architecture compliance gates (dependency direction, inner-layer purity, boundary contracts, framework replaceability, measurable evidence)
+- [ ] T005 Confirm applicable non-constitutional policy requirements from docs-internal/engineering-policies.md and delegation requirements from AGENTS.md
 
 ---
 

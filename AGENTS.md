@@ -68,4 +68,20 @@ Implementation workflow expectation:
 
 If a skill or instruction file under `.github/skills/` or `.github/instructions/` conflicts with higher-priority files, follow the Precedence list above. Avoid editing third-party files; instead, add an override or clarification here or in `.github/copilot-instructions.md`.
 
+## Non-Constitutional Repository Policies
+
+The constitution now focuses on strict architecture governance. Operational and delivery
+policies that still remain mandatory are preserved in
+`docs-internal/engineering-policies.md`.
+
+All agents and contributors MUST continue to follow those policies, including:
+
+- testing and runtime-mode verification expectations
+- UX, accessibility, and UK English wording requirements
+- performance evidence and operational safety expectations
+- external integration constraints and scope controls
+
+Agent-process requirements defined in this file remain mandatory and continuous
+throughout all work phases.
+
 Maintainers: modify this file to reflect approved changes in agent delegation or precedence.

@@ -31,24 +31,19 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **Code Quality Gate**: Confirm architectural boundary impact (Domain/Application/
-  Infrastructure/Web) and state how coupling is avoided.
-- **Testing Gate**: List required unit/integration/regression coverage and define failing
-  test proof expectations for bug fixes.
-- **UX Consistency Gate**: Identify affected user-facing flows and specify consistency,
-  accessibility, and responsive behaviour expectations.
-- **Performance Gate**: Define measurable latency/throughput/memory expectations for
-  changed paths and how they will be validated.
-- **Operations Gate**: Define diagnostics, error handling, and dry-run safety impacts.
-- **Runtime Mode Compatibility Gate**: Identify whether changes impact in-memory mode,
-  Graph mode, or both, and define required parity validation.
-- **Graph Contract Volatility Gate**: For Graph-facing changes, include beta API impact
-  and mitigation notes.
-- **Scope Boundary Gate**: Confirm whether single-tenant scope remains unchanged; flag
-  explicit approval requirements for multi-tenant expansion.
-- **CI and AppHost Gate**: Confirm solution and AppHost validation paths remain viable.
-- **Agent Delegation Gate**: Confirm whether registered custom agents in `AGENTS.md`
-  apply to implementation tasks and document delegation or approved exceptions.
+- **Dependency Direction Gate**: Confirm source dependency direction remains compliant
+  (Web/Infrastructure -> Application -> Domain).
+- **Inner-Layer Purity Gate**: Confirm Domain/Application changes are technology-neutral
+  and do not introduce framework, transport, or UI leakage.
+- **Boundary Contract Gate**: Define request/response and boundary interface impact,
+  including mapping responsibilities for affected adapters.
+- **Replaceability Gate**: Confirm framework/library choices remain replaceable adapter
+  concerns rather than architectural invariants.
+- **Architecture Evidence Gate**: Define how dependency direction, forbidden references,
+  and boundary leakage checks will be evidenced in implementation and review.
+- **Policy Alignment Gate (Non-Constitutional)**: Confirm applicable operational,
+  testing, UX, and delivery policies from `docs-internal/engineering-policies.md` and
+  agent delegation requirements from `AGENTS.md` are captured in the plan.
 
 ## Project Structure
 
