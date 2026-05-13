@@ -277,7 +277,7 @@
                    ? Severity.Warning
                    : Severity.Success;
 
-    private int ActiveStep
+    private int? ActiveStep
     {
         get
         {
@@ -289,7 +289,7 @@
                 }
             }
 
-            return 5;
+            return null;
         }
     }
 
@@ -756,7 +756,7 @@
             _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown step."),
         };
 
-    private bool IsStepActive(int step) => ActiveStep == step;
+    private bool IsStepActive(int step) => ActiveStep.HasValue && ActiveStep.Value == step;
 
     private int GetStepElevation(int step)
         => IsStepLocked(step) ? 0 : IsStepActive(step) ? 6 : 2;

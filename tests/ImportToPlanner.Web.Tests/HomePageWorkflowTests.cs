@@ -103,6 +103,62 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task HomePage_WhenAllStepsAreComplete_DoesNotRenderAnActiveStep()
+    {
+        // Arrange
+        await using var ctx = new HomePageTestContext();
+        var cut = ctx.Render<Home>();
+
+        var request = new ImportRequest(
+            ctx.Gateway.Containers[0].Id,
+            ctx.Gateway.Containers[0].Type,
+            ctx.Gateway.Plans[0].Id,
+            ctx.Gateway.Plans[0].Title,
+            [new CsvTaskRow(2, "Task A", null, null, null, null)]);
+
+        var preview = new ImportPlanPreview
+        {
+            ContainerId = request.ContainerId,
+            PlanId = request.PlanId,
+            PlanName = request.PlanName,
+            PlanAction = PlannedEntityAction.Reuse,
+            HasValidationErrors = false,
+            RequestFingerprint = "test-request",
+            PlannerStateFingerprint = "test-state",
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
+            BucketActions = new Dictionary<string, PlannedEntityAction>(StringComparer.OrdinalIgnoreCase),
+            TaskActions = [],
+        };
+
+        var executionResult = new ImportExecutionResult
+        {
+            PlanId = request.PlanId,
+            Created = ["Task: Task A"],
+            ReusedOrSkipped = [],
+            Errors = [],
+            ManualActions = [],
+            OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 0, 0, false, false),
+        };
+
+        // Act
+        SetPrivateField(cut.Instance, "selectedContainer", ctx.Gateway.Containers[0]);
+        SetPrivateField(cut.Instance, "selectedPlan", ctx.Gateway.Plans[0]);
+        SetPrivateField(cut.Instance, "csvContent", "Bucket,Task\nEngineering,Task A");
+        SetPrivateField(cut.Instance, "selectedFileName", "tasks.csv");
+        SetPrivateField(cut.Instance, "currentRequest", request);
+        SetPrivateField(cut.Instance, "preview", preview);
+        SetPrivateField(cut.Instance, "executionResult", executionResult);
+        await cut.InvokeAsync(() => cut.Render());
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Empty(cut.FindAll(".step-card--active"));
+            Assert.Equal(5, cut.FindAll(".step-card--complete").Count);
+        });
+    }
+
+    [Fact]
     public async Task HomePage_SearchContainers_FiltersCaseInsensitiveLargeList()
     {
         // Arrange
