@@ -17,15 +17,15 @@
     <!-- CSV parsing -->
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
     <!-- Blazor UI (MudBlazor) -->
-    <PackageVersion Include="MudBlazor" Version="8.6.0" />
+    <PackageVersion Include="MudBlazor" Version="9.4.0" />
     <!-- Microsoft Graph and identity/authentication -->
     <PackageVersion Include="Microsoft.Graph" Version="5.105.0" />
     <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="1.22.2" />
     <PackageVersion Include="Microsoft.Identity.Web" Version="4.9.0" />
     <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.9.0" />
     <!-- Resilience and service discovery for service defaults -->
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.5.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
     <!-- OpenTelemetry exporters and instrumentation -->
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />

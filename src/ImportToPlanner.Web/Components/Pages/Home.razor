@@ -161,7 +161,7 @@
                            MaximumFileCount="1"
                            Hidden="true"
                            Disabled="@(isBusy || IsStepLocked(3))">
-                <ActivatorContent>
+                <CustomContent>
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Primary"
                                StartIcon="@Icons.Material.Filled.UploadFile"
@@ -169,7 +169,7 @@
                                Disabled="@(isBusy || IsStepLocked(3))">
                         Choose CSV file
                     </MudButton>
-                </ActivatorContent>
+                </CustomContent>
                 <SelectedTemplate>
                     @if (context is not null)
                     {

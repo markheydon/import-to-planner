@@ -50,7 +50,7 @@ public sealed partial class MainLayout
 
         _themeMode = ParseThemeMode(mode);
         await ApplyThemeModeAsync(_themeMode);
-        await _themeProvider.WatchSystemPreference(OnSystemPreferenceChangedAsync);
+        await _themeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChangedAsync);
 
         _isThemeInitialised = true;
         await InvokeAsync(StateHasChanged);
@@ -84,7 +84,7 @@ public sealed partial class MainLayout
         _themeMode = mode;
         if (mode is ThemeMode.Auto && _themeProvider is not null)
         {
-            _isDarkMode = await _themeProvider.GetSystemPreference();
+            _isDarkMode = await _themeProvider.GetSystemDarkModeAsync();
             return;
         }
 
