@@ -1,4 +1,5 @@
 @page "/"
+@using ImportToPlanner.Application.Exceptions
 @inject ICsvImportParser CsvImportParser
 @inject IImportPlannerOrchestrator ImportPlannerOrchestrator
 @inject IPlannerGateway PlannerGateway
@@ -27,7 +28,9 @@
         </MudStack>
         @if (IsStepComplete(1))
         {
-            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(1)</MudText>
+            <MudChip T="string" Color="@GetStepSummaryColour(1)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
+                @GetStepSummary(1)
+            </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
@@ -69,7 +72,9 @@
         </MudStack>
         @if (IsStepComplete(2))
         {
-            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(2)</MudText>
+            <MudChip T="string" Color="@GetStepSummaryColour(2)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
+                @GetStepSummary(2)
+            </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
@@ -108,16 +113,37 @@
         </MudStack>
         @if (IsStepComplete(3))
         {
-            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(3)</MudText>
+            <MudChip T="string" Color="@GetStepSummaryColour(3)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
+                @GetStepSummary(3)
+            </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
             <MudFileUpload T="IBrowserFile"
+                           @ref="csvFileUpload"
                            FilesChanged="OnFileChangedAsync"
                            Accept=".csv,text/csv"
                            MaximumFileCount="1"
-                           Hidden="false"
-                           Disabled="@(isBusy || IsStepLocked(3))" />
+                           Hidden="true"
+                           Disabled="@(isBusy || IsStepLocked(3))">
+                <ActivatorContent>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.UploadFile"
+                               OnClick="OpenCsvFilePickerAsync"
+                               Disabled="@(isBusy || IsStepLocked(3))">
+                        Choose CSV file
+                    </MudButton>
+                </ActivatorContent>
+                <SelectedTemplate>
+                    @if (context is not null)
+                    {
+                        <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
+                            @context.Name
+                        </MudChip>
+                    }
+                </SelectedTemplate>
+            </MudFileUpload>
             <MudText Typo="Typo.body2">Selected file: @selectedFileName</MudText>
             <MudSwitch T="bool"
                        Value="@ignoreExtraColumns"
@@ -135,7 +161,9 @@
         </MudStack>
         @if (IsStepComplete(4))
         {
-            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(4)</MudText>
+            <MudChip T="string" Color="@GetStepSummaryColour(4)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
+                @GetStepSummary(4)
+            </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
@@ -216,7 +244,9 @@
         </MudStack>
         @if (IsStepComplete(5))
         {
-            <MudText Typo="Typo.body2" Class="mud-secondary-text mt-1">@GetStepSummary(5)</MudText>
+            <MudChip T="string" Color="@GetStepSummaryColour(5)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
+                @GetStepSummary(5)
+            </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
@@ -238,6 +268,7 @@
     private string csvContent = string.Empty;
     private string selectedFileName = "No file selected";
     private string? statusMessage;
+    private Severity statusMessageSeverity = Severity.Info;
     private bool isBusy;
     private bool isUsingGraphGateway;
     private bool noGroupsFound;
@@ -272,7 +303,7 @@
         => parseErrors.Count > 0
            ? Severity.Error
            : executionResult is null
-               ? Severity.Info
+               ? statusMessageSeverity
                : executionResult.Errors.Count > 0
                    ? Severity.Warning
                    : Severity.Success;
@@ -311,9 +342,15 @@
         {
             await LoadContainersAsync();
         }
-        catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
+        catch (Exception ex)
         {
-            NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+            if (TryRedirectToSignInOnChallenge(ex))
+            {
+                return;
+            }
+
+            Logger.LogError(ex, "Failed to load available containers during initialisation.");
+            SetStatus(ToUserSafePlannerMessage(ex, "Unable to load Planner containers. Try signing in again and refresh."), Severity.Error);
         }
     }
 
@@ -333,16 +370,17 @@
                 await LoadPlansAsync();
             }
 
-            statusMessage = "Container list refreshed.";
-        }
-        catch (Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
-        {
-            NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+            SetStatus("Container list refreshed.", Severity.Success);
         }
         catch (Exception ex)
         {
+            if (TryRedirectToSignInOnChallenge(ex))
+            {
+                return;
+            }
+
             Logger.LogError(ex, "Failed to refresh containers.");
-            statusMessage = "Failed to refresh containers.";
+            SetStatus(ToUserSafePlannerMessage(ex, "Unable to refresh containers."), Severity.Error);
         }
         finally
         {
@@ -361,12 +399,17 @@
         try
         {
             await LoadPlansAsync();
-            statusMessage = "Plan list refreshed.";
+            SetStatus("Plan list refreshed.", Severity.Success);
         }
         catch (Exception ex)
         {
+            if (TryRedirectToSignInOnChallenge(ex))
+            {
+                return;
+            }
+
             Logger.LogError(ex, "Failed to refresh plans for container '{ContainerId}'.", selectedContainer.Id);
-            statusMessage = "Failed to refresh plans.";
+            SetStatus(ToUserSafePlannerMessage(ex, "Unable to refresh plans."), Severity.Error);
         }
         finally
         {
@@ -389,7 +432,7 @@
         using var reader = new StreamReader(stream);
         csvContent = await reader.ReadToEndAsync();
 
-        statusMessage = "CSV file loaded. Click Validate and preview.";
+        SetStatus("CSV file loaded. Click Validate and preview.", Severity.Info);
     }
 
     private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
@@ -411,7 +454,7 @@
         {
             if (!hadPreview)
             {
-                statusMessage = "Select a container to continue.";
+                SetStatus("Select a container to continue.", Severity.Info);
             }
 
             return;
@@ -424,8 +467,13 @@
         }
         catch (Exception ex)
         {
+            if (TryRedirectToSignInOnChallenge(ex))
+            {
+                return;
+            }
+
             Logger.LogError(ex, "Failed to load plans for container '{ContainerId}'.", selectedContainer.Id);
-            statusMessage = "Failed to load plans for the selected container.";
+            SetStatus(ToUserSafePlannerMessage(ex, "Unable to load plans for the selected container."), Severity.Error);
         }
         finally
         {
@@ -447,7 +495,7 @@
         MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before execution.");
         if (!hadPreview)
         {
-            statusMessage = selectedPlan is null ? "Select a plan to continue." : null;
+            SetStatus(selectedPlan is null ? "Select a plan to continue." : null, Severity.Info);
         }
 
         return Task.CompletedTask;
@@ -472,7 +520,7 @@
         parseErrors.Clear();
         ResetPreviewState();
         ResetExecutionState();
-        statusMessage = null;
+        SetStatus(null, Severity.Info);
     }
 
     private void ResetPreviewState()
@@ -492,7 +540,7 @@
         parseErrors.Clear();
         ResetPreviewState();
         ResetExecutionState();
-        statusMessage = message;
+        SetStatus(message, Severity.Warning);
     }
 
     private void MarkPreviewAsStale(string message)
@@ -503,7 +551,7 @@
         }
 
         isPreviewStale = true;
-        statusMessage = message;
+        SetStatus(message, Severity.Warning);
     }
 
     private async Task BuildPreviewAsync()
@@ -516,7 +564,7 @@
         parseErrors.Clear();
         ResetPreviewState();
         ResetExecutionState();
-        statusMessage = null;
+        SetStatus(null, Severity.Info);
 
         if (selectedContainer is null)
         {
@@ -544,7 +592,7 @@
 
             if (parseResult.HasErrors)
             {
-                statusMessage = "Validation failed. Fix the reported issues and retry.";
+                SetStatus("Validation failed. Fix the reported issues and retry.", Severity.Error);
                 return;
             }
 
@@ -556,13 +604,19 @@
                 parseResult.Rows);
             preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
             isPreviewStale = false;
-            statusMessage = "Preview generated. Review actions, then confirm execution.";
+            SetStatus("Preview generated. Review actions, then confirm execution.", Severity.Success);
         }
         catch (Exception ex)
         {
+            if (TryRedirectToSignInOnChallenge(ex))
+            {
+                return;
+            }
+
             Logger.LogError(ex, "Preview generation failed.");
-            parseErrors.Add(new ImportValidationError(0, "System", "Preview generation failed due to an unexpected system error."));
-            statusMessage = "Preview generation failed.";
+            var userSafeMessage = ToUserSafePlannerMessage(ex, "Preview generation failed due to a system error.");
+            parseErrors.Add(new ImportValidationError(0, "System", userSafeMessage));
+            SetStatus(userSafeMessage, Severity.Error);
         }
         finally
         {
@@ -578,7 +632,7 @@
         }
 
         isBusy = true;
-        statusMessage = null;
+        SetStatus(null, Severity.Info);
         try
         {
             executionResult = await ImportPlannerOrchestrator.ExecuteAsync(
@@ -588,40 +642,88 @@
 
             isPreviewStale = false;
 
-            statusMessage = executionResult.Errors.Count == 0
-                ? "Execution completed successfully."
-                : "Execution completed with errors.";
+            SetStatus(
+                executionResult.Errors.Count == 0
+                    ? "Execution completed successfully."
+                    : "Execution completed with errors.",
+                executionResult.Errors.Count == 0 ? Severity.Success : Severity.Warning);
         }
         catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
         {
             Logger.LogWarning(ex, "Execution blocked because preview is stale.");
             isPreviewStale = true;
-            statusMessage = ex.Message;
+            SetStatus(ex.Message, Severity.Warning);
         }
         catch (InvalidOperationException ex)
         {
+            if (TryRedirectToSignInOnChallenge(ex))
+            {
+                return;
+            }
+
             Logger.LogWarning(ex, "Execution blocked by workflow constraints.");
             isPreviewStale = false;
-            statusMessage = ex.Message;
+            SetStatus(ToUserSafePlannerMessage(ex, ex.Message), Severity.Warning);
         }
         catch (Exception ex)
         {
+            if (TryRedirectToSignInOnChallenge(ex))
+            {
+                return;
+            }
+
             Logger.LogError(ex, "Execution failed.");
+            var userSafeMessage = ToUserSafePlannerMessage(ex, "Execution failed due to an unexpected system error. Check logs and retry.");
             executionResult = new ImportExecutionResult
             {
                 Created = [],
                 ReusedOrSkipped = [],
-                Errors = ["Execution failed due to an unexpected system error. Check logs and retry."],
+                Errors = [userSafeMessage],
                 ManualActions = [],
                 OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true),
             };
 
-            statusMessage = "Execution failed.";
+            SetStatus(userSafeMessage, Severity.Error);
         }
         finally
         {
             isBusy = false;
         }
+    }
+
+    private void SetStatus(string? message, Severity severity)
+    {
+        statusMessage = message;
+        statusMessageSeverity = severity;
+    }
+
+    private bool TryRedirectToSignInOnChallenge(Exception exception)
+    {
+        if (exception is not Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
+        {
+            return false;
+        }
+
+        NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+        return true;
+    }
+
+    private static string ToUserSafePlannerMessage(Exception exception, string fallbackMessage)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fallbackMessage);
+
+        if (exception is InvalidOperationException invalidOperationException &&
+            invalidOperationException.Message.Contains(
+                "authenticated user context is required to acquire a graph access token",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return PlannerGraphErrorMapper.ToUserSafeMessage(
+                new PlannerAuthenticationException("Authentication expired.", invalidOperationException),
+                fallbackMessage);
+        }
+
+        return PlannerGraphErrorMapper.ToUserSafeMessage(exception, fallbackMessage);
     }
 
     private static string? FormatGoals(IReadOnlyList<string>? goals)
@@ -784,6 +886,21 @@
         }
 
         return IsStepActive(step) ? Color.Primary : Color.Default;
+    }
+
+    private Color GetStepSummaryColour(int step)
+        => step == 5 && executionResult?.Errors.Count > 0
+            ? Color.Warning
+            : Color.Success;
+
+    private MudFileUpload<IBrowserFile>? csvFileUpload;
+
+    private async Task OpenCsvFilePickerAsync()
+    {
+        if (csvFileUpload is not null)
+        {
+            await csvFileUpload.OpenFilePickerAsync();
+        }
     }
 
     private string GetStepAvatarContent(int step)

@@ -11,15 +11,6 @@
             </MudAlert>
         }
 
-        <MudStack Row="true" Spacing="2" Class="mb-2">
-            <MudBadge Content="@ExecutionResult.ManualActions.Count" Color="Color.Warning">
-                <MudText Typo="Typo.body2">Manual actions</MudText>
-            </MudBadge>
-            <MudBadge Content="@ExecutionResult.Errors.Count" Color="Color.Error">
-                <MudText Typo="Typo.body2">Errors</MudText>
-            </MudBadge>
-        </MudStack>
-
         <MudTabs Rounded="true" ApplyEffectsToContainer="true">
             <MudTabPanel Text="Summary">
                 <MudSimpleTable Dense="true" Hover="true" Elevation="0">
@@ -64,7 +55,12 @@
                 </MudDataGrid>
             </MudTabPanel>
 
-            <MudTabPanel Text="Manual Actions">
+            <MudTabPanel Text="@($"Manual Actions ({ExecutionResult.ManualActions.Count})")">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudText Typo="Typo.subtitle2">Manual actions</MudText>
+                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">@ExecutionResult.ManualActions.Count</MudChip>
+                </MudStack>
+
                 @if (ExecutionResult.ManualActions.Count == 0)
                 {
                     <MudAlert Severity="Severity.Success" Dense="true">None</MudAlert>
@@ -82,7 +78,12 @@
                 }
             </MudTabPanel>
 
-            <MudTabPanel Text="Errors">
+            <MudTabPanel Text="@($"Errors ({ExecutionResult.Errors.Count})")">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudText Typo="Typo.subtitle2">Errors</MudText>
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Size="Size.Small">@ExecutionResult.Errors.Count</MudChip>
+                </MudStack>
+
                 @if (ExecutionResult.Errors.Count == 0)
                 {
                     <MudAlert Severity="Severity.Success" Dense="true">None</MudAlert>

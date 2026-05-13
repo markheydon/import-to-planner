@@ -1,5 +1,6 @@
 using Bunit;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Components.Pages;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
@@ -9,6 +10,41 @@ namespace ImportToPlanner.Web.Tests;
 
 public sealed class HomePageWorkflowTests
 {
+    [Fact]
+    public async Task HomePage_WhenContainerLoadFailsWithPermissionError_ShowsUserSafeMessage()
+    {
+        // Arrange
+        await using var ctx = new HomePageTestContext();
+        ctx.Gateway.GetAvailableContainersException = new PlannerPermissionException("Denied");
+
+        // Act
+        var cut = ctx.Render<Home>();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Permission denied.", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenGraphTokenContextIsMissing_ShowsAuthenticationMessage()
+    {
+        // Arrange
+        await using var ctx = new HomePageTestContext();
+        ctx.Gateway.GetAvailableContainersException = new InvalidOperationException(
+            "An authenticated user context is required to acquire a Graph access token.");
+
+        // Act
+        var cut = ctx.Render<Home>();
+
+        // Assert
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Authentication expired. Sign in again and retry.", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
     [Fact]
     public async Task HomeExecutionReport_WithCreatedAndManualActions_RendersTabbedExecutionReport()
     {
@@ -38,7 +74,7 @@ public sealed class HomePageWorkflowTests
         Assert.Contains("Manual Actions", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Errors", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Alpha Task", cut.Markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("mud-badge", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Manual Actions (2)", cut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
