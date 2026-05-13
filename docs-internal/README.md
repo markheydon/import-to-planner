@@ -11,3 +11,4 @@ Keep public-facing material in `docs/` and use this folder for implementation no
 - [CI notes](ci-notes.md)
 - [Roadmap and limitations](roadmap-and-limitations.md)
 - [MudBlazor known quirks](mudblazor-known-quirks.md)
+- [Clean Architecture strict adherence audit](clean-architecture-strict-adherence-audit.md)
