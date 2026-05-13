@@ -17,6 +17,7 @@ internal sealed class HomePageTestContext : BunitContext
         {
             configuration.PopoverOptions.CheckForPopoverProvider = false;
         });
+        AddAuthorization().SetNotAuthorized();
         Services.AddLogging();
 
         var config = new ConfigurationBuilder()

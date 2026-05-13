@@ -24,6 +24,22 @@ public sealed class HomePageSmokeTests
     }
 
     [Fact]
+    public async Task HomePage_InInMemoryMode_RendersIntroHeaderWithThemeAndAuthControls()
+    {
+        // Arrange
+        await using var ctx = new HomePageTestContext();
+
+        // Act
+        var cut = ctx.Render<Home>();
+
+        // Assert
+        Assert.Contains("CSV to Planner Import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Theme mode", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("This header leaves space for future CSV guidance", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Sign in", cut.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task HomePage_InInMemoryMode_RendersWithoutThrowing()
     {
         // Arrange

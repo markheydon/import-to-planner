@@ -1,71 +1,110 @@
 @page "/"
 @using ImportToPlanner.Application.Exceptions
+@using ImportToPlanner.Web.Themes
 @inject ICsvImportParser CsvImportParser
 @inject IImportPlannerOrchestrator ImportPlannerOrchestrator
 @inject IPlannerGateway PlannerGateway
 @inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject ILogger<Home> Logger
 
 <PageTitle>Import To Planner</PageTitle>
 
-<MudStack Spacing="3">
-    @if (isBusy)
-    {
-        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
-    }
+<MudThemeProvider @ref="themeProvider" Theme="@theme" IsDarkMode="isDarkMode" />
 
-    @if (!string.IsNullOrWhiteSpace(statusMessage))
-    {
-        <MudAlert Severity="@StatusMessageSeverity" Dense="true">@statusMessage</MudAlert>
-    }
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Spacing="4">
+        <MudPaper Elevation="1" Class="pa-4 pa-md-6">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="7">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.h3">CSV to Planner Import</MudText>
+                        <MudText Typo="Typo.body1">
+                            Import a CSV into one Planner plan, then review each step before execution.
+                        </MudText>
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="5">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Spacing="1" Wrap="Wrap.Wrap">
+                        <MudMenu Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode">
+                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
+                        </MudMenu>
+                        <AuthorizeView>
+                            <Authorized Context="authState">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                    <MudText Typo="Typo.body2">@authState.User.Identity?.Name</MudText>
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small" OnClick="OnSignOutClicked">Sign out</MudButton>
+                                </MudStack>
+                            </Authorized>
+                            <NotAuthorized>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="OnSignInClicked">Sign in</MudButton>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
 
-    <MudPaper Elevation="@GetStepElevation(1)" Class="@GetStepClass(1)">
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(1)">@GetStepAvatarContent(1)</MudAvatar>
-            <MudText Typo="Typo.h6">Step 1 · Select Container</MudText>
-        </MudStack>
-        @if (IsStepComplete(1))
-        {
-            <MudChip T="string" Color="@GetStepSummaryColour(1)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
-                @GetStepSummary(1)
-            </MudChip>
-        }
-
-        <MudStack Spacing="2" Class="mt-3">
-            <MudAlert Severity="Severity.Info" Dense="true">
-                Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
-            </MudAlert>
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                <MudAutocomplete T="PlannerContainer"
-                                 Value="@selectedContainer"
-                                 ValueChanged="OnSelectedContainerChangedAsync"
-                                 SearchFunc="SearchContainers"
-                                 ToStringFunc="FormatContainer"
-                                 Label="Container"
-                                 Placeholder="Search or select a container"
-                                 Variant="Variant.Outlined"
-                                 Clearable="true"
-                                 Dense="true"
-                                 CoerceValue="false"
-                                 ResetValueOnEmptyText="true"
-                                 Disabled="@isBusy" />
-                <MudButton Variant="Variant.Outlined" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
-                    Refresh containers
-                </MudButton>
-            </MudStack>
-
-            @if (isUsingGraphGateway && noGroupsFound)
+        <MudStack Spacing="3">
+            @if (isBusy)
             {
-                <MudAlert Severity="Severity.Info" Dense="true">
-                    No groups found. Ensure you are a member of at least one Microsoft 365 group.
-                </MudAlert>
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
             }
-        </MudStack>
-    </MudPaper>
 
-    <MudPaper Elevation="@GetStepElevation(2)" Class="@GetStepClass(2)">
+            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                <MudAlert Severity="@StatusMessageSeverity" Dense="true">@statusMessage</MudAlert>
+            }
+
+            <MudPaper Elevation="@GetStepElevation(1)" Class="@GetStepClass(1)">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudAvatar Color="@GetStepAvatarColour(1)">@GetStepAvatarContent(1)</MudAvatar>
+                    <MudText Typo="Typo.h6">Step 1 · Select Container</MudText>
+                </MudStack>
+                @if (IsStepComplete(1))
+                {
+                    <MudChip T="string" Color="@GetStepSummaryColour(1)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
+                        @GetStepSummary(1)
+                    </MudChip>
+                }
+
+                <MudStack Spacing="2" Class="mt-3">
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
+                    </MudAlert>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudAutocomplete T="PlannerContainer"
+                                         Value="@selectedContainer"
+                                         ValueChanged="OnSelectedContainerChangedAsync"
+                                         SearchFunc="SearchContainers"
+                                         ToStringFunc="FormatContainer"
+                                         Label="Container"
+                                         Placeholder="Search or select a container"
+                                         Variant="Variant.Outlined"
+                                         Clearable="true"
+                                         Dense="true"
+                                         CoerceValue="false"
+                                         ResetValueOnEmptyText="true"
+                                         Disabled="@isBusy" />
+                        <MudButton Variant="Variant.Outlined" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
+                            Refresh containers
+                        </MudButton>
+                    </MudStack>
+
+                    @if (isUsingGraphGateway && noGroupsFound)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            No groups found. Ensure you are a member of at least one Microsoft 365 group.
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Elevation="@GetStepElevation(2)" Class="@GetStepClass(2)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(2)">@GetStepAvatarContent(2)</MudAvatar>
             <MudText Typo="Typo.h6">Step 2 · Select Plan</MudText>
@@ -106,7 +145,7 @@
         </MudStack>
     </MudPaper>
 
-    <MudPaper Elevation="@GetStepElevation(3)" Class="@GetStepClass(3)">
+            <MudPaper Elevation="@GetStepElevation(3)" Class="@GetStepClass(3)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(3)">@GetStepAvatarContent(3)</MudAvatar>
             <MudText Typo="Typo.h6">Step 3 · Upload CSV and Options</MudText>
@@ -154,7 +193,7 @@
         </MudStack>
     </MudPaper>
 
-    <MudPaper Elevation="@GetStepElevation(4)" Class="@GetStepClass(4)">
+            <MudPaper Elevation="@GetStepElevation(4)" Class="@GetStepClass(4)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(4)">@GetStepAvatarContent(4)</MudAvatar>
             <MudText Typo="Typo.h6">Step 4 · Validate and Preview</MudText>
@@ -237,7 +276,7 @@
         </MudStack>
     </MudPaper>
 
-    <MudPaper Elevation="@GetStepElevation(5)" Class="@GetStepClass(5)">
+            <MudPaper Elevation="@GetStepElevation(5)" Class="@GetStepClass(5)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(5)">@GetStepAvatarContent(5)</MudAvatar>
             <MudText Typo="Typo.h6">Step 5 · Confirm and Execute</MudText>
@@ -256,9 +295,13 @@
             <HomeExecutionReport ExecutionResult="@executionResult" />
         </MudStack>
     </MudPaper>
-</MudStack>
+        </MudStack>
+    </MudStack>
+</MudContainer>
 
 @code {
+    private const string ThemeModeSessionKey = "import-to-planner-theme-mode";
+
     private readonly List<PlannerContainer> containers = [];
     private readonly List<PlannerPlan> plans = [];
     private readonly List<ImportValidationError> parseErrors = [];
@@ -274,10 +317,40 @@
     private bool noGroupsFound;
     private bool ignoreExtraColumns = true;
     private bool isPreviewStale;
+    private bool isDarkMode;
+    private bool isThemeInitialised;
+    private ThemeMode themeMode = ThemeMode.Auto;
+    private MudThemeProvider? themeProvider;
+    private MudTheme theme = ImportToPlannerTheme.Default;
 
     private ImportPlanPreview? preview;
     private ImportExecutionResult? executionResult;
     private ImportRequest? currentRequest;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (isThemeInitialised || themeProvider is null)
+        {
+            return;
+        }
+
+        string? mode;
+        try
+        {
+            mode = await JSRuntime.InvokeAsync<string?>("importToPlannerThemeStorage.getThemeMode", ThemeModeSessionKey);
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
+        themeMode = ParseThemeMode(mode);
+        await ApplyThemeModeAsync(themeMode);
+        await themeProvider.WatchSystemPreference(OnSystemPreferenceChangedAsync);
+
+        isThemeInitialised = true;
+        await InvokeAsync(StateHasChanged);
+    }
 
     private bool IsCurrentSelectionInSyncWithRequest()
         => selectedContainer is not null
@@ -352,6 +425,97 @@
             Logger.LogError(ex, "Failed to load available containers during initialisation.");
             SetStatus(ToUserSafePlannerMessage(ex, "Unable to load Planner containers. Try signing in again and refresh."), Severity.Error);
         }
+    }
+
+    private void OnSignInClicked()
+    {
+        NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+    }
+
+    private void OnSignOutClicked()
+    {
+        var returnUrl = Uri.EscapeDataString(new Uri(NavigationManager.BaseUri).PathAndQuery);
+        NavigationManager.NavigateTo($"MicrosoftIdentity/Account/SignOut?returnUrl={returnUrl}", forceLoad: true);
+    }
+
+    private async Task SetThemeModeAsync(ThemeMode mode)
+    {
+        await ApplyThemeModeAsync(mode);
+
+        await JSRuntime.InvokeVoidAsync(
+            "importToPlannerThemeStorage.setThemeMode",
+            ThemeModeSessionKey,
+            ToSessionValue(mode));
+    }
+
+    private Task OnSystemPreferenceChangedAsync(bool systemPrefersDarkMode)
+    {
+        if (themeMode is not ThemeMode.Auto)
+        {
+            return Task.CompletedTask;
+        }
+
+        isDarkMode = systemPrefersDarkMode;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ApplyThemeModeAsync(ThemeMode mode)
+    {
+        themeMode = mode;
+        if (mode is ThemeMode.Auto && themeProvider is not null)
+        {
+            isDarkMode = await themeProvider.GetSystemPreference();
+            return;
+        }
+
+        isDarkMode = mode is ThemeMode.Dark;
+    }
+
+    private string GetThemeMenuIcon()
+        => themeMode switch
+        {
+            ThemeMode.Auto => Icons.Material.Filled.BrightnessAuto,
+            ThemeMode.Light => Icons.Material.Filled.LightMode,
+            ThemeMode.Dark => Icons.Material.Filled.DarkMode,
+            _ => Icons.Material.Filled.BrightnessAuto,
+        };
+
+    private string GetThemeOptionLabel(ThemeMode mode)
+    {
+        var label = GetThemeModeDisplayName(mode);
+        return themeMode == mode ? $"✓ {label}" : label;
+    }
+
+    private static ThemeMode ParseThemeMode(string? mode)
+        => mode?.ToLowerInvariant() switch
+        {
+            "light" => ThemeMode.Light,
+            "dark" => ThemeMode.Dark,
+            _ => ThemeMode.Auto,
+        };
+
+    private static string ToSessionValue(ThemeMode mode)
+        => mode switch
+        {
+            ThemeMode.Light => "light",
+            ThemeMode.Dark => "dark",
+            _ => "auto",
+        };
+
+    private static string GetThemeModeDisplayName(ThemeMode mode)
+        => mode switch
+        {
+            ThemeMode.Auto => "Auto",
+            ThemeMode.Light => "Light",
+            ThemeMode.Dark => "Dark",
+            _ => "Auto",
+        };
+
+    private enum ThemeMode
+    {
+        Auto,
+        Light,
+        Dark,
     }
 
     private async Task RefreshContainersAsync()
