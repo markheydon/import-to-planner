@@ -23,7 +23,7 @@ This repository contains a single-purpose Blazor app with the sole function of i
 Refer to the following discipline-specific instruction files aligned with work type:
 
 - `.github/instructions/csharp-clean-architecture.instructions.md` - Governs C# code organisation, design, and Clean Architecture principles
-- `.github/instructions/blazor-fluentui.instructions.md` - Governs Blazor component patterns and Fluent UI usage
+- `.github/instructions/blazor-csharp.instructions.md` - Governs Blazor component patterns and C# conventions
 
 ## Applicable skills and agent registry
 
@@ -55,5 +55,5 @@ See `AGENTS.md` for agent delegation. By default, coding, architecture, and test
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read specs/001-import-planner-csv/plan.md
+shell commands, and other important information, read specs/002-ui-ux-redesign/plan.md
 <!-- SPECKIT END -->

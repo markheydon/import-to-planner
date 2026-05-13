@@ -1,17 +1,16 @@
 <!--
 Sync Impact Report
-- Version change: 1.0.1 -> 1.1.0
+- Version change: 1.2.0 -> 1.3.0
 - Modified principles:
-	- VI. Agent Delegation Discipline (added)
+	- None
 - Added sections:
 	- None
 - Removed sections:
 	- None
+- Engineering Guardrail updated:
+	- UI library changed from Fluent UI Blazor to MudBlazor
 - Templates requiring updates:
-	- ✅ updated: .specify/templates/plan-template.md
-	- ✅ updated: .specify/templates/spec-template.md
-	- ✅ updated: .specify/templates/tasks-template.md
-	- ✅ updated: AGENTS.md
+	- None (MudBlazor is library-agnostic from a skill perspective)
 - Follow-up TODOs:
 	- None
 -->
@@ -75,15 +74,21 @@ expected impact and mitigation when beta API behaviour changes.
 Rationale: Strong observability and safe failure modes are required when integrating with
 external Graph services and user data.
 
-### VI. Agent Delegation Discipline
+### VI. Agent Delegation Discipline and Process Continuity
 Where repository-registered custom agents exist for a task category, implementation
 workflow commands MUST use those agents for applicable work. For this repository,
 coding, architecture, and test implementation tasks MUST be delegated to the C# Expert
 agent unless a task falls outside its scope or a maintainer-approved exception is
-documented in the related plan or pull request.
+documented in the related plan or pull request. Agents MUST remain aware of and strictly
+follow the skill mapping, process expectations, and operational constraints defined in
+`AGENTS.md` throughout all work phases—not just at initial delegation. This includes
+mandatory build/rebuild operations, tool selection, and testing discipline. If AGENTS.md
+is not referenced mid-session, agents MUST re-read it to restore contextual compliance
+before continuing work or handing off to the next phase.
 
-Rationale: Explicit delegation keeps implementation behaviour consistent with repository
-skills and reduces drift between governance intent and execution practice.
+Rationale: Explicit delegation and continuous process adherence keeps implementation
+behaviour consistent with repository skills, reduces drift between governance intent and
+execution practice, and ensures users receive fully prepared code without manual intervention.
 
 ## Engineering Guardrails
 
@@ -97,8 +102,19 @@ skills and reduces drift between governance intent and execution practice.
 	introduced without an explicit constitution amendment or approved scope decision.
 - End-user and contributor documentation, including comments intended for users, MUST use
 	UK English.
+- User interface implementation MUST use MudBlazor components and patterns as the standard
+	library. Custom CSS or hand-authored HTML overrides MUST be treated as a last resort and
+	only used where MudBlazor capabilities are insufficient or where a known issue is
+	documented.
+- Implementation choices for MudBlazor component behaviour MUST follow the component
+	library's documented patterns and best practices. Any deviation MUST be documented with
+	rationale.
 - Security-sensitive values (credentials, certificate material, tenant identifiers)
 	MUST NOT be committed and MUST be handled through approved configuration paths.
+- Agent process requirements defined in `AGENTS.md` (skill usage, build/rebuild operations,
+	testing discipline, delegation scope) MUST be treated as mandatory governance and adhered to
+	continuously throughout all work phases. Agents MUST re-read `AGENTS.md` if context is lost
+	during iteration to restore compliance before handing off work.
 
 ## Delivery Workflow and Quality Gates
 
@@ -109,6 +125,8 @@ skills and reduces drift between governance intent and execution practice.
 	parity for both solution-level and AppHost validation paths.
 - Implementation planning and execution MUST include an agent-delegation check against
 	`AGENTS.md`, and any exception MUST be documented with rationale.
+- Pull requests with custom HTML/CSS workarounds in Fluent UI workflows MUST include
+	evidence that component-native and MCP-guided options were evaluated first.
 - Reviewers MUST block merges when constitutional gates are unmet or unsupported by
 	evidence.
 - Large or risky changes SHOULD be delivered incrementally with verifiable checkpoints.
@@ -133,4 +151,4 @@ Compliance review expectations:
 - Constitution compliance MUST be checked in planning and pull request review.
 - Non-compliance MUST be tracked as explicit follow-up work or resolved before release.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-11
+**Version**: 1.3.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-12

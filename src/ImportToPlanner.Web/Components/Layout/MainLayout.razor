@@ -1,51 +1,20 @@
-﻿@inherits LayoutComponentBase
-@inject NavigationManager NavigationManager
+@inherits LayoutComponentBase
 
-<FluentDesignTheme Mode="DesignThemeModes.System" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+<MudThemeProvider @ref="_themeProvider" Theme="@_theme" IsDarkMode="@_isDarkMode" />
 
-<div class="app-shell">
-    <header class="app-header">
-        <h1>CSV to Planner Import</h1>
-        <p>Single-use utility for idempotent plan, bucket, and task creation with manual goal follow-up actions.</p>
-        <AuthorizeView>
-            <Authorized Context="authState">
-                <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="8" VerticalAlignment="VerticalAlignment.Center">
-                    <FluentLabel>@authState.User.Identity?.Name</FluentLabel>
-                    <FluentButton OnClick="OnSignOutClicked" Appearance="Appearance.Neutral">Sign out</FluentButton>
-                </FluentStack>
-            </Authorized>
-            <NotAuthorized>
-                <FluentButton OnClick="OnSignInClicked" Appearance="Appearance.Accent">Sign in</FluentButton>
-            </NotAuthorized>
-        </AuthorizeView>
-    </header>
+<MudLayout>
+    <MudMainContent Class="pa-4">
+        <CascadingValue Value="@ThemeContext">
+            @Body
+        </CascadingValue>
+    </MudMainContent>
+</MudLayout>
 
-    <main class="app-content">
-        @Body
-    </main>
-
-    <FluentToastProvider />
-    <FluentDialogProvider />
-    <FluentMessageBarProvider />
-    <FluentTooltipProvider />
-    <FluentKeyCodeProvider />
-
-    <div id="blazor-error-ui" data-nosnippet>
-        An unhandled error has occurred.
-        <a href="." class="reload">Reload</a>
-        <span class="dismiss">x</span>
-    </div>
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">x</span>
 </div>
-
-@code {
-    private void OnSignInClicked()
-    {
-        NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
-    }
-
-    private void OnSignOutClicked()
-    {
-        var returnUrl = Uri.EscapeDataString(new Uri(NavigationManager.BaseUri).PathAndQuery);
-        NavigationManager.NavigateTo($"MicrosoftIdentity/Account/SignOut?returnUrl={returnUrl}", forceLoad: true);
-    }
-}

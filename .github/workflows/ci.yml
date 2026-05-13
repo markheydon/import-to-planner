@@ -17,6 +17,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  javascript-syntax-check:
+    name: JavaScript Syntax Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Verify JavaScript syntax
+        shell: bash
+        run: |
+          mapfile -t js_files < <(git ls-files '*.js')
+
+          if [[ ${#js_files[@]} -eq 0 ]]; then
+            echo "No JavaScript files found."
+            exit 0
+          fi
+
+          for file in "${js_files[@]}"; do
+            echo "Checking syntax: ${file}"
+            node --check "${file}"
+          done
+
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest

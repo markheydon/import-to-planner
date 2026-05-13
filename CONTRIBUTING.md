@@ -18,6 +18,7 @@ The repository defaults to the in-memory planner gateway, so you can build, test
 
 ```bash
 dotnet restore ImportToPlanner.slnx
+dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
@@ -29,6 +30,7 @@ If you prefer a containerised development environment, GitHub Codespaces is supp
 
 - Aspire CLI (`aspire`) for orchestration and diagnostics.
 - GitHub CLI (`gh`) for issue and pull request workflows.
+- Node.js (LTS) for local JavaScript syntax checks that mirror CI.
 
 For the current AppHost in this repository, `aspire start` works without Docker or Podman because the graph only contains the web project. `aspire doctor` may still report `No container runtime detected` as a generic prerequisite warning, especially in Codespaces.
 
@@ -38,8 +40,10 @@ If you plan to use AI tooling that benefits from Aspire agent setup, run `aspire
 
 ```bash
 dotnet restore ImportToPlanner.slnx
+dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
+git ls-files '*.js' | xargs -n1 node --check
 ```
 
 To run the web app locally:
@@ -88,6 +92,13 @@ Open a [GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new
 - Never use top-level PR/issue comments as a substitute for thread replies.
 - If tooling cannot post an in-thread reply, stop and report the limitation with draft reply text for the affected thread(s).
 - Do not resolve a review thread unless an in-thread reply has been posted.
+
+### UI shell and framework styling checks
+
+- Before requesting a CSS reintroduction for framework-level elements, verify whether styling is already provided by loaded framework or component-library assets.
+- In this repository, `#blazor-error-ui` styling is provided by MudBlazor via `_content/MudBlazor/MudBlazor.min.css`, referenced in `src/ImportToPlanner.Web/Components/App.razor`.
+- Do not add local fallback CSS for `#blazor-error-ui` unless the MudBlazor stylesheet reference is removed or replaced.
+- Prefer validating effective runtime behaviour in the browser before raising review feedback based only on static markup.
 
 
 ---

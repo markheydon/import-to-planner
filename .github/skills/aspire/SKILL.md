@@ -103,4 +103,20 @@ aspire mcp call <resource> <tool> --input '{"key":"value"}'   # invoke a tool
 
 ## Playwright CLI
 
-If configured, use Playwright CLI for functional testing of resources. Get endpoints via `aspire describe`. Run `playwright-cli --help` for available commands.
+If configured, use Playwright for functional browser checks against Aspire resources. Get endpoints via `aspire describe`.
+
+Use the modern Playwright command surface:
+
+```bash
+playwright --help
+# or
+npx playwright --help
+```
+
+`playwright-cli` is deprecated and should not be used.
+
+On Ubuntu 24.04 (including WSL), avoid `playwright install --with-deps` because some dependency names have moved to `*t64` packages. Install system dependencies with apt first, then run:
+
+```bash
+playwright install chromium
+```
