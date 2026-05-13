@@ -109,7 +109,7 @@ Repository has already standardised on MudBlazor. This mismatch weakens the cons
 
 ## Recommendations to Reach Strict Adherence
 
-## A) Codebase Refactor Priorities
+### A) Codebase Refactor Priorities
 
 1. **Move CSV parsing implementation out of Application**
    - Keep `ICsvImportParser` boundary in Application.
@@ -134,7 +134,7 @@ Repository has already standardised on MudBlazor. This mismatch weakens the cons
    - Interactors should emit structured outcome codes/data.
    - Presenter maps that to UK-English UI text.
 
-## B) Constitution Changes for Strict Uncle Bob Alignment
+### B) Constitution Changes for Strict Uncle Bob Alignment
 
 1. **Narrow Principle I into enforceable architectural rules**
    - Explicitly codify dependency rule.
