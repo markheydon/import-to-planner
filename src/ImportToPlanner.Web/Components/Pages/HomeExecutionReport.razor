@@ -11,7 +11,7 @@
             </MudAlert>
         }
 
-        <MudTabs Rounded="true" ApplyEffectsToContainer="true">
+        <MudTabs Rounded="false" ApplyEffectsToContainer="false">
             <MudTabPanel Text="Summary">
                 <MudSimpleTable Dense="true" Hover="true" Elevation="0">
                     <thead>
@@ -58,7 +58,7 @@
             <MudTabPanel Text="@($"Manual Actions ({ExecutionResult.ManualActions.Count})")">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
                     <MudText Typo="Typo.subtitle2">Manual actions</MudText>
-                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Filled" Size="Size.Small">@ExecutionResult.ManualActions.Count</MudChip>
+                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small">@ExecutionResult.ManualActions.Count</MudChip>
                 </MudStack>
 
                 @if (ExecutionResult.ManualActions.Count == 0)
@@ -81,7 +81,7 @@
             <MudTabPanel Text="@($"Errors ({ExecutionResult.Errors.Count})")">
                 <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
                     <MudText Typo="Typo.subtitle2">Errors</MudText>
-                    <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Size="Size.Small">@ExecutionResult.Errors.Count</MudChip>
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined" Size="Size.Small">@ExecutionResult.Errors.Count</MudChip>
                 </MudStack>
 
                 @if (ExecutionResult.Errors.Count == 0)

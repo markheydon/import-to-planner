@@ -16,7 +16,7 @@
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
     <MudStack Spacing="4">
-        <MudPaper Elevation="1" Class="pa-4 pa-md-6">
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
             <MudGrid Spacing="3">
                 <MudItem xs="12" md="7">
                     <MudStack Spacing="1">
@@ -60,7 +60,7 @@
                 <MudAlert Severity="@StatusMessageSeverity" Dense="true">@statusMessage</MudAlert>
             }
 
-            <MudPaper Elevation="@GetStepElevation(1)" Class="@GetStepClass(1)">
+            <MudPaper Elevation="@GetStepElevation(1)" Outlined="true" Class="@GetStepClass(1)">
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                     <MudAvatar Color="@GetStepAvatarColour(1)">@GetStepAvatarContent(1)</MudAvatar>
                     <MudText Typo="Typo.h6">Step 1 · Select Container</MudText>
@@ -90,7 +90,7 @@
                                          CoerceValue="false"
                                          ResetValueOnEmptyText="true"
                                          Disabled="@isBusy" />
-                        <MudButton Variant="Variant.Outlined" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
+                        <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
                             Refresh containers
                         </MudButton>
                     </MudStack>
@@ -104,7 +104,7 @@
                 </MudStack>
             </MudPaper>
 
-            <MudPaper Elevation="@GetStepElevation(2)" Class="@GetStepClass(2)">
+            <MudPaper Elevation="@GetStepElevation(2)" Outlined="true" Class="@GetStepClass(2)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(2)">@GetStepAvatarContent(2)</MudAvatar>
             <MudText Typo="Typo.h6">Step 2 · Select Plan</MudText>
@@ -131,7 +131,7 @@
                                  CoerceValue="false"
                                  ResetValueOnEmptyText="true"
                                  Disabled="@(isBusy || selectedContainer is null)" />
-                <MudButton Variant="Variant.Outlined" Disabled="@(isBusy || selectedContainer is null)" OnClick="@RefreshPlansAsync">
+                <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@(isBusy || selectedContainer is null)" OnClick="@RefreshPlansAsync">
                     Refresh plans
                 </MudButton>
             </MudStack>
@@ -145,7 +145,7 @@
         </MudStack>
     </MudPaper>
 
-            <MudPaper Elevation="@GetStepElevation(3)" Class="@GetStepClass(3)">
+            <MudPaper Elevation="@GetStepElevation(3)" Outlined="true" Class="@GetStepClass(3)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(3)">@GetStepAvatarContent(3)</MudAvatar>
             <MudText Typo="Typo.h6">Step 3 · Upload CSV and Options</MudText>
@@ -193,7 +193,7 @@
         </MudStack>
     </MudPaper>
 
-            <MudPaper Elevation="@GetStepElevation(4)" Class="@GetStepClass(4)">
+            <MudPaper Elevation="@GetStepElevation(4)" Outlined="true" Class="@GetStepClass(4)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(4)">@GetStepAvatarContent(4)</MudAvatar>
             <MudText Typo="Typo.h6">Step 4 · Validate and Preview</MudText>
@@ -276,7 +276,7 @@
         </MudStack>
     </MudPaper>
 
-            <MudPaper Elevation="@GetStepElevation(5)" Class="@GetStepClass(5)">
+            <MudPaper Elevation="@GetStepElevation(5)" Outlined="true" Class="@GetStepClass(5)">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
             <MudAvatar Color="@GetStepAvatarColour(5)">@GetStepAvatarContent(5)</MudAvatar>
             <MudText Typo="Typo.h6">Step 5 · Confirm and Execute</MudText>
@@ -1025,7 +1025,7 @@
     private bool IsStepActive(int step) => ActiveStep.HasValue && ActiveStep.Value == step;
 
     private int GetStepElevation(int step)
-        => IsStepLocked(step) ? 0 : IsStepActive(step) ? 6 : 2;
+        => IsStepLocked(step) ? 0 : IsStepActive(step) ? 2 : 1;
 
     private string GetStepClass(int step)
     {
