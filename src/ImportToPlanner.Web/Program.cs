@@ -2,6 +2,8 @@ using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Services;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web.Components;
+using ImportToPlanner.Web.Presenters;
+using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
@@ -60,7 +62,12 @@ builder.Services.AddControllersWithViews()
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<ICsvImportParser, CsvImportParser>();
-builder.Services.AddScoped<IImportPlannerOrchestrator, ImportPlannerOrchestrator>();
+builder.Services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
+builder.Services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
+builder.Services.AddScoped<ImportPlanningPresenter>();
+builder.Services.AddScoped<ImportExecutionPresenter>();
+builder.Services.AddScoped<WorkflowCoordinationState>();
+builder.Services.AddScoped<ImportWorkflowCoordinator>();
 if (builder.Configuration.GetValue<bool>("PlannerGateway:UseGraph"))
 {
     builder.Services.AddScoped<IPlannerGateway, GraphPlannerGateway>();

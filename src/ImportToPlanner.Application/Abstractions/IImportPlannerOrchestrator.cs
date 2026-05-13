@@ -3,27 +3,65 @@ using ImportToPlanner.Application.Models;
 namespace ImportToPlanner.Application.Abstractions;
 
 /// <summary>
-/// Coordinates dry-run planning and execution for CSV imports.
+/// Defines the input boundary for planning import actions.
 /// </summary>
-public interface IImportPlannerOrchestrator
+public interface IImportPlanningUseCase
 {
     /// <summary>
-    /// Builds a dry-run preview of all create/reuse/skip actions.
+    /// Handles a planning request and emits a neutral preview through the output boundary.
     /// </summary>
-    /// <param name="request">The normalized import request.</param>
+    /// <param name="request">The planning request.</param>
+    /// <param name="outputBoundary">The planning output boundary implementation.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The dry-run preview.</returns>
-    Task<ImportPlanPreview> BuildPreviewAsync(ImportRequest request, CancellationToken cancellationToken);
+    Task HandleAsync(
+        ImportPlanningRequest request,
+        IImportPlanningOutputBoundary outputBoundary,
+        CancellationToken cancellationToken);
+}
 
+/// <summary>
+/// Defines the output boundary for import planning.
+/// </summary>
+public interface IImportPlanningOutputBoundary
+{
     /// <summary>
-    /// Executes the import actions represented by a dry-run preview.
+    /// Presents a planning response.
     /// </summary>
-    /// <param name="request">The normalized import request.</param>
-    /// <param name="preview">The preview generated for the same request.</param>
+    /// <param name="response">The planning response.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The execution report.</returns>
-    Task<ImportExecutionResult> ExecuteAsync(
-        ImportRequest request,
-        ImportPlanPreview preview,
+    Task PresentAsync(
+        ImportPlanPreview response,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Defines the input boundary for executing approved import actions.
+/// </summary>
+public interface IImportExecutionUseCase
+{
+    /// <summary>
+    /// Handles an execution request and emits a neutral result through the output boundary.
+    /// </summary>
+    /// <param name="request">The execution request.</param>
+    /// <param name="outputBoundary">The execution output boundary implementation.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    Task HandleAsync(
+        ImportExecutionRequest request,
+        IImportExecutionOutputBoundary outputBoundary,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Defines the output boundary for import execution.
+/// </summary>
+public interface IImportExecutionOutputBoundary
+{
+    /// <summary>
+    /// Presents an execution response.
+    /// </summary>
+    /// <param name="response">The execution response.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    Task PresentAsync(
+        ImportExecutionResult response,
         CancellationToken cancellationToken);
 }

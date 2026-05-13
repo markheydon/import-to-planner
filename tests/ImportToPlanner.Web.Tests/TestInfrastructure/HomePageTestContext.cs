@@ -1,7 +1,11 @@
 using Bunit;
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Services;
 using ImportToPlanner.Domain;
+using ImportToPlanner.Web.Presenters;
+using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +15,7 @@ namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
 internal sealed class HomePageTestContext : BunitContext
 {
-    public HomePageTestContext()
+    public HomePageTestContext(bool useGraphGateway = false)
     {
         Services.AddMudServices(configuration =>
         {
@@ -23,20 +27,23 @@ internal sealed class HomePageTestContext : BunitContext
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["PlannerGateway:UseGraph"] = "false",
+                ["PlannerGateway:UseGraph"] = useGraphGateway ? "true" : "false",
             })
             .Build();
 
         Services.AddSingleton<IConfiguration>(config);
         Services.AddSingleton<AuthenticationStateProvider, FakeAuthenticationStateProvider>();
         Services.AddScoped<ICsvImportParser, StubCsvImportParser>();
-        Services.AddScoped<IImportPlannerOrchestrator>(_ => Orchestrator);
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
+        Services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
+        Services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
+        Services.AddScoped<ImportPlanningPresenter>();
+        Services.AddScoped<ImportExecutionPresenter>();
+        Services.AddScoped<WorkflowCoordinationState>();
+        Services.AddScoped<ImportWorkflowCoordinator>();
 
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
-
-    public StubImportPlannerOrchestrator Orchestrator { get; } = new();
 
     public StubPlannerGateway Gateway { get; } = new();
 }
@@ -66,6 +73,8 @@ internal sealed class StubPlannerGateway : IPlannerGateway
     public Exception? GetAvailableContainersException { get; set; }
 
     public Exception? GetPlansException { get; set; }
+
+    public Exception? CreateTaskException { get; set; }
 
     public IReadOnlyList<PlannerContainer> Containers { get; set; } =
     [
@@ -110,46 +119,23 @@ internal sealed class StubPlannerGateway : IPlannerGateway
         => Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>([]);
 
     public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, CancellationToken cancellationToken)
-        => Task.FromResult(new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId));
-}
-
-internal sealed class StubImportPlannerOrchestrator : IImportPlannerOrchestrator
-{
-    public ImportPlanPreview? PreviewToReturn { get; set; }
-
-    public ImportExecutionResult? ExecutionResultToReturn { get; set; }
-
-    public Task<ImportPlanPreview> BuildPreviewAsync(ImportRequest request, CancellationToken cancellationToken)
     {
-        var preview = PreviewToReturn ?? new ImportPlanPreview
+        if (CreateTaskException is not null)
         {
-            ContainerId = request.ContainerId,
-            PlanId = request.PlanId,
-            PlanName = request.PlanName,
-            PlanAction = PlannedEntityAction.Reuse,
-            HasValidationErrors = false,
-            RequestFingerprint = "stub-request",
-            PlannerStateFingerprint = "stub-state",
-            GeneratedAtUtc = DateTimeOffset.UtcNow,
-            BucketActions = new Dictionary<string, PlannedEntityAction>(StringComparer.OrdinalIgnoreCase),
-            TaskActions = [],
-        };
+            return Task.FromException<PlannerTaskSnapshot>(CreateTaskException);
+        }
 
-        return Task.FromResult(preview);
+        return Task.FromResult(new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId));
     }
 
-    public Task<ImportExecutionResult> ExecuteAsync(ImportRequest request, ImportPlanPreview preview, CancellationToken cancellationToken)
+    public static PlannerOperationException AuthenticationFailure()
     {
-        var result = ExecutionResultToReturn ?? new ImportExecutionResult
-        {
-            PlanId = preview.PlanId,
-            Created = ["Task: Stub Task"],
-            ReusedOrSkipped = [],
-            Errors = [],
-            ManualActions = [],
-            OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 0, 0, false, false),
-        };
-
-        return Task.FromResult(result);
+        return new PlannerOperationException(new PlannerOperationFailure(
+            PlannerFailureCategory.Authentication,
+            PlannerFailureTarget.Workflow,
+            null,
+            "Authentication failed.",
+            false,
+            "Authentication"));
     }
 }

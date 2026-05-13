@@ -1,29 +1,29 @@
 namespace ImportToPlanner.Application.Models;
 
 /// <summary>
-/// Represents the final import execution report.
+/// Represents the final import execution outcome.
 /// </summary>
 public sealed record ImportExecutionResult
 {
     /// <summary>
-    /// Gets or sets the plan identifier of the created or reused plan.
+    /// Gets or sets the plan identifier of the reused plan.
     /// </summary>
     public string? PlanId { get; init; }
 
     /// <summary>
-    /// Gets or sets the created item descriptions.
+    /// Gets or sets the created items.
     /// </summary>
-    public required IReadOnlyList<string> Created { get; init; }
+    public required IReadOnlyList<ImportExecutionItem> CreatedItems { get; init; }
 
     /// <summary>
-    /// Gets or sets the reused or skipped item descriptions.
+    /// Gets or sets the reused or skipped items.
     /// </summary>
-    public required IReadOnlyList<string> ReusedOrSkipped { get; init; }
+    public required IReadOnlyList<ImportExecutionItem> ReusedOrSkippedItems { get; init; }
 
     /// <summary>
-    /// Gets or sets the execution errors.
+    /// Gets or sets the execution failures.
     /// </summary>
-    public required IReadOnlyList<string> Errors { get; init; }
+    public required IReadOnlyList<PlannerOperationFailure> FailureItems { get; init; }
 
     /// <summary>
     /// Gets or sets the post-import manual actions.
@@ -33,8 +33,19 @@ public sealed record ImportExecutionResult
     /// <summary>
     /// Gets or sets the aggregate execution outcome summary.
     /// </summary>
-    public ImportExecutionOutcomeSummary? OutcomeSummary { get; init; }
+    public required ImportExecutionOutcomeSummary OutcomeSummary { get; init; }
 }
+
+/// <summary>
+/// Represents a neutral execution item.
+/// </summary>
+/// <param name="Target">The item target type.</param>
+/// <param name="Name">The item display name.</param>
+/// <param name="Reference">Optional stable reference.</param>
+public sealed record ImportExecutionItem(
+    PlannerFailureTarget Target,
+    string Name,
+    string? Reference = null);
 
 /// <summary>
 /// Represents aggregate execution outcome counters for reporting consistency.

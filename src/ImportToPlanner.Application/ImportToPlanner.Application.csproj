@@ -3,8 +3,4 @@
   <ItemGroup>
     <ProjectReference Include="..\ImportToPlanner.Domain\ImportToPlanner.Domain.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="CsvHelper" />
-  </ItemGroup>
 </Project>

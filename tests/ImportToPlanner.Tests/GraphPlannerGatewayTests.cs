@@ -1,5 +1,6 @@
 using System.Globalization;
 using ImportToPlanner.Application.Exceptions;
+using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Infrastructure.Graph;
 using Microsoft.Graph;
@@ -73,7 +74,7 @@ public sealed class GraphPlannerGatewayTests
     }
 
     [Fact]
-    public async Task GetPlanByIdAsync_WithRosterContainer_ReturnsRawContainerDetails()
+    public async Task GetPlanByIdAsync_WithRosterContainer_MapsNeutralPlanDetails()
     {
         // Arrange
         var adapter = new StubRequestAdapter();
@@ -107,8 +108,6 @@ public sealed class GraphPlannerGatewayTests
         Assert.Equal("Personal Board", result.Title);
         Assert.Equal("roster-1", result.ContainerId);
         Assert.Equal(ContainerType.Roster, result.ContainerType);
-        Assert.Equal("roster", result.RawContainerType);
-        Assert.Equal("https://graph.microsoft.com/beta/planner/rosters/roster-1", result.ContainerUrl);
     }
 
     [Fact]
@@ -138,8 +137,6 @@ public sealed class GraphPlannerGatewayTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal(ContainerType.User, result.ContainerType);
-        Assert.Equal("user", result.RawContainerType);
-        Assert.Equal("https://graph.microsoft.com/beta/users/b55eed95-2e13-4f07-84ef-65d8ddb048dc", result.ContainerUrl);
     }
 
     [Fact]
@@ -350,7 +347,7 @@ public sealed class GraphPlannerGatewayTests
     }
 
     [Fact]
-    public async Task GetAvailableContainersAsync_WhenGraphReturns401_ThrowsPlannerAuthenticationException()
+    public async Task GetAvailableContainersAsync_WhenGraphReturns401_ThrowsPlannerOperationAuthenticationFailure()
     {
         // Arrange
         var adapter = new StubRequestAdapter();
@@ -366,12 +363,13 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act + Assert
-        await Assert.ThrowsAsync<PlannerAuthenticationException>(() =>
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
             gateway.GetAvailableContainersAsync(CancellationToken.None));
+        Assert.Equal(PlannerFailureCategory.Authentication, exception.Failure.Category);
     }
 
     [Fact]
-    public async Task CreateTaskAsync_WhenGraphReturns403_ThrowsPlannerPermissionException()
+    public async Task CreateTaskAsync_WhenGraphReturns403_ThrowsPlannerOperationAuthorisationFailure()
     {
         // Arrange
         var adapter = new StubRequestAdapter();
@@ -383,8 +381,9 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act + Assert
-        await Assert.ThrowsAsync<PlannerPermissionException>(() =>
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
             gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, null, null, CancellationToken.None));
+        Assert.Equal(PlannerFailureCategory.Authorisation, exception.Failure.Category);
     }
 
     [Fact]
@@ -413,7 +412,7 @@ public sealed class GraphPlannerGatewayTests
     }
 
     [Fact]
-    public async Task GetAvailableContainersAsync_WhenThrottledBeyondRetryLimit_ThrowsPlannerThrottlingException()
+    public async Task GetAvailableContainersAsync_WhenThrottledBeyondRetryLimit_ThrowsUnavailableFailure()
     {
         // Arrange
         var adapter = new StubRequestAdapter();
@@ -432,13 +431,14 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act + Assert
-        await Assert.ThrowsAsync<PlannerThrottlingException>(() =>
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
             gateway.GetAvailableContainersAsync(CancellationToken.None));
+        Assert.Equal(PlannerFailureCategory.Unavailable, exception.Failure.Category);
         Assert.Equal(4, adapter.GetCallCount("memberOf"));
     }
 
     [Fact]
-    public async Task CreateTaskAsync_WhenGraphReturnsConflict_ThrowsPlannerConflictExceptionWithoutBlindRetry()
+    public async Task CreateTaskAsync_WhenGraphReturnsConflict_ThrowsConflictFailureWithoutBlindRetry()
     {
         // Arrange
         var adapter = new StubRequestAdapter();
@@ -450,8 +450,9 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act + Assert
-        await Assert.ThrowsAsync<PlannerConflictException>(() =>
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
             gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, null, null, CancellationToken.None));
+        Assert.Equal(PlannerFailureCategory.Conflict, exception.Failure.Category);
         Assert.Equal(1, adapter.GetCallCount("createTask"));
     }
 

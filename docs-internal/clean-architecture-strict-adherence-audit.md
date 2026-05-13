@@ -8,7 +8,33 @@ It is layered and partially disciplined, but key boundaries are still porous, an
 If strict adherence is the target, the current state is best described as: **“Clean-ish layering, not Clean Architecture purity.”**
 
 Update (2026-05-13): Constitution and governance-document recommendations in section B
-have now been actioned. Codebase refactor recommendations in section A remain open.
+have now been actioned. Codebase refactor recommendations in section A have now also
+been implemented for feature `003-align-clean-architecture`.
+
+## Remediation Evidence (2026-05-13)
+
+- CSV parser implementation moved to Infrastructure: `src/ImportToPlanner.Infrastructure.Graph/CsvImportParser.cs`; Application parser implementation removed.
+- `CsvHelper` package ownership moved to Infrastructure project usage and removed from Application project usage.
+- Combined orchestrator retired and replaced with explicit planning/execution boundaries:
+   - `IImportPlanningUseCase` and `IImportExecutionUseCase`
+   - `IImportPlanningOutputBoundary` and `IImportExecutionOutputBoundary`
+   - `ImportPlanningUseCase` and `ImportExecutionUseCase`
+- Domain provider residue removed from `PlannerPlan` by dropping provider-shape metadata properties.
+- Graph/provider exceptions are translated into neutral failure taxonomy (`PlannerOperationFailure`) at adapter boundaries.
+- Presenter ownership introduced in Web:
+   - `ImportPlanningPresenter`
+   - `ImportExecutionPresenter`
+- Workflow coordination moved into dedicated Web collaborators:
+   - `WorkflowCoordinationState`
+   - `ImportWorkflowCoordinator`
+- Architecture regression checks added:
+   - `ArchitectureComplianceTests`
+   - `PlannerPlanTests`
+- Runtime-mode parity hook added for Web tests by parameterising `HomePageTestContext(bool useGraphGateway = false)`.
+
+### Remaining Follow-up
+
+- Continue expanding planner runtime-mode parity assertions as additional planner behaviours change.
 
 ## Scope and Baseline
 

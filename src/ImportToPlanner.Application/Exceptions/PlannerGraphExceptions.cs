@@ -1,85 +1,27 @@
-using System.Text.RegularExpressions;
+using ImportToPlanner.Application.Models;
 
 namespace ImportToPlanner.Application.Exceptions;
 
 /// <summary>
-/// Represents an authentication failure while calling Microsoft Graph for Planner operations.
+/// Represents a planner operation failure surfaced by an adapter.
 /// </summary>
-public sealed class PlannerAuthenticationException : Exception
+public sealed class PlannerOperationException : Exception
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="PlannerAuthenticationException"/> class.
+    /// Initializes a new instance of the <see cref="PlannerOperationException"/> class.
     /// </summary>
-    /// <param name="message">The exception message.</param>
+    /// <param name="failure">The neutral failure metadata.</param>
     /// <param name="innerException">The inner exception.</param>
-    public PlannerAuthenticationException(string message, Exception? innerException = null)
-        : base(message, innerException)
+    public PlannerOperationException(PlannerOperationFailure failure, Exception? innerException = null)
+        : base(failure.Message, innerException)
     {
+        Failure = failure;
     }
-}
 
-/// <summary>
-/// Represents an authorization failure while calling Microsoft Graph for Planner operations.
-/// </summary>
-public sealed class PlannerPermissionException : Exception
-{
     /// <summary>
-    /// Initializes a new instance of the <see cref="PlannerPermissionException"/> class.
+    /// Gets the neutral failure metadata.
     /// </summary>
-    /// <param name="message">The exception message.</param>
-    /// <param name="innerException">The inner exception.</param>
-    public PlannerPermissionException(string message, Exception? innerException = null)
-        : base(message, innerException)
-    {
-    }
-}
-
-/// <summary>
-/// Represents a missing Graph resource during Planner operations.
-/// </summary>
-public sealed class PlannerNotFoundException : Exception
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PlannerNotFoundException"/> class.
-    /// </summary>
-    /// <param name="message">The exception message.</param>
-    /// <param name="innerException">The inner exception.</param>
-    public PlannerNotFoundException(string message, Exception? innerException = null)
-        : base(message, innerException)
-    {
-    }
-}
-
-/// <summary>
-/// Represents a Graph concurrency conflict during Planner operations.
-/// </summary>
-public sealed class PlannerConflictException : Exception
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PlannerConflictException"/> class.
-    /// </summary>
-    /// <param name="message">The exception message.</param>
-    /// <param name="innerException">The inner exception.</param>
-    public PlannerConflictException(string message, Exception? innerException = null)
-        : base(message, innerException)
-    {
-    }
-}
-
-/// <summary>
-/// Represents Graph throttling during Planner operations.
-/// </summary>
-public sealed class PlannerThrottlingException : Exception
-{
-    /// <summary>
-    /// Initializes a new instance of the <see cref="PlannerThrottlingException"/> class.
-    /// </summary>
-    /// <param name="message">The exception message.</param>
-    /// <param name="innerException">The inner exception.</param>
-    public PlannerThrottlingException(string message, Exception? innerException = null)
-        : base(message, innerException)
-    {
-    }
+    public PlannerOperationFailure Failure { get; }
 }
 
 /// <summary>
@@ -101,41 +43,25 @@ public sealed class StaleImportPreviewException : InvalidOperationException
 /// <summary>
 /// Maps exceptions to user-safe error messages for Planner import workflows.
 /// </summary>
-public static partial class PlannerGraphErrorMapper
+public static class PlannerFailureMessageMapper
 {
     /// <summary>
-    /// Converts an exception into a user-safe message that avoids tenant-sensitive details.
+    /// Converts a planner failure into user-safe text for presenters.
     /// </summary>
-    /// <param name="exception">The source exception.</param>
-    /// <param name="fallbackMessage">The fallback message if no specific mapping is available.</param>
+    /// <param name="failure">The neutral failure metadata.</param>
     /// <returns>A user-safe error message.</returns>
-    public static string ToUserSafeMessage(Exception exception, string fallbackMessage)
+    public static string ToUserSafeMessage(PlannerOperationFailure failure)
     {
-        ArgumentNullException.ThrowIfNull(exception);
-        ArgumentException.ThrowIfNullOrWhiteSpace(fallbackMessage);
+        ArgumentNullException.ThrowIfNull(failure);
 
-        return exception switch
+        return failure.Category switch
         {
-            PlannerAuthenticationException => "Authentication expired. Sign in again and retry.",
-            PlannerPermissionException => "Permission denied. Confirm the required Planner permissions and try again.",
-            PlannerNotFoundException => "Planner resource no longer exists. Refresh and run a fresh preview.",
-            PlannerConflictException => "Planner data changed during processing. Run a fresh preview and retry.",
-            PlannerThrottlingException => "Planner is temporarily busy. Wait and retry the import.",
-            _ => RedactSensitiveTokens(fallbackMessage),
+            PlannerFailureCategory.Authentication => "Authentication expired. Sign in again and retry.",
+            PlannerFailureCategory.Authorisation => "Permission denied. Confirm the required Planner permissions and try again.",
+            PlannerFailureCategory.Conflict => "Planner data changed during processing. Run a fresh preview and retry.",
+            PlannerFailureCategory.Unavailable => "Planner is temporarily busy. Wait and retry the import.",
+            PlannerFailureCategory.Validation => "The request is not valid. Review the input and try again.",
+            _ => "An unexpected planner error occurred. Retry and check logs if the issue continues.",
         };
     }
-
-    private static string RedactSensitiveTokens(string message)
-    {
-        if (string.IsNullOrWhiteSpace(message))
-        {
-            return "An unexpected error occurred while processing Planner data.";
-        }
-
-        var redacted = SensitiveTokenPattern().Replace(message, "[redacted]");
-        return redacted;
-    }
-
-    [GeneratedRegex("(?i)(tenant|secret|certificate|cert|token|client[-_ ]?id|thumbprint)\\s*[:=]\\s*[^\\s,;]+")]
-    private static partial Regex SensitiveTokenPattern();
 }
