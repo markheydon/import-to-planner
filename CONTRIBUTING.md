@@ -30,6 +30,7 @@ If you prefer a containerised development environment, GitHub Codespaces is supp
 
 - Aspire CLI (`aspire`) for orchestration and diagnostics.
 - GitHub CLI (`gh`) for issue and pull request workflows.
+- Node.js (LTS) for local JavaScript syntax checks that mirror CI.
 
 For the current AppHost in this repository, `aspire start` works without Docker or Podman because the graph only contains the web project. `aspire doctor` may still report `No container runtime detected` as a generic prerequisite warning, especially in Codespaces.
 
@@ -42,6 +43,7 @@ dotnet restore ImportToPlanner.slnx
 dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
+git ls-files '*.js' | xargs -n1 node --check
 ```
 
 To run the web app locally:
