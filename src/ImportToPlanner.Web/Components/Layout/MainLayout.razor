@@ -3,10 +3,13 @@
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
+<MudThemeProvider @ref="_themeProvider" Theme="@_theme" IsDarkMode="@_isDarkMode" />
 
 <MudLayout>
     <MudMainContent Class="pa-4">
-        @Body
+        <CascadingValue Value="@ThemeContext">
+            @Body
+        </CascadingValue>
     </MudMainContent>
 </MudLayout>
 

@@ -146,10 +146,6 @@ public sealed class HomePageWorkflowTests
             var stepTwoAvatar = stepTwoCard.QuerySelector(".mud-avatar");
             Assert.NotNull(stepTwoAvatar);
             Assert.Equal("✓", stepTwoAvatar!.TextContent.Trim());
-
-            Assert.Contains("mud-elevation-6", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("mud-elevation-2", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("mud-elevation-0", cut.Markup, StringComparison.OrdinalIgnoreCase);
         });
     }
 

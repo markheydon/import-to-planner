@@ -1,11 +1,26 @@
 using Bunit;
 using ImportToPlanner.Web.Components.Pages;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
+using MudBlazor;
 
 namespace ImportToPlanner.Web.Tests;
 
 public sealed class HomePageSmokeTests
 {
+    [Fact]
+    public async Task HomePage_WithoutThemeCascade_DisablesThemeMenu()
+    {
+        // Arrange
+        await using var ctx = new HomePageTestContext();
+
+        // Act
+        var cut = ctx.Render<Home>();
+
+        // Assert
+        var themeMenu = cut.FindComponent<MudMenu>();
+        Assert.True(themeMenu.Instance.Disabled);
+    }
+
     [Fact]
     public async Task HomePage_InInMemoryMode_RendersFiveStepWorkflow()
     {

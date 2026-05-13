@@ -1,55 +1,75 @@
 # Import To Planner
 
-Import To Planner is a single-purpose Blazor web app for importing tasks from CSV into Microsoft Planner. It is designed for safe, operator-driven bulk imports with explicit validation, dry-run preview, confirmation before writes, and execution reporting.
+[![CI](https://github.com/markheydon/import-to-planner/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/markheydon/import-to-planner/actions/workflows/ci.yml)
+![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)
+![Licence MIT](https://img.shields.io/badge/Licence-MIT-green)
 
-The repository keeps the core import behaviour consistent across two runtime modes:
+Import To Planner is a single-purpose Blazor application that imports tasks from CSV into Microsoft Planner through a safe, operator-led workflow.
 
-- In-memory mode for local development and test-friendly runs without tenant credentials.
-- Microsoft Graph mode for live Planner execution against a single tenant.
+The core flow is:
+1. Select container and plan.
+2. Upload CSV and validate.
+3. Review dry-run preview.
+4. Explicitly confirm execution.
+5. Review created, reused/skipped, failed, and manual-action outcomes.
 
-## Key Features
-
-- CSV parsing with row-level validation errors.
-- Dry-run preview before any Planner changes are made.
-- Explicit confirmation step before execution.
-- Existing-task matching by task name, reported as `already exists`.
-- Stale-preview protection using request and planner-state fingerprints.
-- Partial-success execution reporting with retry-once handling for transient Graph row failures.
-- Manual follow-up actions for Planner goal-related work that cannot be automated fully.
-- Behavioural parity across in-memory and Graph-backed gateway implementations.
+The app supports both in-memory mode (local development) and Microsoft Graph mode (live Planner operations), with behaviour parity where planner behaviour is affected.
 
 ## Technology Stack
 
-- .NET SDK: 10.0.100.
-- Language: C#.
-- UI: ASP.NET Core Blazor with Microsoft Fluent UI for Blazor.
-- CSV parsing: CsvHelper 33.1.0.
-- Graph integration: Microsoft.Graph 5.105.0.
-- Authentication: Microsoft.Identity.Web 4.9.0.
-- Testing: xUnit 2.9.3 and bUnit 2.7.2.
-- Observability and service defaults: OpenTelemetry and .NET Aspire service defaults.
+- SDK and language:
+  - .NET SDK 10.0.100 (see `global.json`)
+  - C# 14 / ASP.NET Core Blazor
+- UI and UX:
+  - MudBlazor 8.6.0
+- Core dependencies:
+  - CsvHelper 33.1.0
+  - Microsoft.Graph 5.105.0
+  - Microsoft.Kiota.Abstractions 1.22.2
+  - Microsoft.Identity.Web and Microsoft.Identity.Web.UI 4.9.0
+- Observability and service defaults:
+  - OpenTelemetry packages (1.15.x)
+  - .NET Aspire service defaults
+- Testing:
+  - xUnit 2.9.3
+  - bUnit 2.7.2
+  - Microsoft.NET.Test.Sdk 18.5.1
 
-## Architecture
+## Project Architecture
 
-The solution follows a layered clean architecture:
+This solution follows layered Clean Architecture boundaries.
 
-- `ImportToPlanner.Domain`: domain models and business rules.
-- `ImportToPlanner.Application`: import parsing abstractions, orchestration, and workflow logic.
-- `ImportToPlanner.Infrastructure.Graph`: Graph-backed and in-memory planner gateway implementations.
-- `ImportToPlanner.Web`: Blazor UI and application shell.
-- `ImportToPlanner.ServiceDefaults`: shared operational defaults for hosting and telemetry. The `apphost.cs` file defines a minimal AppHost for local orchestration and future hosted deployment planning.
+```mermaid
+flowchart LR
+    Web[ImportToPlanner.Web\nBlazor UI] --> App[ImportToPlanner.Application\nUse-case orchestration]
+    Infra[ImportToPlanner.Infrastructure.Graph\nGraph + in-memory gateway implementations] --> App
+    App --> Domain[ImportToPlanner.Domain\nDomain models and rules]
+    Web --> ServiceDefaults[ImportToPlanner.ServiceDefaults\nTelemetry/resilience defaults]
+```
 
-The application does not persist imported data locally. Microsoft Planner is the system of record, and import state remains transient.
+Projects:
+
+- `src/ImportToPlanner.Domain`: domain entities and business meaning.
+- `src/ImportToPlanner.Application`: parser/orchestrator contracts and workflow logic.
+- `src/ImportToPlanner.Infrastructure.Graph`: infrastructure implementations, including Graph and in-memory gateways.
+- `src/ImportToPlanner.Web`: MudBlazor-based stepped import experience.
+- `src/ImportToPlanner.ServiceDefaults`: shared service defaults for resilience and telemetry.
+
+The repository also includes `apphost.cs` for Aspire AppHost orchestration and hosted-readiness planning.
 
 ## Getting Started
 
 ### Prerequisites
 
 - .NET 10 SDK.
-- Optional: a Microsoft 365 tenant and Entra app registration if you need to test Graph mode.
-- Optional: Aspire CLI if you want to use the local AppHost workflow.
+- Optional for Graph mode:
+  - Microsoft 365 tenant access.
+  - Entra app registration and local secret/config setup.
+- Optional:
+  - Aspire CLI for AppHost workflows.
+  - Node.js (LTS) for local JavaScript syntax checks mirroring CI.
 
-### Restore, Build, and Test
+### Restore, Format, Build, and Test
 
 ```bash
 dotnet restore ImportToPlanner.slnx
@@ -58,38 +78,32 @@ dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
 ```
 
-### Run Locally in In-Memory Mode
-
-In-memory mode is the default and does not require tenant credentials.
+### Run In-Memory Mode (default)
 
 ```bash
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
-Expected outcome:
+Or explicitly:
 
-- The home page loads the import workflow UI.
-- No sign-in challenge is required.
+```bash
+PlannerGateway__UseGraph=false dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
+```
 
-### Run Locally in Graph Mode
+Expected: no sign-in challenge, with in-memory container/plan data.
 
-Configure local secrets first, then enable Graph mode:
+### Run Graph Mode
 
 ```bash
 dotnet user-secrets set "PlannerGateway:UseGraph" "true" --project src/ImportToPlanner.Web
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
-Expected outcome:
+Expected: unauthenticated sessions are redirected to sign in before the import UI becomes available.
 
-- Unauthenticated users are redirected to sign in.
-- Planner containers and plans are loaded from Microsoft Graph.
+For Graph setup details, see [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md).
 
-For tenant setup and Graph-specific guidance, see [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md) and [docs-internal/README.md](docs-internal/README.md).
-
-### Optional Aspire Workflow
-
-The repository includes a minimal AppHost for local orchestration and hosted deployment planning.
+### Optional Aspire AppHost Workflow
 
 ```bash
 aspire start --isolated
@@ -98,25 +112,12 @@ aspire logs web
 aspire stop
 ```
 
-CI also validates the AppHost build path:
+CI also verifies AppHost parity:
 
 ```bash
 dotnet restore apphost.cs
 dotnet build apphost.cs --no-restore
 ```
-
-CI also verifies formatting on the solution before build and test, so running the same `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal` command locally is a good pre-PR check.
-
-Hosted deployment implementation is not included yet. The current internal documentation records a production-readiness baseline and configuration handoff expectations for future hosted rollout.
-
-### Hosted Aspire Production-Readiness Summary
-
-- Keep `apphost.cs` scoped to the single `web` resource unless explicitly approved scaling requirements are introduced.
-- Track hosted handoff for `PlannerGateway:UseGraph`, `AzureAd:*`, certificate credential source, and `OTEL_EXPORTER_OTLP_ENDPOINT`.
-- Keep `/health` and `/alive` disabled in non-development environments unless private or authenticated exposure is explicitly implemented.
-- Keep CI parity for hosted-readiness planning with solution build/tests and AppHost restore/build.
-
-For the full checklist and environment-specific matrix, see [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md).
 
 ## Project Structure
 
@@ -134,86 +135,98 @@ docs/
 docs-internal/
 specs/
 apphost.cs
+ImportToPlanner.slnx
 ```
 
-- `src/` contains the production code, split by architectural layer.
-- `tests/` contains unit, integration-style, and Blazor UI tests.
-- `docs/` is reserved for public-facing documentation.
-- `docs-internal/` contains contributor and operational guidance, organised by topic.
-- `specs/` contains Spec Kit artefacts, including the feature spec, plan, tasks, contracts, and quickstart for the CSV import workflow.
+## Key Features
+
+- Guided five-step, vertically stacked MudBlazor workflow.
+- Searchable container and plan selectors for large tenant datasets.
+- CSV validation with row-level and file-level errors.
+- Dry-run preview with planned bucket/task actions.
+- Existing-task matching by task name with `already exists` outcomes.
+- Stale-preview blocking via request and planner-state fingerprints.
+- Confirm-and-execute gating with partial-success handling.
+- Retry-once policy for transient Graph row failures.
+- Execution report tabs for summary, manual actions, and errors.
+- Runtime-mode behaviour parity across in-memory and Graph implementations.
 
 ## Development Workflow
 
-- Start from the in-memory mode for most local work.
-- Keep behaviour aligned across `PlannerGateway:UseGraph = false` and `true` when planner behaviour changes.
-- Preserve clean architecture boundaries: business logic belongs in Domain and Application, UI logic belongs in Web, and Graph details stay in Infrastructure.
-- Treat dry-run preview, stale-preview blocking, and user-safe error handling as core safety requirements.
-- Keep the AppHost build path healthy alongside the main solution build.
+- Branch from `main`; open focused PRs targeting `main`.
+- Keep a linear history (rebase/squash; no merge commits).
+- Keep CI green before requesting review.
+- Maintain Clean Architecture boundaries and dependency direction.
+- Preserve safety guarantees: dry-run non-destructive behaviour, stale-preview checks, and user-safe error outputs.
+- Where planner behaviour is changed, verify both runtime modes (`PlannerGateway:UseGraph` true and false), unless explicitly scoped and documented.
 
-The feature design artefacts for the current workflow live under [specs/001-import-planner-csv/](specs/001-import-planner-csv/).
+Repository process and governance:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [AGENTS.md](AGENTS.md)
+- [.specify/memory/constitution.md](.specify/memory/constitution.md)
 
 ## Coding Standards
 
-- Use UK English in user-facing copy, contributor documentation, and comments intended for users.
-- Follow the repository's clean architecture rules and keep dependencies pointing inward.
-- Keep Microsoft Graph implementation details inside infrastructure code.
-- Prefer automated tests at the smallest practical level for behaviour changes.
-- Do not commit secrets, certificates, tenant identifiers, or other sensitive configuration values.
+- Use UK English for user-facing copy and contributor-facing documentation.
+- Keep business rules in Domain/Application; keep UI concerns in Web; keep Graph details in Infrastructure.
+- Prefer MudBlazor components and parameters before custom CSS.
+- Use modern C# features supported by the pinned SDK; keep async flows non-blocking.
+- Validate boundary inputs and avoid leaking secrets/tenant-sensitive details in user-facing outputs.
 
-Repository-specific guidance lives in [.github/copilot-instructions.md](.github/copilot-instructions.md), [AGENTS.md](AGENTS.md), and [.specify/memory/constitution.md](.specify/memory/constitution.md).
+Primary standards references:
+
+- [.github/copilot-instructions.md](.github/copilot-instructions.md)
+- [.github/instructions/blazor-csharp.instructions.md](.github/instructions/blazor-csharp.instructions.md)
+- [.github/instructions/csharp-clean-architecture.instructions.md](.github/instructions/csharp-clean-architecture.instructions.md)
 
 ## Testing
 
-Primary test projects:
+Test projects:
 
-- `tests/ImportToPlanner.Tests/` for unit and integration-style tests.
-- `tests/ImportToPlanner.Web.Tests/` for Blazor UI and workflow tests.
+- `tests/ImportToPlanner.Tests`: unit and integration-style tests for application/infrastructure behaviour.
+- `tests/ImportToPlanner.Web.Tests`: Blazor UI workflow and rendering tests.
 
-Run the full test suite with:
+Run all tests:
 
 ```bash
 dotnet test ImportToPlanner.slnx
 ```
 
-Optional local coverage collection:
+Optional coverage collection:
 
 ```bash
 dotnet tool install -g dotnet-coverage
 dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test ImportToPlanner.slnx
 ```
 
-When planner gateway behaviour changes, the repository constitution requires verification for both runtime modes unless the change is explicitly scoped to one mode and documented as such. More detail is available in [tests/README.md](tests/README.md).
+Local JS syntax checks (mirrors CI job):
+
+```bash
+git ls-files '*.js' | xargs -n1 node --check
+```
+
+See [tests/README.md](tests/README.md) for testing guidance and constitutional expectations.
 
 ## Contributing
 
-Contributions are welcome, but the repository is intentionally narrow in scope and changes are reviewed against that scope.
+Contributions are welcome and reviewed for scope fit, safety, and maintainability.
 
-- Start with [CONTRIBUTING.md](CONTRIBUTING.md) for contribution, pull request, and review-thread guidance.
-- Open focused pull requests targeting `main`.
-- Keep CI green before requesting review.
-- Update this README or related contributor docs when local setup or workflow expectations change.
-
-If you are new to the codebase, the recommended first run is:
-
-```bash
-dotnet restore ImportToPlanner.slnx
-dotnet build ImportToPlanner.slnx
-dotnet test ImportToPlanner.slnx
-dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
-```
-
-GitHub Codespaces is supported through [.devcontainer/devcontainer.json](.devcontainer/devcontainer.json).
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR.
+- Follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- Keep changes focused and include tests for behaviour changes.
+- Update relevant documentation in the same PR when setup or workflow changes.
 
 ## Further Reading
 
 - [specs/001-import-planner-csv/spec.md](specs/001-import-planner-csv/spec.md)
-- [specs/001-import-planner-csv/plan.md](specs/001-import-planner-csv/plan.md)
-- [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
-- [specs/001-import-planner-csv/data-model.md](specs/001-import-planner-csv/data-model.md)
 - [specs/001-import-planner-csv/contracts/import-workflow-contract.md](specs/001-import-planner-csv/contracts/import-workflow-contract.md)
+- [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
+- [specs/002-ui-ux-redesign/spec.md](specs/002-ui-ux-redesign/spec.md)
+- [specs/002-ui-ux-redesign/plan.md](specs/002-ui-ux-redesign/plan.md)
+- [specs/002-ui-ux-redesign/quickstart.md](specs/002-ui-ux-redesign/quickstart.md)
 - [docs-internal/README.md](docs-internal/README.md)
 - [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
-- [docs-internal/ci-notes.md](docs-internal/ci-notes.md)
 - [docs-internal/roadmap-and-limitations.md](docs-internal/roadmap-and-limitations.md)
 
 ## Licence
