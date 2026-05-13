@@ -92,23 +92,18 @@
 
 ### Quality and Non-Functional Requirements *(mandatory)*
 
-- **NFR-001 Code Quality**: Solution MUST preserve defined architectural boundaries and
-  avoid introducing unnecessary coupling.
-- **NFR-002 Testing**: Behaviour changes MUST define required automated tests (unit,
-  integration, regression as applicable).
-- **NFR-003 UX Consistency**: User-facing changes MUST define expected copy, interaction,
-  and accessibility consistency with existing flows.
-- **NFR-004 Performance**: Feature MUST define measurable performance expectations for
-  affected operations (latency, throughput, memory, or equivalent).
-- **NFR-005 Runtime Modes**: Feature MUST specify compatibility expectations for
-  in-memory and Graph runtime modes, or justify explicit single-mode scope.
-- **NFR-006 Scope Boundary**: Feature MUST preserve current single-tenant scope unless
-  approved multi-tenant scope expansion is explicitly documented.
-- **NFR-007 AppHost and CI**: Feature MUST preserve solution-level and AppHost build/
-  validation expectations in CI workflows.
-- **NFR-008 Agent Delegation**: Feature implementation workflow MUST identify applicable
-  repository-registered custom agents and use them unless an approved exception is
-  documented.
+- **NFR-001 Dependency Direction**: Solution MUST preserve allowed dependency direction
+  (Web/Infrastructure -> Application -> Domain).
+- **NFR-002 Inner-Layer Purity**: Domain/Application behaviour MUST remain technology-
+  neutral and MUST NOT leak framework, transport, or presentation concerns.
+- **NFR-003 Boundary Contracts**: Use-case input/output contract changes MUST be explicit,
+  including where adapter mapping occurs.
+- **NFR-004 Framework Replaceability**: Features MUST treat framework/library choices as
+  replaceable adapter concerns, not architectural invariants.
+- **NFR-005 Compliance Evidence**: Feature delivery MUST define measurable architecture
+  evidence (dependency checks, forbidden-reference checks, and boundary leakage checks).
+- **NFR-006 Policy Alignment**: Feature MUST identify applicable non-constitutional
+  repository policies from `docs-internal/engineering-policies.md` and `AGENTS.md`.
 
 *Example of marking unclear requirements:*
 

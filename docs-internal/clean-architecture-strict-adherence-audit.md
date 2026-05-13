@@ -7,6 +7,9 @@ It is layered and partially disciplined, but key boundaries are still porous, an
 
 If strict adherence is the target, the current state is best described as: **“Clean-ish layering, not Clean Architecture purity.”**
 
+Update (2026-05-13): Constitution and governance-document recommendations in section B
+have now been actioned. Codebase refactor recommendations in section A remain open.
+
 ## Scope and Baseline
 
 - Reviewed repository structure and key source files in `Domain`, `Application`, `Infrastructure`, and `Web`.
@@ -80,32 +83,57 @@ But there is no explicit boundary pair (`InputBoundary`/`OutputBoundary`) and pr
 
 ### 1) Constitution is not centred on Clean Architecture; it is a mixed governance bundle (High)
 
-The constitution includes testing, UX, performance, observability, and agent-process governance as co-equal core principles:
+~~The constitution includes testing, UX, performance, observability, and agent-process governance as co-equal core principles:~~
 
-- `.specify/memory/constitution.md:32-133`
+- ~~`.specify/memory/constitution.md:32-133`~~
 
-These may be valid engineering rules, but they are not Clean Architecture principles. If this document is meant to enforce strict Uncle Bob adherence, it is diluted.
+~~These may be valid engineering rules, but they are not Clean Architecture principles. If this document is meant to enforce strict Uncle Bob adherence, it is diluted.~~
+
+Summary of action taken (2026-05-13):
+- Constitution rewritten to an architecture-only baseline in `.specify/memory/constitution.md`.
+- Core principles now focus on dependency direction, technology-neutral policy,
+  explicit boundaries, framework replaceability, and measurable architecture compliance.
+- Version bumped from `1.3.0` to `2.0.0` to reflect substantive principle redefinition.
 
 ### 2) Constitution hard-codes framework/library choices, reducing framework independence (High)
 
-- Microsoft Graph as mandatory contract: `.specify/memory/constitution.md:97-99`
-- MudBlazor as mandatory UI library: `.specify/memory/constitution.md:105-111`
+~~- Microsoft Graph as mandatory contract: `.specify/memory/constitution.md:97-99`~~
+~~- MudBlazor as mandatory UI library: `.specify/memory/constitution.md:105-111`~~
 
-Strict Clean Architecture treats frameworks as replaceable tools in the outer circle, not constitutional anchors.
+~~Strict Clean Architecture treats frameworks as replaceable tools in the outer circle, not constitutional anchors.~~
+
+Summary of action taken (2026-05-13):
+- Constitution now explicitly states frameworks and libraries are replaceable outer-layer
+   implementation choices.
+- Graph and MudBlazor mandates were removed from constitutional principles and guardrails.
+- Framework-specific and operational policy was moved to repository governance docs
+   outside the constitution.
 
 ### 3) Constitution has process/agent rules unrelated to architectural dependency discipline (Medium)
 
-- Agent delegation as a core principle: `.specify/memory/constitution.md:77-91`
-- Repeated AGENTS.md process mandates in guardrails: `.specify/memory/constitution.md:114-117`
+~~- Agent delegation as a core principle: `.specify/memory/constitution.md:77-91`~~
+~~- Repeated AGENTS.md process mandates in guardrails: `.specify/memory/constitution.md:114-117`~~
 
-This is governance/process policy, not architecture policy. It weakens architectural clarity.
+~~This is governance/process policy, not architecture policy. It weakens architectural clarity.~~
+
+Summary of action taken (2026-05-13):
+- Agent delegation/process rules removed from constitutional principles.
+- Mandatory process continuity retained in `AGENTS.md` under a new
+   "Non-Constitutional Repository Policies" section.
+- Non-architectural mandatory policies were centralised in
+   `docs-internal/engineering-policies.md`.
 
 ### 4) Internal inconsistency indicates drift (Medium)
 
-Delivery workflow still references “Fluent UI workflows”:
-- `.specify/memory/constitution.md:128-129`
+~~Delivery workflow still references “Fluent UI workflows”:~~
+~~- `.specify/memory/constitution.md:128-129`~~
 
-Repository has already standardised on MudBlazor. This mismatch weakens the constitution’s authority and precision.
+~~Repository has already standardised on MudBlazor. This mismatch weakens the constitution’s authority and precision.~~
+
+Summary of action taken (2026-05-13):
+- Removed outdated Fluent UI wording as part of constitution rewrite.
+- Delivery workflow section now references architecture evidence gates and points to
+   `AGENTS.md` plus `docs-internal/engineering-policies.md` for non-constitutional policy.
 
 ## Recommendations to Reach Strict Adherence
 
@@ -137,22 +165,35 @@ Repository has already standardised on MudBlazor. This mismatch weakens the cons
 ### B) Constitution Changes for Strict Uncle Bob Alignment
 
 1. **Narrow Principle I into enforceable architectural rules**
-   - Explicitly codify dependency rule.
-   - Explicitly ban framework/package dependencies in Domain and Use Cases.
-   - Require adapter-only ownership of transport, UI, and persistence details.
+   - ~~Explicitly codify dependency rule.~~
+   - ~~Explicitly ban framework/package dependencies in Domain and Use Cases.~~
+   - ~~Require adapter-only ownership of transport, UI, and persistence details.~~
+
+   Completed (2026-05-13): Implemented in the rewritten constitution principles and
+   Architectural Guardrails section.
 
 2. **Separate non-architecture governance from architecture constitution**
-   - Move agent workflow, UX, and operational process rules to separate governance docs.
-   - Keep constitution focused on architecture boundaries and dependency direction.
+   - ~~Move agent workflow, UX, and operational process rules to separate governance docs.~~
+   - ~~Keep constitution focused on architecture boundaries and dependency direction.~~
+
+   Completed (2026-05-13): Constitution narrowed to architecture governance; moved
+   non-architectural rules into `AGENTS.md` and `docs-internal/engineering-policies.md`.
 
 3. **Remove framework lock-in language**
-   - Reframe Graph and MudBlazor as current implementation choices, not constitutional invariants.
-   - State replaceability expectation for frameworks and UI libraries.
+   - ~~Reframe Graph and MudBlazor as current implementation choices, not constitutional invariants.~~
+   - ~~State replaceability expectation for frameworks and UI libraries.~~
+
+   Completed (2026-05-13): Constitution now declares framework replaceability and no
+   longer encodes Graph/MudBlazor as constitutional invariants.
 
 4. **Add measurable conformance gates**
-   - Require architecture tests for project-reference direction.
-   - Require checks that Domain/Application have no forbidden package references.
-   - Require review checklist items for boundary leakage (UI strings in use cases, API artefacts in entities).
+   - ~~Require architecture tests for project-reference direction.~~
+   - ~~Require checks that Domain/Application have no forbidden package references.~~
+   - ~~Require review checklist items for boundary leakage (UI strings in use cases, API artefacts in entities).~~
+
+   Completed (2026-05-13): Added measurable architecture compliance expectations to the
+   constitution and propagated these gates into `.specify/templates/plan-template.md`,
+   `.specify/templates/spec-template.md`, and `.specify/templates/tasks-template.md`.
 
 ## Suggested Severity Summary
 
