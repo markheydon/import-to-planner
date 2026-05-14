@@ -1,6 +1,7 @@
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Domain;
 
 namespace ImportToPlanner.Application.Services;
 
@@ -49,12 +50,34 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
         var manualActions = new List<ManualAction>();
         var emittedGoalTaskLinks = new HashSet<(string Goal, string TaskName)>(GoalTaskLinkComparer.Instance);
 
-        var plan = await plannerGateway.GetPlanByIdAsync(planningRequest.PlanId, cancellationToken)
-            ?? throw new InvalidOperationException("Selected plan was not found.");
-        reusedOrSkipped.Add(new ImportExecutionItem(PlannerFailureTarget.Plan, plan.Title, plan.Id));
+        PlannerPlan plan;
+        Dictionary<string, PlannerBucket> bucketCache;
 
-        var bucketCache = (await plannerGateway.GetBucketsAsync(plan.Id, cancellationToken))
-            .ToDictionary(bucket => bucket.Name, StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            plan = await plannerGateway.GetPlanByIdAsync(planningRequest.PlanId, cancellationToken)
+                ?? throw new InvalidOperationException("Selected plan was not found.");
+            reusedOrSkipped.Add(new ImportExecutionItem(PlannerFailureTarget.Plan, plan.Title, plan.Id));
+
+            bucketCache = (await plannerGateway.GetBucketsAsync(plan.Id, cancellationToken))
+                .ToDictionary(bucket => bucket.Name, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (PlannerOperationException ex)
+        {
+            failures.Add(CreateBoundaryFailure(ex, planningRequest.PlanId));
+            await PresentFailureOnlyResultAsync(planningRequest.PlanId, outputBoundary, failures, cancellationToken);
+            return;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            failures.Add(CreateUnexpectedFailure(
+                PlannerFailureTarget.Plan,
+                planningRequest.PlanId,
+                "UnexpectedPlanLookupFailure",
+                ex));
+            await PresentFailureOnlyResultAsync(planningRequest.PlanId, outputBoundary, failures, cancellationToken);
+            return;
+        }
 
         foreach (var bucketAction in preview.BucketActions)
         {
@@ -193,6 +216,27 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
         await outputBoundary.PresentAsync(response, cancellationToken);
     }
 
+    private static async Task PresentFailureOnlyResultAsync(
+        string planId,
+        IImportExecutionOutputBoundary outputBoundary,
+        List<PlannerOperationFailure> failures,
+        CancellationToken cancellationToken)
+    {
+        var emptyItems = new List<ImportExecutionItem>();
+        var manualActions = new List<ManualAction>();
+        var response = new ImportExecutionResult
+        {
+            PlanId = planId,
+            CreatedItems = emptyItems,
+            ReusedOrSkippedItems = emptyItems,
+            FailureItems = failures,
+            ManualActions = manualActions,
+            OutcomeSummary = BuildOutcomeSummary(emptyItems, emptyItems, failures, manualActions),
+        };
+
+        await outputBoundary.PresentAsync(response, cancellationToken);
+    }
+
     private static ImportExecutionOutcomeSummary BuildOutcomeSummary(
         List<ImportExecutionItem> created,
         List<ImportExecutionItem> reusedOrSkipped,
@@ -248,6 +292,23 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
             exception.Message,
             false,
             diagnosticCode);
+    }
+
+    private static PlannerOperationFailure CreateBoundaryFailure(
+        PlannerOperationException exception,
+        string planId)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        var target = exception.Failure.Target is PlannerFailureTarget.Workflow or PlannerFailureTarget.Plan
+            ? exception.Failure.Target
+            : PlannerFailureTarget.Plan;
+
+        return exception.Failure with
+        {
+            Target = target,
+            Reference = exception.Failure.Reference ?? planId,
+        };
     }
 
     private sealed class GoalTaskLinkComparer : IEqualityComparer<(string Goal, string TaskName)>

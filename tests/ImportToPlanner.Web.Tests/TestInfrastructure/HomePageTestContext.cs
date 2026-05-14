@@ -6,7 +6,6 @@ using ImportToPlanner.Application.Services;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -21,7 +20,16 @@ internal sealed class HomePageTestContext : BunitContext
         {
             configuration.PopoverOptions.CheckForPopoverProvider = false;
         });
-        AddAuthorization().SetNotAuthorized();
+        var auth = AddAuthorization();
+        if (useGraphGateway)
+        {
+            auth.SetAuthorized("graph-test-user");
+        }
+        else
+        {
+            auth.SetNotAuthorized();
+        }
+
         Services.AddLogging();
 
         var config = new ConfigurationBuilder()
@@ -32,7 +40,6 @@ internal sealed class HomePageTestContext : BunitContext
             .Build();
 
         Services.AddSingleton<IConfiguration>(config);
-        Services.AddSingleton<AuthenticationStateProvider, FakeAuthenticationStateProvider>();
         Services.AddScoped<ICsvImportParser, StubCsvImportParser>();
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
         Services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
@@ -46,16 +53,6 @@ internal sealed class HomePageTestContext : BunitContext
     }
 
     public StubPlannerGateway Gateway { get; } = new();
-}
-
-internal sealed class FakeAuthenticationStateProvider : AuthenticationStateProvider
-{
-    public override Task<AuthenticationState> GetAuthenticationStateAsync()
-    {
-        var anonymous = new System.Security.Claims.ClaimsPrincipal(
-            new System.Security.Claims.ClaimsIdentity());
-        return Task.FromResult(new AuthenticationState(anonymous));
-    }
 }
 
 internal sealed class StubCsvImportParser : ICsvImportParser

@@ -4,6 +4,8 @@ using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Components.Pages;
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
+using ImportToPlanner.Web.Workflows;
+using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 
 namespace ImportToPlanner.Web.Tests;
@@ -60,5 +62,58 @@ public sealed class HomePageWorkflowTests
             Assert.Contains("Step 3", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.Equal(2, cut.FindAll(".step-card--locked").Count);
         });
+    }
+
+    [Fact]
+    public async Task Coordinator_WhenSelectedPlanDisappearsOnRefresh_InvalidatesPreviewAndExecutionState()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = new WorkflowCoordinationState
+        {
+            SelectedContainer = ctx.Gateway.Containers[0],
+            SelectedPlan = ctx.Gateway.Plans[0],
+        };
+
+        state.CurrentPlanningRequest = new ImportPlanningRequest(
+            state.SelectedContainer.Id,
+            state.SelectedContainer.Type,
+            state.SelectedPlan.Id,
+            state.SelectedPlan.Title,
+            [new CsvTaskRow(2, "Task A", null, null, null, null)]);
+        state.PlanningViewModel = new ImportPlanningViewModel(
+            new ImportPlanPreview
+            {
+                ContainerId = state.CurrentPlanningRequest.ContainerId,
+                PlanId = state.CurrentPlanningRequest.PlanId,
+                PlanName = state.CurrentPlanningRequest.PlanName,
+                PlanAction = PlannedEntityAction.Reuse,
+                HasValidationErrors = false,
+                ValidationFindings = [],
+                RequestFingerprint = "request-fingerprint",
+                PlannerStateFingerprint = "state-fingerprint",
+                GeneratedAtUtc = DateTimeOffset.UtcNow,
+                BucketActions = new Dictionary<string, PlannedEntityAction>(StringComparer.OrdinalIgnoreCase),
+                TaskActions = [],
+            },
+            [],
+            []);
+        state.ExecutionReport = new ImportExecutionReportViewModel(
+            state.SelectedPlan.Id,
+            ["Task: Task A"],
+            [],
+            [],
+            [],
+            new ImportExecutionOutcomeSummary(1, 0, 0, 0, false, false));
+
+        ctx.Gateway.Plans = [];
+
+        await coordinator.LoadPlansAsync(state, CancellationToken.None);
+
+        Assert.Null(state.SelectedPlan);
+        Assert.Null(state.CurrentPlanningRequest);
+        Assert.Null(state.PlanningViewModel);
+        Assert.Null(state.ExecutionReport);
+        Assert.True(state.IsPreviewStale);
     }
 }

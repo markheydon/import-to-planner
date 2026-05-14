@@ -1,4 +1,5 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Application.Services;
 using ImportToPlanner.Domain;
@@ -95,6 +96,44 @@ public sealed class ImportExecutionUseCaseTests
         Assert.Equal(inMemoryOutput.Response.FailureItems.Count, fakeOutput.Response.FailureItems.Count);
     }
 
+    [Fact]
+    public async Task HandleAsync_WhenPlanLookupFails_ReturnsStructuredFailureResult()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        var planningUseCase = new ImportPlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var useCase = new ImportExecutionUseCase(gateway);
+        var output = new CaptureExecutionOutputBoundary();
+
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null)]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        gateway.GetPlanByIdException = new PlannerOperationException(new PlannerOperationFailure(
+            PlannerFailureCategory.Unavailable,
+            PlannerFailureTarget.Workflow,
+            null,
+            "Planner provider is unavailable.",
+            true,
+            "Unavailable"));
+
+        await useCase.HandleAsync(new ImportExecutionRequest(request, planningOutput.Response!), output, CancellationToken.None);
+
+        Assert.NotNull(output.Response);
+        Assert.Equal("plan-alpha", output.Response!.PlanId);
+        Assert.Empty(output.Response.CreatedItems);
+        Assert.Empty(output.Response.ReusedOrSkippedItems);
+        var failure = Assert.Single(output.Response.FailureItems);
+        Assert.Equal(PlannerFailureTarget.Workflow, failure.Target);
+        Assert.True(output.Response.OutcomeSummary.IsFullFailure);
+    }
+
     private sealed class CapturePlanningOutputBoundary : IImportPlanningOutputBoundary
     {
         public ImportPlanPreview? Response { get; private set; }
@@ -123,17 +162,35 @@ public sealed class ImportExecutionUseCaseTests
         private readonly Dictionary<string, List<PlannerBucket>> buckets = new();
         private readonly Dictionary<string, List<PlannerTaskSnapshot>> tasks = new();
 
+        public Exception? GetPlanByIdException { get; set; }
+
+        public Exception? GetBucketsException { get; set; }
+
         public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<PlannerContainer>>([]);
 
         public Task<PlannerPlan?> GetPlanByIdAsync(string planId, CancellationToken cancellationToken)
-            => Task.FromResult<PlannerPlan?>(plans.FirstOrDefault(plan => string.Equals(plan.Id, planId, StringComparison.OrdinalIgnoreCase)));
+        {
+            if (GetPlanByIdException is not null)
+            {
+                return Task.FromException<PlannerPlan?>(GetPlanByIdException);
+            }
+
+            return Task.FromResult<PlannerPlan?>(plans.FirstOrDefault(plan => string.Equals(plan.Id, planId, StringComparison.OrdinalIgnoreCase)));
+        }
 
         public Task<IReadOnlyList<PlannerPlan>> GetPlansAsync(string containerId, ContainerType containerType, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<PlannerPlan>>(plans.Where(plan => string.Equals(plan.ContainerId, containerId, StringComparison.OrdinalIgnoreCase)).ToArray());
 
         public Task<IReadOnlyList<PlannerBucket>> GetBucketsAsync(string planId, CancellationToken cancellationToken)
-            => Task.FromResult<IReadOnlyList<PlannerBucket>>(buckets.GetValueOrDefault(planId, []));
+        {
+            if (GetBucketsException is not null)
+            {
+                return Task.FromException<IReadOnlyList<PlannerBucket>>(GetBucketsException);
+            }
+
+            return Task.FromResult<IReadOnlyList<PlannerBucket>>(buckets.GetValueOrDefault(planId, []));
+        }
 
         public Task<PlannerBucket> CreateBucketAsync(string planId, string bucketName, CancellationToken cancellationToken)
         {

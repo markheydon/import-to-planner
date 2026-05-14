@@ -1,6 +1,6 @@
 ---
 agent: 'agent'
-model: GPT-5.4
+model: GPT-5.3-Codex
 description: Refreshes the repository's README.md file using this repository's README generation skill for consistent, repository-specific output.
 ---
 
