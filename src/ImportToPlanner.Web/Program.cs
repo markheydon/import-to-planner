@@ -1,15 +1,7 @@
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Services;
+using ImportToPlanner.Application;
 using ImportToPlanner.Infrastructure.Graph;
+using ImportToPlanner.Web;
 using ImportToPlanner.Web.Components;
-using ImportToPlanner.Web.Presenters;
-using ImportToPlanner.Web.Workflows;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.Graph;
-using Microsoft.Identity.Web;
-using Microsoft.Identity.Web.UI;
-using Microsoft.Kiota.Abstractions.Authentication;
-using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,48 +26,11 @@ if (certificatePathOverrides.Count > 0)
 }
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-builder.Services.AddMudServices();
-builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddHttpContextAccessor();
-
-var graphScopes = builder.Configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
-
-builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
-    .EnableTokenAcquisitionToCallDownstreamApi(graphScopes)
-    .AddInMemoryTokenCaches();
-
-builder.Services.AddScoped<GraphServiceClient>(serviceProvider =>
-{
-    var tokenAcquisition = serviceProvider.GetRequiredService<ITokenAcquisition>();
-    var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
-    var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, graphScopes);
-    var authenticationProvider = new BaseBearerTokenAuthenticationProvider(accessTokenProvider);
-    return new GraphServiceClient(authenticationProvider);
-});
-
-builder.Services.AddControllersWithViews()
-    .AddMicrosoftIdentityUI();
-
-builder.Services.AddAuthorization();
-
-builder.Services.AddScoped<ICsvImportParser, CsvImportParser>();
-builder.Services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
-builder.Services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
-builder.Services.AddScoped<ImportPlanningPresenter>();
-builder.Services.AddScoped<ImportExecutionPresenter>();
-builder.Services.AddScoped<WorkflowCoordinationState>();
-builder.Services.AddScoped<ImportWorkflowCoordinator>();
-if (builder.Configuration.GetValue<bool>("PlannerGateway:UseGraph"))
-{
-    builder.Services.AddScoped<IPlannerGateway, GraphPlannerGateway>();
-}
-else
-{
-    builder.Services.AddScoped<IPlannerGateway, InMemoryPlannerGateway>();
-}
+builder.Services
+    .AddWebHostServices(builder.Configuration)
+    .AddApplication()
+    .AddImportWorkflow()
+    .AddInfrastructure(builder.Configuration.GetValue<bool>("PlannerGateway:UseGraph"));
 
 var app = builder.Build();
 
@@ -100,51 +55,3 @@ app.MapRazorComponents<App>()
 app.MapDefaultEndpoints();
 
 app.Run();
-
-internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvider
-{
-    private readonly ITokenAcquisition tokenAcquisition;
-    private readonly IHttpContextAccessor httpContextAccessor;
-    private readonly IReadOnlyCollection<string> scopes;
-
-    public MicrosoftIdentityAccessTokenProvider(
-        ITokenAcquisition tokenAcquisition,
-        IHttpContextAccessor httpContextAccessor,
-        IReadOnlyCollection<string> scopes)
-    {
-        ArgumentNullException.ThrowIfNull(tokenAcquisition);
-        ArgumentNullException.ThrowIfNull(httpContextAccessor);
-        ArgumentNullException.ThrowIfNull(scopes);
-
-        this.tokenAcquisition = tokenAcquisition;
-        this.httpContextAccessor = httpContextAccessor;
-        this.scopes = scopes;
-    }
-
-    public AllowedHostsValidator AllowedHostsValidator { get; } = new AllowedHostsValidator(["graph.microsoft.com"]);
-
-    public async Task<string> GetAuthorizationTokenAsync(
-        Uri uri,
-        Dictionary<string, object>? additionalAuthenticationContext = null,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(uri);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (!AllowedHostsValidator.IsUrlHostValid(uri))
-        {
-            return string.Empty;
-        }
-
-        var user = httpContextAccessor.HttpContext?.User;
-        if (user?.Identity?.IsAuthenticated != true)
-        {
-            throw new InvalidOperationException("An authenticated user context is required to acquire a Graph access token.");
-        }
-
-        return await tokenAcquisition.GetAccessTokenForUserAsync(
-            scopes,
-            authenticationScheme: OpenIdConnectDefaults.AuthenticationScheme,
-            user: user).ConfigureAwait(false);
-    }
-}
