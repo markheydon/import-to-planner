@@ -1,5 +1,6 @@
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Exceptions;
+using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
@@ -123,7 +124,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
 
             return plan is null ? null : MapPlannerPlan(plan, null, null);
         }
-        catch (PlannerNotFoundException)
+        catch (PlannerOperationException ex) when (ex.Failure.DiagnosticCode == "NotFound")
         {
             return null;
         }
@@ -177,7 +178,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                     cancellationToken),
             };
         }
-        catch (PlannerNotFoundException)
+        catch (PlannerOperationException ex) when (ex.Failure.DiagnosticCode == "NotFound")
         {
             return [];
         }
@@ -207,7 +208,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                         .GetAsync(cancellationToken: innerToken),
                     cancellationToken);
             }
-            catch (PlannerNotFoundException)
+            catch (PlannerOperationException ex) when (ex.Failure.DiagnosticCode == "NotFound")
             {
                 return [];
             }
@@ -427,9 +428,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             graphPlan.Id,
             graphPlan.Title,
             containerId,
-            containerType,
-            graphPlan.Container?.Url,
-            rawContainerType);
+            containerType);
     }
 
     private static string? ResolveGraphContainerTypeValue(string? type, IDictionary<string, object>? additionalData, string? containerUrl)
@@ -550,23 +549,47 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         switch (statusCode)
         {
             case 401:
-                throw new PlannerAuthenticationException(
-                    "Authentication failed. Please sign in again.",
+                throw new PlannerOperationException(
+                    new PlannerOperationFailure(
+                        PlannerFailureCategory.Authentication,
+                        PlannerFailureTarget.Workflow,
+                        null,
+                        "Authentication failed. Please sign in again.",
+                        false,
+                        "Authentication"),
                     exception);
 
             case 403:
-                throw new PlannerPermissionException(
-                    "Insufficient permissions. Ensure the app has Tasks.ReadWrite and Group.Read.All consent.",
+                throw new PlannerOperationException(
+                    new PlannerOperationFailure(
+                        PlannerFailureCategory.Authorisation,
+                        PlannerFailureTarget.Workflow,
+                        null,
+                        "Insufficient permissions. Ensure the required Planner permissions are consented.",
+                        false,
+                        "Authorisation"),
                     exception);
 
             case 404:
-                throw new PlannerNotFoundException(
-                    $"A Planner resource was not found while {operationName}.",
+                throw new PlannerOperationException(
+                    new PlannerOperationFailure(
+                        PlannerFailureCategory.Validation,
+                        PlannerFailureTarget.Workflow,
+                        null,
+                        $"A planner resource was not found while {operationName}.",
+                        false,
+                        "NotFound"),
                     exception);
 
             default:
-                throw new InvalidOperationException(
-                    $"Microsoft Graph returned HTTP {statusCode} while {operationName}.",
+                throw new PlannerOperationException(
+                    new PlannerOperationFailure(
+                        PlannerFailureCategory.Unknown,
+                        PlannerFailureTarget.Workflow,
+                        null,
+                        $"Planner provider returned HTTP {statusCode} while {operationName}.",
+                        false,
+                        "ProviderStatusCode"),
                     exception);
         }
     }
@@ -597,8 +620,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                 {
                     if (throttlingRetries >= MaxThrottlingRetries)
                     {
-                        throw new PlannerThrottlingException(
-                            $"Microsoft Graph throttled the request while {operationName} after {MaxThrottlingRetries} retries.",
+                        throw new PlannerOperationException(
+                            new PlannerOperationFailure(
+                                PlannerFailureCategory.Unavailable,
+                                PlannerFailureTarget.Workflow,
+                                null,
+                                $"Planner provider throttled the request while {operationName} after {MaxThrottlingRetries} retries.",
+                                true,
+                                "Throttled"),
                             ex);
                     }
 
@@ -612,8 +641,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                 {
                     if (onConflictAsync is null || conflictRetries >= MaxConflictRetries)
                     {
-                        throw new PlannerConflictException(
-                            $"Microsoft Graph reported a conflict while {operationName}.",
+                        throw new PlannerOperationException(
+                            new PlannerOperationFailure(
+                                PlannerFailureCategory.Conflict,
+                                PlannerFailureTarget.Workflow,
+                                null,
+                                $"Planner data changed while {operationName}.",
+                                true,
+                                "Conflict"),
                             ex);
                     }
 
@@ -621,8 +656,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                     var shouldRetry = await onConflictAsync(cancellationToken);
                     if (!shouldRetry)
                     {
-                        throw new PlannerConflictException(
-                            $"Microsoft Graph reported a conflict while {operationName}.",
+                        throw new PlannerOperationException(
+                            new PlannerOperationFailure(
+                                PlannerFailureCategory.Conflict,
+                                PlannerFailureTarget.Workflow,
+                                null,
+                                $"Planner data changed while {operationName}.",
+                                true,
+                                "Conflict"),
                             ex);
                     }
 

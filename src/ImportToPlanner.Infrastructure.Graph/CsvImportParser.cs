@@ -4,10 +4,10 @@ using CsvHelper.Configuration;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 
-namespace ImportToPlanner.Application.Services;
+namespace ImportToPlanner.Infrastructure.Graph;
 
 /// <summary>
-/// Parses CSV files into normalized Planner import rows.
+/// Parses CSV files into normalised import rows.
 /// </summary>
 public sealed class CsvImportParser : ICsvImportParser
 {
@@ -64,10 +64,10 @@ public sealed class CsvImportParser : ICsvImportParser
 
             var rowNumber = csv.Parser.Row;
             var taskName = csv.GetField(TaskNameHeader)?.Trim();
-            var description = Normalize(csv.GetField(DescriptionHeader));
-            var priorityText = Normalize(csv.GetField(PriorityHeader));
-            var bucket = Normalize(csv.GetField(BucketHeader));
-            var goal = Normalize(csv.GetField(GoalHeader));
+            var description = Normalise(csv.GetField(DescriptionHeader));
+            var priorityText = Normalise(csv.GetField(PriorityHeader));
+            var bucket = Normalise(csv.GetField(BucketHeader));
+            var goal = Normalise(csv.GetField(GoalHeader));
 
             if (string.IsNullOrWhiteSpace(taskName))
             {
@@ -92,18 +92,18 @@ public sealed class CsvImportParser : ICsvImportParser
 
     private static void ValidateHeaders(IEnumerable<string> headers, List<ImportValidationError> errors, bool ignoreExtraColumns = false)
     {
-        var normalized = headers
+        var normalised = headers
             .Select(header => header.Trim())
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        if (!normalized.Contains("Task Name"))
+        if (!normalised.Contains("Task Name"))
         {
             errors.Add(new ImportValidationError(0, "Task Name", "Task Name column is required."));
         }
 
         if (!ignoreExtraColumns)
         {
-            foreach (var header in normalized)
+            foreach (var header in normalised)
             {
                 if (!SupportedHeaders.Contains(header))
                 {
@@ -133,8 +133,8 @@ public sealed class CsvImportParser : ICsvImportParser
             return false;
         }
 
-        var normalized = priorityText.Trim().ToLowerInvariant();
-        priority = normalized switch
+        var normalised = priorityText.Trim().ToLowerInvariant();
+        priority = normalised switch
         {
             "urgent" => 1,
             "important" => 3,
@@ -146,7 +146,7 @@ public sealed class CsvImportParser : ICsvImportParser
         return priority is not null;
     }
 
-    private static string? Normalize(string? value)
+    private static string? Normalise(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }

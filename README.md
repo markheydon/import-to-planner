@@ -4,20 +4,38 @@
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![Licence MIT](https://img.shields.io/badge/Licence-MIT-green)
 
-Import To Planner is a single-purpose Blazor application for importing CSV task lists into Microsoft Planner through a safe, operator-led workflow. It is designed to make bulk task creation easier without removing the checkpoints that matter: validation, dry-run preview, explicit confirmation, stale-preview protection, and execution reporting.
+Import To Planner is a single-purpose Blazor application that imports CSV task lists into Microsoft Planner using a safe, operator-led flow.
 
-The current UI is a MudBlazor-based stepped experience:
+The workflow preserves operational safeguards:
 
-1. Select a container.
-2. Select a plan.
-3. Upload a CSV file and choose import options.
-4. Validate and preview the import plan.
+1. Select container.
+2. Select plan.
+3. Upload CSV and import options.
+4. Validate and preview.
 5. Confirm execution and review results.
 
-The application supports two runtime modes:
+Two runtime modes are supported:
 
-- In-memory mode for local development and fast verification without tenant credentials.
-- Microsoft Graph mode for live Planner operations with sign-in enforcement.
+- In-memory mode for local development and verification without tenant credentials.
+- Microsoft Graph mode for live Planner operations, with sign-in required before the import UI is reachable.
+
+## Key Features
+
+- Row-level and file-level CSV validation before write actions.
+- Dry-run preview separated from execution.
+- Explicit confirm-and-execute flow with stale-preview protection.
+- Existing-task matching by task name (`already exists` outcome).
+- Partial-success execution handling with a single retry for transient row failures.
+- Execution reporting for created items, skipped or reused items, manual actions, and errors.
+- Searchable container and plan selectors for larger tenants.
+- Behaviour parity expectations across runtime modes when planner behaviour changes.
+
+Primary feature sources:
+
+- [specs/001-import-planner-csv/spec.md](specs/001-import-planner-csv/spec.md)
+- [specs/001-import-planner-csv/contracts/import-workflow-contract.md](specs/001-import-planner-csv/contracts/import-workflow-contract.md)
+- [specs/002-ui-ux-redesign/spec.md](specs/002-ui-ux-redesign/spec.md)
+- [specs/003-align-clean-architecture/spec.md](specs/003-align-clean-architecture/spec.md)
 
 ## Technology Stack
 
@@ -34,38 +52,48 @@ The application supports two runtime modes:
   - Microsoft.Identity.Web 4.9.0
   - Microsoft.Identity.Web.UI 4.9.0
 - Hosting and observability:
-  - .NET Aspire AppHost SDK 13.3.0
+  - Aspire AppHost SDK 13.3.0
   - OpenTelemetry 1.15.x packages
-  - ImportToPlanner.ServiceDefaults for resilience and telemetry defaults
+  - Shared service defaults for resilience and telemetry
 - Testing:
   - xUnit 2.9.3
   - bUnit 2.7.2
   - Microsoft.NET.Test.Sdk 18.5.1
 
-Primary source files for these versions are [global.json](global.json), [Directory.Packages.props](Directory.Packages.props), [ImportToPlanner.slnx](ImportToPlanner.slnx), and [apphost.cs](apphost.cs).
+Primary version sources:
+
+- [global.json](global.json)
+- [Directory.Packages.props](Directory.Packages.props)
+- [ImportToPlanner.slnx](ImportToPlanner.slnx)
+- [apphost.cs](apphost.cs)
 
 ## Project Architecture
 
-The solution follows a layered Clean Architecture split. Business rules live in Domain and Application, infrastructure details stay behind abstractions, and the web project focuses on UI delivery.
+The solution follows layered Clean Architecture. Domain and Application own policy, Infrastructure provides adapters, and Web owns presentation and workflow state.
 
 ```mermaid
 flowchart LR
-    Web[ImportToPlanner.Web\nMudBlazor Blazor UI] --> App[ImportToPlanner.Application\nImport orchestration and parsing contracts]
-    Infra[ImportToPlanner.Infrastructure.Graph\nGraph and in-memory planner gateways] --> App
-    App --> Domain[ImportToPlanner.Domain\nPlanner domain models]
+    Web[ImportToPlanner.Web\nBlazor UI, presenters, workflow coordination] --> App[ImportToPlanner.Application\nUse cases and contracts]
+    Infra[ImportToPlanner.Infrastructure.Graph\nCSV parser and planner gateways] --> App
+    App --> Domain[ImportToPlanner.Domain\nBusiness concepts]
     Web --> Defaults[ImportToPlanner.ServiceDefaults\nTelemetry and resilience defaults]
     AppHost[apphost.cs\nAspire AppHost] --> Web
 ```
 
-Projects in the solution:
+Projects in solution:
 
-- `src/ImportToPlanner.Domain`: domain entities and planner-facing business meaning.
-- `src/ImportToPlanner.Application`: import parsing abstractions, orchestration, models, and workflow rules.
-- `src/ImportToPlanner.Infrastructure.Graph`: Graph-backed and in-memory planner gateway implementations.
-- `src/ImportToPlanner.Web`: Blazor UI, authentication entry behaviour, and stepped import workflow.
-- `src/ImportToPlanner.ServiceDefaults`: shared resilience, service discovery, and OpenTelemetry defaults.
+- `src/ImportToPlanner.Domain`: domain entities and business concepts.
+- `src/ImportToPlanner.Application`: use-case orchestration and boundary contracts.
+- `src/ImportToPlanner.Infrastructure.Graph`: CSV parsing and planner gateway implementations.
+- `src/ImportToPlanner.Web`: Blazor UI, authentication entry behaviour, and stepped workflow.
+- `src/ImportToPlanner.ServiceDefaults`: shared service defaults for resilience and telemetry.
 
-Architectural boundaries and governance are defined in [.specify/memory/constitution.md](.specify/memory/constitution.md), [AGENTS.md](AGENTS.md), and [.github/copilot-instructions.md](.github/copilot-instructions.md).
+Architecture and governance references:
+
+- [.specify/memory/constitution.md](.specify/memory/constitution.md)
+- [.github/copilot-instructions.md](.github/copilot-instructions.md)
+- [AGENTS.md](AGENTS.md)
+- [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md)
 
 ## Getting Started
 
@@ -73,15 +101,15 @@ Architectural boundaries and governance are defined in [.specify/memory/constitu
 
 - .NET 10 SDK.
 - Optional for Graph mode:
-  - A Microsoft 365 account with access to Microsoft Planner.
-  - An Entra ID app registration with the required delegated permissions.
-  - Local secrets or configuration for `AzureAd` settings.
-- Optional developer tooling:
+  - Microsoft 365 account with Planner access.
+  - Entra ID app registration with required delegated permissions.
+  - Local configuration for `AzureAd` and Graph settings.
+- Optional local tooling:
   - Aspire CLI for AppHost workflows.
-  - Node.js (LTS) for local JavaScript syntax checks that mirror CI.
+  - Node.js (LTS) for local JavaScript syntax checks used in CI.
   - GitHub CLI for issue and pull request workflows.
 
-### Restore, format, build, and test
+### Restore, format, build, test
 
 ```bash
 dotnet restore ImportToPlanner.slnx
@@ -93,13 +121,13 @@ git ls-files '*.js' | xargs -n1 node --check
 
 ### Run in in-memory mode
 
-The repository defaults to in-memory mode, so the app can be run locally without tenant credentials:
+The repository defaults to in-memory mode:
 
 ```bash
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
-Or explicitly:
+Or explicitly set the mode:
 
 ```bash
 PlannerGateway__UseGraph=false dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
@@ -109,11 +137,11 @@ Expected behaviour:
 
 - No sign-in redirect.
 - Pre-seeded container and plan data.
-- Full stepped workflow available for local validation and UI testing.
+- Full stepped workflow available for local validation.
 
 ### Run in Graph mode
 
-Set the Graph switch and provide your local secrets or configuration first:
+Set the gateway mode and start the web app:
 
 ```bash
 dotnet user-secrets set "PlannerGateway:UseGraph" "true" --project src/ImportToPlanner.Web
@@ -122,14 +150,12 @@ dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 
 Expected behaviour:
 
-- Unauthenticated users are redirected to sign in before reaching the import workflow.
-- Container and plan data are loaded from Microsoft Graph for the signed-in user context.
+- Unauthenticated sessions are redirected to sign-in.
+- Container and plan data are loaded from Microsoft Graph.
 
-The default configuration shape is shown in [src/ImportToPlanner.Web/appsettings.json](src/ImportToPlanner.Web/appsettings.json). Graph-specific implementation guidance lives in [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md).
+See [src/ImportToPlanner.Web/appsettings.json](src/ImportToPlanner.Web/appsettings.json) for configuration shape and [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md) for implementation guidance.
 
-### Run via Aspire AppHost
-
-The repository includes a minimal AppHost that launches the web project:
+### Run with Aspire AppHost
 
 ```bash
 aspire start --isolated
@@ -163,55 +189,42 @@ Repository areas:
 
 - `src/`: production projects.
 - `tests/`: unit, integration-style, and Blazor UI tests.
-- `docs/`: contributor-facing project documentation.
-- `docs-internal/`: implementation notes and operational guidance.
-- `specs/`: Spec Kit feature artefacts covering requirements, plans, tasks, quickstarts, and contracts.
-
-## Key Features
-
-- MudBlazor stepped import workflow with clear progression and locked/unlocked states.
-- Searchable container and plan selectors for larger Microsoft 365 tenants.
-- CSV validation with row-level and file-level feedback.
-- Dry-run preview that separates validation and planning from execution.
-- Explicit confirm-and-execute flow with stale-preview protection.
-- Existing-task matching by task name only, reporting `already exists` instead of creating duplicates.
-- Partial-success execution handling with retry-once behaviour for transient Graph row failures.
-- Execution reporting with created items, reused/skipped items, manual actions, and errors.
-- In-memory and Graph runtime modes with equivalent feature expectations where planner behaviour is affected.
-
-The feature requirements and user-facing contracts are documented in [specs/001-import-planner-csv/spec.md](specs/001-import-planner-csv/spec.md), [specs/001-import-planner-csv/contracts/import-workflow-contract.md](specs/001-import-planner-csv/contracts/import-workflow-contract.md), and [specs/002-ui-ux-redesign/spec.md](specs/002-ui-ux-redesign/spec.md).
+- `docs/`: public-facing documentation.
+- `docs-internal/`: internal engineering guidance.
+- `specs/`: Spec Kit artefacts (specs, plans, tasks, quickstarts, contracts).
 
 ## Development Workflow
 
-The repository uses feature specifications and repository governance to drive implementation:
+This repository uses specification-led delivery and explicit governance:
 
-- Feature requirements, plans, and task breakdowns live under `specs/`.
-- Repository-wide policy is defined in [.github/copilot-instructions.md](.github/copilot-instructions.md).
-- Agent and skill delegation rules are defined in [AGENTS.md](AGENTS.md).
-- Constitutional quality gates are defined in [.specify/memory/constitution.md](.specify/memory/constitution.md).
+- Feature requirements, plans, and tasks live in `specs/`.
+- Repository-wide policy is in [.github/copilot-instructions.md](.github/copilot-instructions.md).
+- Agent and skill delegation rules are in [AGENTS.md](AGENTS.md).
+- Architecture governance is in [.specify/memory/constitution.md](.specify/memory/constitution.md).
+- Operational policies are in [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md).
 
-Contribution workflow summary:
+Contribution flow summary:
 
 1. Branch from `main`.
-2. Keep changes focused to one logical concern.
-3. Preserve linear history by rebasing or squashing; merge commits are not permitted.
+2. Keep the change focused to one logical concern.
+3. Preserve linear history (rebase or squash; no merge commits).
 4. Keep CI green before requesting review.
-5. Update tests and relevant documentation in the same change when behaviour or setup changes.
+5. Update tests and relevant docs with behaviour or setup changes.
 
-The current UI redesign work is tracked in [specs/002-ui-ux-redesign/plan.md](specs/002-ui-ux-redesign/plan.md) and [specs/002-ui-ux-redesign/tasks.md](specs/002-ui-ux-redesign/tasks.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for full pull request and review-thread guidance.
 
 ## Coding Standards
 
-Key repository standards:
+Key standards:
 
-- Use UK English in end-user and contributor-facing documentation and UI copy.
-- Preserve Clean Architecture boundaries between Web, Application, Domain, and Infrastructure.
-- Prefer MudBlazor components and parameters before custom CSS or hand-authored HTML workarounds.
-- Keep Graph and Kiota implementation details inside Infrastructure.
-- Use async end-to-end for I/O work and avoid blocking calls.
-- Do not expose secrets, certificate values, or tenant-sensitive details in logs or user-facing messages.
+- Use UK English in user-facing and contributor-facing wording.
+- Preserve dependency direction and layer boundaries across Web, Application, Domain, and Infrastructure.
+- Keep provider-specific concepts (Graph, Kiota, transport details) in adapter layers.
+- Prefer MudBlazor components and parameters before custom CSS or HTML workarounds.
+- Use async end-to-end for I/O and avoid blocking calls.
+- Avoid exposing secrets, certificate values, or tenant-sensitive identifiers.
 
-Primary standards references:
+Standards references:
 
 - [.github/copilot-instructions.md](.github/copilot-instructions.md)
 - [.github/instructions/blazor-csharp.instructions.md](.github/instructions/blazor-csharp.instructions.md)
@@ -222,8 +235,8 @@ Primary standards references:
 
 Test projects:
 
-- `tests/ImportToPlanner.Tests`: application and infrastructure unit or integration-style coverage.
-- `tests/ImportToPlanner.Web.Tests`: Blazor UI smoke and workflow coverage with bUnit.
+- `tests/ImportToPlanner.Tests`: application and infrastructure tests.
+- `tests/ImportToPlanner.Web.Tests`: Blazor UI and workflow tests.
 
 Run all tests:
 
@@ -238,26 +251,29 @@ dotnet tool install -g dotnet-coverage
 dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test ImportToPlanner.slnx
 ```
 
-Testing expectations include regression tests for behaviour changes and parity checks for both runtime modes when planner behaviour is affected. See [tests/README.md](tests/README.md) and [.specify/memory/constitution.md](.specify/memory/constitution.md).
+Testing expectations include regression coverage for changed behaviour and runtime-mode parity checks where planner behaviour is affected. See [tests/README.md](tests/README.md) and [.specify/memory/constitution.md](.specify/memory/constitution.md).
 
 ## Contributing
 
-Contributions are welcome, but the project is intentionally narrow in scope and reviewed for fit, safety, and maintainability.
+Contributions are welcome, but scope remains intentionally focused.
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 - Follow [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 - Keep pull requests small and focused.
-- Ensure all CI checks pass before requesting review.
-- Reply to review comments in-thread when addressing pull request feedback.
-- Update setup or workflow documentation when local development behaviour changes.
+- Ensure CI checks pass before requesting review.
+- Reply to review comments in-thread.
+- Update contributor setup docs when development behaviour changes.
 
 ## Further Reading
 
-- [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
-- [specs/002-ui-ux-redesign/quickstart.md](specs/002-ui-ux-redesign/quickstart.md)
+- [tests/README.md](tests/README.md)
+- [docs/README.md](docs/README.md)
 - [docs-internal/README.md](docs-internal/README.md)
 - [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
 - [docs-internal/roadmap-and-limitations.md](docs-internal/roadmap-and-limitations.md)
+- [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
+- [specs/002-ui-ux-redesign/quickstart.md](specs/002-ui-ux-redesign/quickstart.md)
+- [specs/003-align-clean-architecture/quickstart.md](specs/003-align-clean-architecture/quickstart.md)
 
 ## Licence
 

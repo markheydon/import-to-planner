@@ -1,8 +1,7 @@
 @page "/"
 @using ImportToPlanner.Application.Exceptions
-@inject ICsvImportParser CsvImportParser
-@inject IImportPlannerOrchestrator ImportPlannerOrchestrator
-@inject IPlannerGateway PlannerGateway
+@inject ImportWorkflowCoordinator WorkflowCoordinator
+@inject WorkflowCoordinationState WorkflowState
 @inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
@@ -230,10 +229,10 @@
                 <MudText Typo="Typo.subtitle2">Dry-run preview</MudText>
                 <MudText Typo="Typo.body2">Plan action: Reuse existing plan</MudText>
 
-                @if (preview.PlanId is not null)
+                @if (preview.Preview.PlanId is not null)
                 {
                     <MudAlert Severity="Severity.Info" Dense="true">
-                        Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.PlanId" target="_blank"
+                        Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.Preview.PlanId" target="_blank"
                                           rel="noopener noreferrer">Open in Planner</a>
                     </MudAlert>
                 }
@@ -250,20 +249,20 @@
                         @foreach (var action in preview.BucketActions)
                         {
                             <tr>
-                                <td>@action.Key</td>
-                                <td>@action.Value</td>
+                                <td>@action.BucketName</td>
+                                <td>@action.Action</td>
                             </tr>
                         }
                     </tbody>
                 </MudSimpleTable>
 
                 <MudText Typo="Typo.subtitle2">Task actions</MudText>
-                <MudDataGrid Items="@preview.TaskActions" T="ImportTaskPlanItem" Dense="true" ReadOnly="true">
+                <MudDataGrid Items="@preview.TaskActions" T="ImportTaskActionViewModel" Dense="true" ReadOnly="true">
                     <Columns>
                         <PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
                         <PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
                         <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
-                        <PropertyColumn Property="@(task => FormatGoals(task.Goals))" Title="Goals" />
+                        <PropertyColumn Property="@(task => task.Goals)" Title="Goals" />
                         <PropertyColumn Property="@(task => task.Action)" Title="Action" />
                         <PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
                     </Columns>
@@ -299,25 +298,87 @@
     [CascadingParameter]
     private ThemeState? ThemeState { get; set; }
 
-    private readonly List<PlannerContainer> containers = [];
-    private readonly List<PlannerPlan> plans = [];
-    private readonly List<ImportValidationError> parseErrors = [];
+    private List<PlannerContainer> containers => WorkflowState.Containers;
 
-    private PlannerContainer? selectedContainer;
-    private PlannerPlan? selectedPlan;
-    private string csvContent = string.Empty;
-    private string selectedFileName = "No file selected";
-    private string? statusMessage;
-    private Severity statusMessageSeverity = Severity.Info;
-    private bool isBusy;
-    private bool isUsingGraphGateway;
-    private bool noGroupsFound;
-    private bool ignoreExtraColumns = true;
-    private bool isPreviewStale;
+    private List<PlannerPlan> plans => WorkflowState.Plans;
 
-    private ImportPlanPreview? preview;
-    private ImportExecutionResult? executionResult;
-    private ImportRequest? currentRequest;
+    private List<ImportValidationError> parseErrors => WorkflowState.ParseErrors;
+
+    private PlannerContainer? selectedContainer
+    {
+        get => WorkflowState.SelectedContainer;
+        set => WorkflowState.SelectedContainer = value;
+    }
+
+    private PlannerPlan? selectedPlan
+    {
+        get => WorkflowState.SelectedPlan;
+        set => WorkflowState.SelectedPlan = value;
+    }
+
+    private string csvContent
+    {
+        get => WorkflowState.CsvContent;
+        set => WorkflowState.CsvContent = value;
+    }
+
+    private string selectedFileName
+    {
+        get => WorkflowState.SelectedFileName;
+        set => WorkflowState.SelectedFileName = value;
+    }
+
+    private string? statusMessage
+    {
+        get => WorkflowState.StatusMessage;
+        set => WorkflowState.StatusMessage = value;
+    }
+
+    private Severity statusMessageSeverity
+    {
+        get => WorkflowState.StatusSeverity;
+        set => WorkflowState.StatusSeverity = value;
+    }
+
+    private bool isBusy
+    {
+        get => WorkflowState.IsBusy;
+        set => WorkflowState.IsBusy = value;
+    }
+
+    private bool isUsingGraphGateway
+    {
+        get => WorkflowState.IsUsingGraphGateway;
+        set => WorkflowState.IsUsingGraphGateway = value;
+    }
+
+    private bool noGroupsFound
+    {
+        get => WorkflowState.NoGroupsFound;
+        set => WorkflowState.NoGroupsFound = value;
+    }
+
+    private bool ignoreExtraColumns
+    {
+        get => WorkflowState.IgnoreExtraColumns;
+        set => WorkflowState.IgnoreExtraColumns = value;
+    }
+
+    private bool isPreviewStale
+    {
+        get => WorkflowState.IsPreviewStale;
+        set => WorkflowState.IsPreviewStale = value;
+    }
+
+    private ImportPlanningViewModel? preview => WorkflowState.PlanningViewModel;
+
+    private ImportExecutionReportViewModel? executionResult => WorkflowState.ExecutionReport;
+
+    private ImportPlanningRequest? currentRequest
+    {
+        get => WorkflowState.CurrentPlanningRequest;
+        set => WorkflowState.CurrentPlanningRequest = value;
+    }
 
     private bool IsCurrentSelectionInSyncWithRequest()
         => selectedContainer is not null
@@ -380,7 +441,7 @@
 
         try
         {
-            await LoadContainersAsync();
+            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -390,7 +451,7 @@
             }
 
             Logger.LogError(ex, "Failed to load available containers during initialisation.");
-            SetStatus(ToUserSafePlannerMessage(ex, "Unable to load Planner containers. Try signing in again and refresh."), Severity.Error);
+            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
         }
     }
 
@@ -451,11 +512,7 @@
         isBusy = true;
         try
         {
-            await LoadContainersAsync();
-            if (selectedContainer is not null)
-            {
-                await LoadPlansAsync();
-            }
+            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
 
             SetStatus("Container list refreshed.", Severity.Success);
         }
@@ -467,7 +524,7 @@
             }
 
             Logger.LogError(ex, "Failed to refresh containers.");
-            SetStatus(ToUserSafePlannerMessage(ex, "Unable to refresh containers."), Severity.Error);
+            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
         }
         finally
         {
@@ -485,7 +542,7 @@
         isBusy = true;
         try
         {
-            await LoadPlansAsync();
+            await WorkflowCoordinator.LoadPlansAsync(WorkflowState, CancellationToken.None);
             SetStatus("Plan list refreshed.", Severity.Success);
         }
         catch (Exception ex)
@@ -496,7 +553,7 @@
             }
 
             Logger.LogError(ex, "Failed to refresh plans for container '{ContainerId}'.", selectedContainer.Id);
-            SetStatus(ToUserSafePlannerMessage(ex, "Unable to refresh plans."), Severity.Error);
+            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
         }
         finally
         {
@@ -550,7 +607,7 @@
         isBusy = true;
         try
         {
-            await LoadPlansAsync();
+            await WorkflowCoordinator.LoadPlansAsync(WorkflowState, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -560,7 +617,7 @@
             }
 
             Logger.LogError(ex, "Failed to load plans for container '{ContainerId}'.", selectedContainer.Id);
-            SetStatus(ToUserSafePlannerMessage(ex, "Unable to load plans for the selected container."), Severity.Error);
+            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
         }
         finally
         {
@@ -612,14 +669,14 @@
 
     private void ResetPreviewState()
     {
-        preview = null;
+        WorkflowState.PlanningViewModel = null;
         currentRequest = null;
         isPreviewStale = false;
     }
 
     private void ResetExecutionState()
     {
-        executionResult = null;
+        WorkflowState.ExecutionReport = null;
     }
 
     private void InvalidatePreview(string message)
@@ -653,45 +710,10 @@
         ResetExecutionState();
         SetStatus(null, Severity.Info);
 
-        if (selectedContainer is null)
-        {
-            parseErrors.Add(new ImportValidationError(0, "Container", "A container must be selected."));
-            return;
-        }
-
-        if (selectedPlan is null)
-        {
-            parseErrors.Add(new ImportValidationError(0, "Plan", "Select an existing plan."));
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(csvContent))
-        {
-            parseErrors.Add(new ImportValidationError(0, "File", "Upload a CSV file first."));
-            return;
-        }
-
         isBusy = true;
         try
         {
-            var parseResult = await CsvImportParser.ParseAsync(csvContent, CancellationToken.None, ignoreExtraColumns);
-            parseErrors.AddRange(parseResult.ValidationErrors);
-
-            if (parseResult.HasErrors)
-            {
-                SetStatus("Validation failed. Fix the reported issues and retry.", Severity.Error);
-                return;
-            }
-
-            currentRequest = new ImportRequest(
-                selectedContainer.Id,
-                selectedContainer.Type,
-                selectedPlan.Id,
-                selectedPlan.Title,
-                parseResult.Rows);
-            preview = await ImportPlannerOrchestrator.BuildPreviewAsync(currentRequest, CancellationToken.None);
-            isPreviewStale = false;
-            SetStatus("Preview generated. Review actions, then confirm execution.", Severity.Success);
+            await WorkflowCoordinator.BuildPreviewAsync(WorkflowState, CancellationToken.None);
         }
         catch (Exception ex)
         {
@@ -701,7 +723,7 @@
             }
 
             Logger.LogError(ex, "Preview generation failed.");
-            var userSafeMessage = ToUserSafePlannerMessage(ex, "Preview generation failed due to a system error.");
+            var userSafeMessage = ToUserSafePlannerMessage(ex);
             parseErrors.Add(new ImportValidationError(0, "System", userSafeMessage));
             SetStatus(userSafeMessage, Severity.Error);
         }
@@ -722,18 +744,7 @@
         SetStatus(null, Severity.Info);
         try
         {
-            executionResult = await ImportPlannerOrchestrator.ExecuteAsync(
-                currentRequest!,
-                preview!,
-                CancellationToken.None);
-
-            isPreviewStale = false;
-
-            SetStatus(
-                executionResult.Errors.Count == 0
-                    ? "Execution completed successfully."
-                    : "Execution completed with errors.",
-                executionResult.Errors.Count == 0 ? Severity.Success : Severity.Warning);
+            await WorkflowCoordinator.ExecuteAsync(WorkflowState, CancellationToken.None);
         }
         catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
         {
@@ -750,7 +761,7 @@
 
             Logger.LogWarning(ex, "Execution blocked by workflow constraints.");
             isPreviewStale = false;
-            SetStatus(ToUserSafePlannerMessage(ex, ex.Message), Severity.Warning);
+            SetStatus(ToUserSafePlannerMessage(ex), Severity.Warning);
         }
         catch (Exception ex)
         {
@@ -760,15 +771,7 @@
             }
 
             Logger.LogError(ex, "Execution failed.");
-            var userSafeMessage = ToUserSafePlannerMessage(ex, "Execution failed due to an unexpected system error. Check logs and retry.");
-            executionResult = new ImportExecutionResult
-            {
-                Created = [],
-                ReusedOrSkipped = [],
-                Errors = [userSafeMessage],
-                ManualActions = [],
-                OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true),
-            };
+            var userSafeMessage = ToUserSafePlannerMessage(ex);
 
             SetStatus(userSafeMessage, Severity.Error);
         }
@@ -795,96 +798,15 @@
         return true;
     }
 
-    private static string ToUserSafePlannerMessage(Exception exception, string fallbackMessage)
+    private static string ToUserSafePlannerMessage(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        ArgumentException.ThrowIfNullOrWhiteSpace(fallbackMessage);
-
-        if (exception is InvalidOperationException invalidOperationException &&
-            invalidOperationException.Message.Contains(
-                "authenticated user context is required to acquire a graph access token",
-                StringComparison.OrdinalIgnoreCase))
+        if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
         {
-            return PlannerGraphErrorMapper.ToUserSafeMessage(
-                new PlannerAuthenticationException("Authentication expired.", invalidOperationException),
-                fallbackMessage);
+            return PlannerFailureMessageMapper.ToUserSafeMessage(failure);
         }
 
-        return PlannerGraphErrorMapper.ToUserSafeMessage(exception, fallbackMessage);
-    }
-
-    private static string? FormatGoals(IReadOnlyList<string>? goals)
-    {
-        return goals is { Count: > 0 } ? string.Join(", ", goals) : string.Empty;
-    }
-
-    private async Task LoadContainersAsync()
-    {
-        var previousContainerId = selectedContainer?.Id;
-        containers.Clear();
-        var loadedContainers = await PlannerGateway.GetAvailableContainersAsync(CancellationToken.None);
-        containers.AddRange(loadedContainers);
-        noGroupsFound = containers.All(container => container.Type != ContainerType.Group);
-
-        if (containers.Count == 0)
-        {
-            selectedContainer = null;
-            selectedPlan = null;
-            plans.Clear();
-            return;
-        }
-
-        var preferredContainer = selectedContainer is null
-            ? null
-            : containers.FirstOrDefault(container =>
-                string.Equals(container.Id, selectedContainer.Id, StringComparison.OrdinalIgnoreCase));
-
-        selectedContainer = preferredContainer;
-        if (!string.Equals(previousContainerId, selectedContainer?.Id, StringComparison.OrdinalIgnoreCase))
-        {
-            selectedPlan = null;
-            plans.Clear();
-            if (!string.IsNullOrWhiteSpace(previousContainerId))
-            {
-                InvalidatePreview("Preview reset after container change. Validate and preview again.");
-            }
-        }
-    }
-
-    private async Task LoadPlansAsync()
-    {
-        var previousPlanId = selectedPlan?.Id;
-        plans.Clear();
-
-        if (selectedContainer is null)
-        {
-            selectedPlan = null;
-            return;
-        }
-
-        var loadedPlans = await PlannerGateway.GetPlansAsync(
-            selectedContainer.Id,
-            selectedContainer.Type,
-            CancellationToken.None);
-        plans.AddRange(loadedPlans.OrderBy(plan => plan.Title, StringComparer.OrdinalIgnoreCase));
-
-        if (plans.Count == 0)
-        {
-            selectedPlan = null;
-            return;
-        }
-
-        selectedPlan = selectedPlan is null
-            ? null
-            : plans.FirstOrDefault(plan => string.Equals(plan.Id, selectedPlan.Id, StringComparison.OrdinalIgnoreCase));
-
-        if (!string.Equals(previousPlanId, selectedPlan?.Id, StringComparison.OrdinalIgnoreCase))
-        {
-            if (!string.IsNullOrWhiteSpace(previousPlanId))
-            {
-                InvalidatePreview("Preview reset after plan change. Validate and preview again.");
-            }
-        }
+        return "An unexpected planner error occurred. Retry and check logs if the issue continues.";
     }
 
     private static string FormatContainer(PlannerContainer? container)
