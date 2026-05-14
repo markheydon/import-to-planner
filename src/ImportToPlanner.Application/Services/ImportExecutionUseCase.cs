@@ -74,6 +74,14 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
             {
                 failures.Add(ex.Failure with { Target = PlannerFailureTarget.Bucket, Reference = bucketAction.Key });
             }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failures.Add(CreateUnexpectedFailure(
+                    PlannerFailureTarget.Bucket,
+                    bucketAction.Key,
+                    "UnexpectedBucketFailure",
+                    ex));
+            }
         }
 
         var goalsToCreate = preview.TaskActions
@@ -90,7 +98,7 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
                 "EnsureGoalExists",
                 goal,
                 null,
-                "Verify this goal/category exists in Planner, create it if needed, then link imported tasks to it."));
+                null));
         }
 
         var rowsByNumber = planningRequest.Rows.ToDictionary(row => row.RowNumber);
@@ -111,7 +119,7 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
                                 "LinkTaskToGoal",
                                 goal,
                                 taskAction.TaskName,
-                                "Link this existing task to the goal manually in Planner."));
+                                null));
                         }
                     }
                 }
@@ -153,13 +161,21 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
                             "LinkTaskToGoal",
                             goal,
                             sourceRow.TaskName,
-                            "Link this imported task to the goal manually in Planner."));
+                            null));
                     }
                 }
             }
             catch (PlannerOperationException ex)
             {
                 failures.Add(ex.Failure with { Target = PlannerFailureTarget.Task, Reference = taskAction.TaskName });
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                failures.Add(CreateUnexpectedFailure(
+                    PlannerFailureTarget.Task,
+                    taskAction.TaskName,
+                    "UnexpectedTaskFailure",
+                    ex));
             }
         }
 
@@ -215,6 +231,23 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
     private static bool IsTaskAlreadyExistsReason(string? reason)
     {
         return string.Equals(reason, "already exists", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static PlannerOperationFailure CreateUnexpectedFailure(
+        PlannerFailureTarget target,
+        string? reference,
+        string diagnosticCode,
+        Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        return new PlannerOperationFailure(
+            PlannerFailureCategory.Unknown,
+            target,
+            reference,
+            exception.Message,
+            false,
+            diagnosticCode);
     }
 
     private sealed class GoalTaskLinkComparer : IEqualityComparer<(string Goal, string TaskName)>

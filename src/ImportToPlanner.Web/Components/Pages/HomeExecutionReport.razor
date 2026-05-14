@@ -67,7 +67,7 @@
                 }
                 else
                 {
-                    <MudDataGrid Items="@ExecutionResult.ManualActions" T="ManualAction" Dense="true" ReadOnly="true">
+                    <MudDataGrid Items="@ExecutionResult.ManualActions" T="ManualActionViewModel" Dense="true" ReadOnly="true">
                         <Columns>
                             <PropertyColumn Property="@(item => item.ActionType)" Title="Action type" />
                             <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />

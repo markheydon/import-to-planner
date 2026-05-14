@@ -22,6 +22,8 @@ public sealed class ImportWorkflowCoordinator(
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        var previousContainerId = state.SelectedContainer?.Id;
+
         state.Containers.Clear();
         var containers = await plannerGateway.GetAvailableContainersAsync(cancellationToken);
         state.Containers.AddRange(containers);
@@ -31,6 +33,11 @@ public sealed class ImportWorkflowCoordinator(
         {
             state.SelectedContainer = state.Containers.FirstOrDefault(container =>
                 string.Equals(container.Id, state.SelectedContainer.Id, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.Equals(previousContainerId, state.SelectedContainer?.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            InvalidatePreviewAndExecutionState(state);
         }
 
         if (state.SelectedContainer is null)
@@ -47,10 +54,18 @@ public sealed class ImportWorkflowCoordinator(
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        var previousPlanId = state.SelectedPlan?.Id;
+
         state.Plans.Clear();
         if (state.SelectedContainer is null)
         {
             state.SelectedPlan = null;
+
+            if (!string.Equals(previousPlanId, state.SelectedPlan?.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                InvalidatePreviewAndExecutionState(state);
+            }
+
             return;
         }
 
@@ -61,6 +76,11 @@ public sealed class ImportWorkflowCoordinator(
         {
             state.SelectedPlan = state.Plans.FirstOrDefault(plan =>
                 string.Equals(plan.Id, state.SelectedPlan.Id, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.Equals(previousPlanId, state.SelectedPlan?.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            InvalidatePreviewAndExecutionState(state);
         }
     }
 
@@ -170,5 +190,17 @@ public sealed class ImportWorkflowCoordinator(
             false,
             "Unhandled");
         return false;
+    }
+
+    private static void InvalidatePreviewAndExecutionState(WorkflowCoordinationState state)
+    {
+        var hadPreviewState = state.PlanningViewModel is not null
+            || state.CurrentPlanningRequest is not null
+            || state.ExecutionReport is not null;
+
+        state.PlanningViewModel = null;
+        state.CurrentPlanningRequest = null;
+        state.ExecutionReport = null;
+        state.IsPreviewStale = hadPreviewState;
     }
 }

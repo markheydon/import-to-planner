@@ -32,7 +32,7 @@ public sealed class HomePageWorkflowTests
             "plan-1",
             ["Task: Alpha Task"],
             [],
-            [new ManualAction("EnsureGoalExists", "Sprint 1", null, "Verify this goal exists in Planner.")],
+            [new ManualActionViewModel("Ensure Goal Exists", "Sprint 1", null, "Verify this goal exists in Planner.")],
             [],
             new ImportExecutionOutcomeSummary(1, 0, 0, 1, false, false));
 

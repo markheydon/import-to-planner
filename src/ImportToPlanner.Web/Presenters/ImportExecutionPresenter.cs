@@ -1,5 +1,4 @@
 using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 
 namespace ImportToPlanner.Web.Presenters;
@@ -26,6 +25,9 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
         var reusedOrSkippedItems = response.ReusedOrSkippedItems
             .Select(item => $"{item.Target}: {item.Name}")
             .ToArray();
+        var manualActions = response.ManualActions
+            .Select(MapManualAction)
+            .ToArray();
         var errorItems = response.FailureItems
             .Select(PlannerFailureMessageMapper.ToUserSafeMessage)
             .ToArray();
@@ -34,11 +36,31 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
             response.PlanId,
             createdItems,
             reusedOrSkippedItems,
-            response.ManualActions,
+            manualActions,
             errorItems,
             response.OutcomeSummary);
 
         return Task.CompletedTask;
+    }
+
+    private static ManualActionViewModel MapManualAction(ManualAction action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        var (displayActionType, details) = action.ActionType switch
+        {
+            "EnsureGoalExists" => (
+                "Ensure Goal Exists",
+                "Verify this goal/category exists in Planner, create it if needed, then link imported tasks to it."),
+            "LinkTaskToGoal" => (
+                "Link Task To Goal",
+                "Link this task to the goal manually in Planner."),
+            _ => (
+                action.ActionType,
+                action.Details ?? "Review this item manually in Planner."),
+        };
+
+        return new ManualActionViewModel(displayActionType, action.GoalName, action.TaskName, details);
     }
 }
 
@@ -55,6 +77,19 @@ public sealed record ImportExecutionReportViewModel(
     string? PlanId,
     IReadOnlyList<string> Created,
     IReadOnlyList<string> ReusedOrSkipped,
-    IReadOnlyList<ManualAction> ManualActions,
+    IReadOnlyList<ManualActionViewModel> ManualActions,
     IReadOnlyList<string> Errors,
     ImportExecutionOutcomeSummary OutcomeSummary);
+
+/// <summary>
+/// Represents one manual action row shaped for web presentation.
+/// </summary>
+/// <param name="ActionType">The presenter-owned action type label.</param>
+/// <param name="GoalName">The optional goal name.</param>
+/// <param name="TaskName">The optional task name.</param>
+/// <param name="Details">The presenter-owned details text.</param>
+public sealed record ManualActionViewModel(
+    string ActionType,
+    string? GoalName,
+    string? TaskName,
+    string Details);
