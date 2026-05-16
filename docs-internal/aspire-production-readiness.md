@@ -10,6 +10,7 @@ resources or change current implementation behaviour.
 - Keep `/health` and `/alive` unexposed in non-development environments unless an authenticated or private ingress policy is in place.
 - Ensure CI keeps validating the current scope: `dotnet restore ImportToPlanner.slnx`, `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal`, `dotnet build ImportToPlanner.slnx --no-restore`, `dotnet restore apphost.cs`, `dotnet build apphost.cs --no-restore`, and `dotnet test ImportToPlanner.slnx --no-build`.
 - Record deployment handoff ownership for AppHost settings and web app secrets before enabling hosted rollout.
+- For hosted mode, keep the first Azure rollout to two environments only: `beta` for automatic GitHub Actions deployments and `production` for manual promotion.
 
 ## Runtime Configuration
 
@@ -34,10 +35,25 @@ resources or change current implementation behaviour.
 4. Run CI-equivalent validation before rollout: solution build and tests plus AppHost build.
 5. Capture post-deployment smoke checks, including sign-in, preview, execute, and telemetry flow, before enabling wider access.
 
+## Hosted Reference Deployment
+
+The approved low-cost hosted baseline for the multi-tenant design is:
+
+- Azure Container Apps ingress owns the public hosted endpoint.
+- The AppHost remains a single `web` resource initially.
+- Minimal tenant metadata lives in Azure Table Storage only.
+- Platform-managed app settings and secrets are preferred.
+- Azure Key Vault is added only when certificate handling genuinely requires it.
+- Existing OTLP routing is reused before any paid monitoring expansion.
+
+Use `beta` as the single shared non-production environment name. GitHub Actions deploys to
+`beta` automatically after successful CI, while `production` is promoted separately with a
+manual approval step and isolated configuration.
+
 ## Azure Resource Options
 
 | Stage | Recommended low-cost options | Notes |
 | --- | --- | --- |
-| As-is (single web resource) | Azure Container Apps with a consumption or serverless profile, plus optional Azure Key Vault for certificate material | Keeps baseline cost low and aligns with Aspire deployment tooling when only one web process is hosted. |
+| As-is (single web resource) | Azure Container Apps with a consumption or serverless profile, plus Azure Table Storage for minimal tenant metadata and optional Azure Key Vault for certificate material | Keeps baseline cost low and aligns with Aspire deployment tooling when only one web process is hosted. |
 | Telemetry-enabled hosted runs | Existing OTLP collector endpoint first, or a minimal Azure Monitor/OpenTelemetry pipeline | Prefer reusing an existing collector to avoid extra always-on cost. |
-| Future scaling (if approved) | Container Apps scale rules, optional Front Door or Application Gateway, and optional Key Vault references | Add only when measurable demand requires it; keep database, cache, and queue resources out of scope unless a separate issue approves them. |
+| Future scaling (if approved) | Container Apps scale rules, optional Front Door or Application Gateway, optional Key Vault references, and additional Aspire resources only after explicit approval | Add only when measurable demand requires it; keep database, cache, and queue resources out of scope unless a separate issue approves them. |
