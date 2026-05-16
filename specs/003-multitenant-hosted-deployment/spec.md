@@ -79,6 +79,7 @@ A hosted service operator can understand what limited metadata is stored, monito
 ### Edge Cases
 
 - What happens when a user signs in to the hosted deployment from a tenant that has not yet granted the required permissions? The app must stop the affected workflow step safely and present a clear in-app administrator consent path instead of failing unexpectedly.
+- What happens when a user is presented with an in-app administrator consent but doesn't have the required rights to approve the request, the request fails, or the user denies the request? The app must deal with not getting the required permissions needed to proceed gracefully.
 - What happens when a deployment is configured for self-hosted single-tenant use but receives a sign-in attempt from a different tenant? The sign-in must be rejected clearly without exposing internal configuration details.
 - What happens when a hosted user's tenant has no previously stored metadata? The workflow must still operate correctly and create only the minimum tenant-associated metadata required for that session or supported operations.
 - What happens when tenant-associated metadata cannot be read or written during hosted use? The app must preserve tenant separation, avoid cross-tenant fallback behaviour, and provide a clear failure state.
