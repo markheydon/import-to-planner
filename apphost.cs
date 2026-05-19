@@ -1,4 +1,4 @@
-#:sdk Aspire.AppHost.Sdk@13.3.0
+#:sdk Aspire.AppHost.Sdk@13.3.4
 
 #pragma warning disable ASPIRECSHARPAPPS001
 var builder = DistributedApplication.CreateBuilder(args);
