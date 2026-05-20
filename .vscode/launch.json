@@ -4,8 +4,30 @@
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Aspire: Launch default AppHost",
-      "program": "${workspaceFolder}"
+      "name": "Aspire: Run (Single Tenant)",
+      "program": "${workspaceFolder}",
+      "env": {
+        "DeploymentMode__Mode": "SelfHostedSingleTenant",
+        "PlannerGateway__UseGraph": "true",
+        "HostedStorage__Enabled": "false"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Aspire: Run (Multi Tenant)",
+      "program": "${workspaceFolder}",
+      "env": {
+        "DeploymentMode__Mode": "HostedSharedMultiTenant",
+        "DeploymentMode__AuthorityTenant": "organizations",
+        "AzureAd__TenantId": "organizations",
+        "PlannerGateway__UseGraph": "true",
+        "HostedStorage__Enabled": "true",
+        "HostedStorage__ConnectionString": "UseDevelopmentStorage=true",
+        "HostedStorage__TenantMetadataTable": "TenantOperationalMetadata",
+        "HostedStorage__DataProtectionContainer": "dataprotection",
+        "HostedStorage__DataProtectionBlob": "keys.xml"
+      }
     }
   ]
 }

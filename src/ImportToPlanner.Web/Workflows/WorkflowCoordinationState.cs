@@ -38,6 +38,14 @@ public sealed class WorkflowCoordinationState
 
     public bool IsPreviewStale { get; set; }
 
+    public TenantContext? ActiveTenantContext { get; set; }
+
+    public ConsentResolution? ConsentResolution { get; set; }
+
+    public bool IsUnsupportedAccount { get; set; }
+
+    public bool IsTenantContextMismatch { get; set; }
+
     public ImportPlanningRequest? CurrentPlanningRequest { get; set; }
 
     public ImportPlanningViewModel? PlanningViewModel { get; set; }

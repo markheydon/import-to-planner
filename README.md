@@ -266,10 +266,12 @@ Contributions are welcome, but scope remains intentionally focused.
 
 ## Further Reading
 
+- [specs/004-add-multitenant-hosting/quickstart.md](specs/004-add-multitenant-hosting/quickstart.md)
+- [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md)
+- [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
 - [tests/README.md](tests/README.md)
 - [docs/README.md](docs/README.md)
 - [docs-internal/README.md](docs-internal/README.md)
-- [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
 - [docs-internal/roadmap-and-limitations.md](docs-internal/roadmap-and-limitations.md)
 - [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
 - [specs/002-ui-ux-redesign/quickstart.md](specs/002-ui-ux-redesign/quickstart.md)

@@ -33,4 +33,50 @@ public sealed class ImportPresenterTests
         Assert.Contains(viewModel.Errors, error =>
             error.Contains("Sign in again", StringComparison.OrdinalIgnoreCase));
     }
+
+    [Fact]
+    public void PlannerFailureMessageMapper_WhenAdminConsentIsRequired_ReturnsAdministratorGuidance()
+    {
+        var message = PlannerFailureMessageMapper.ToUserSafeMessage(
+            new PlannerOperationFailure(
+                PlannerFailureCategory.Authorisation,
+                PlannerFailureTarget.Workflow,
+                null,
+                "Administrator consent is required before this hosted tenant can continue.",
+                false,
+                "AdminConsentRequired"));
+
+        Assert.Contains("administrator", message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("approve", message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PlannerFailureMessageMapper_WhenUnsupportedAccountFailure_ReturnsHostedAccountGuidance()
+    {
+        var message = PlannerFailureMessageMapper.ToUserSafeMessage(
+            new PlannerOperationFailure(
+                PlannerFailureCategory.Authentication,
+                PlannerFailureTarget.Workflow,
+                null,
+                "Unsupported account type.",
+                false,
+                "UnsupportedAccount"));
+
+        Assert.Contains("work or school", message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void PlannerFailureMessageMapper_WhenTenantContextMismatch_ReturnsWorkflowRefreshGuidance()
+    {
+        var message = PlannerFailureMessageMapper.ToUserSafeMessage(
+            new PlannerOperationFailure(
+                PlannerFailureCategory.Conflict,
+                PlannerFailureTarget.Workflow,
+                null,
+                "Tenant context changed.",
+                false,
+                "TenantMismatch"));
+
+        Assert.Contains("fresh preview", message, StringComparison.OrdinalIgnoreCase);
+    }
 }

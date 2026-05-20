@@ -1,5 +1,6 @@
 @page "/"
 @using ImportToPlanner.Application.Exceptions
+@using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
 @inject WorkflowCoordinationState WorkflowState
 @inject IConfiguration Configuration
@@ -53,6 +54,27 @@
             @if (!string.IsNullOrWhiteSpace(statusMessage))
             {
                 <MudAlert Severity="@StatusMessageSeverity" Dense="true">@statusMessage</MudAlert>
+            }
+
+            @if (isTenantContextMismatch)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Tenant context changed since your previous sign-in. The workflow now uses the current tenant context and requires a fresh preview.
+                </MudAlert>
+            }
+
+            @if (showAdminConsentGuidance)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Hosted access requires administrator consent for this tenant. Ask your Microsoft 365 administrator to approve access, then sign in again.
+                </MudAlert>
+            }
+
+            @if (showUnsupportedAccountGuidance)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">
+                    Unsupported account type. Sign in with a supported work or school account.
+                </MudAlert>
             }
 
             <MudPaper Elevation="@GetStepElevation(1)" Outlined="true" Class="@GetStepClass(1)">
@@ -370,6 +392,20 @@
         set => WorkflowState.IsPreviewStale = value;
     }
 
+    private bool isTenantContextMismatch
+    {
+        get => WorkflowState.IsTenantContextMismatch;
+        set => WorkflowState.IsTenantContextMismatch = value;
+    }
+
+    private bool showAdminConsentGuidance =>
+        !string.IsNullOrWhiteSpace(statusMessage)
+        && statusMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase);
+
+    private bool showUnsupportedAccountGuidance =>
+        !string.IsNullOrWhiteSpace(statusMessage)
+        && statusMessage.Contains("unsupported account", StringComparison.OrdinalIgnoreCase);
+
     private ImportPlanningViewModel? preview => WorkflowState.PlanningViewModel;
 
     private ImportExecutionReportViewModel? executionResult => WorkflowState.ExecutionReport;
@@ -427,6 +463,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var query = new Uri(NavigationManager.Uri).Query;
+        if (!string.IsNullOrWhiteSpace(query) && query.Contains("authError=", StringComparison.OrdinalIgnoreCase))
+        {
+            var parsedQuery = QueryHelpers.ParseQuery(query);
+            if (parsedQuery.TryGetValue("authError", out var authErrorValues)
+                && !string.IsNullOrWhiteSpace(authErrorValues))
+            {
+                SetStatus(authErrorValues.ToString(), Severity.Warning);
+            }
+        }
+
         isUsingGraphGateway = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
         if (isUsingGraphGateway)
         {
@@ -801,6 +848,25 @@
     private static string ToUserSafePlannerMessage(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+
+        if (exception is InvalidOperationException invalidOperationException)
+        {
+            if (invalidOperationException.Message.Contains("Unsupported account", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Unsupported account type. Sign in with a supported work or school account.";
+            }
+
+            if (invalidOperationException.Message.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
+            {
+                return invalidOperationException.Message;
+            }
+
+            if (invalidOperationException.Message.Contains("tenant context", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Tenant context could not be resolved for this hosted session. Sign in again and retry.";
+            }
+        }
+
         if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
         {
             return PlannerFailureMessageMapper.ToUserSafeMessage(failure);

@@ -116,4 +116,53 @@ public sealed class HomePageWorkflowTests
         Assert.Null(state.ExecutionReport);
         Assert.True(state.IsPreviewStale);
     }
+
+    [Fact]
+    public async Task HomePage_InHostedMode_WithUnsupportedAccount_ShowsHostedAccountGuidance()
+    {
+        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        ctx.TenantAccessor.GetRequiredContextException =
+            new InvalidOperationException("Unsupported account type. Sign in with a supported work or school account.");
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Unsupported account type", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task Coordinator_WhenTenantChanges_MarksTenantContextMismatch()
+    {
+        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = new WorkflowCoordinationState
+        {
+            SelectedContainer = ctx.Gateway.Containers[0],
+        };
+
+        ctx.TenantAccessor.Context = ctx.TenantAccessor.Context with { TenantId = "tenant-a", TenantKey = "tenant-key-a" };
+        await coordinator.LoadContainersAsync(state, CancellationToken.None);
+
+        ctx.TenantAccessor.Context = ctx.TenantAccessor.Context with { TenantId = "tenant-b", TenantKey = "tenant-key-b" };
+        await coordinator.LoadContainersAsync(state, CancellationToken.None);
+
+        Assert.True(state.IsTenantContextMismatch);
+    }
+
+    [Fact]
+    public async Task HomePage_SelfHostedAndHostedModes_PreserveStepWorkflowSemantics()
+    {
+        await using var selfHosted = new HomePageTestContext(useGraphGateway: false);
+        await using var hosted = new HomePageTestContext(useGraphGateway: true);
+
+        var selfHostedCut = selfHosted.Render<Home>();
+        var hostedCut = hosted.Render<Home>();
+
+        selfHostedCut.WaitForAssertion(() => Assert.Contains("Step 1", selfHostedCut.Markup, StringComparison.OrdinalIgnoreCase));
+        hostedCut.WaitForAssertion(() => Assert.Contains("Step 1", hostedCut.Markup, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("Step 5", selfHostedCut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Step 5", hostedCut.Markup, StringComparison.OrdinalIgnoreCase);
+    }
 }

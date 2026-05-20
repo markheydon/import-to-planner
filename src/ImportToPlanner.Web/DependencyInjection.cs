@@ -1,6 +1,7 @@
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
@@ -30,6 +31,7 @@ public static class DependencyInjection
         services.AddMudServices();
         services.AddCascadingAuthenticationState();
         services.AddHttpContextAccessor();
+        services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
 
         var graphScopes = configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
 
@@ -37,6 +39,66 @@ public static class DependencyInjection
             .AddMicrosoftIdentityWebApp(configuration.GetSection("AzureAd"))
             .EnableTokenAcquisitionToCallDownstreamApi(graphScopes)
             .AddInMemoryTokenCaches();
+
+        services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
+            .Configure<ImportToPlanner.Application.Models.DeploymentModeConfiguration>((options, deploymentModeConfiguration) =>
+            {
+                options.ResponseType = OpenIdConnectResponseType.Code;
+                options.Events.OnTokenValidated = context =>
+                {
+                    if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    var tenantId = context.Principal?.FindFirst("tid")?.Value;
+                    var identityProvider = context.Principal?.FindFirst("idp")?.Value;
+                    if (string.IsNullOrWhiteSpace(tenantId)
+                        || string.Equals(tenantId, "9188040d-6c67-4c5b-b112-36a304b66dad", StringComparison.OrdinalIgnoreCase)
+                        || (!string.IsNullOrWhiteSpace(identityProvider) && identityProvider.Contains("live.com", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        context.Fail("Unsupported account type. Sign in with a supported work or school account.");
+                    }
+
+                    return Task.CompletedTask;
+                };
+
+                options.Events.OnAuthenticationFailed = context =>
+                {
+                    if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    if (context.Exception?.Message.Contains("admin_consent", StringComparison.OrdinalIgnoreCase) == true
+                        || context.Exception?.Message.Contains("consent_required", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        context.Fail(BuildAdminConsentMessage(deploymentModeConfiguration));
+                    }
+
+                    return Task.CompletedTask;
+                };
+
+                options.Events.OnRemoteFailure = context =>
+                {
+                    if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
+                    {
+                        return Task.CompletedTask;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(context.Failure?.Message)
+                        && (context.Failure.Message.Contains("admin_consent", StringComparison.OrdinalIgnoreCase)
+                            || context.Failure.Message.Contains("consent_required", StringComparison.OrdinalIgnoreCase)
+                            || context.Failure.Message.Contains("access_denied", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        context.HandleResponse();
+                        var encodedMessage = Uri.EscapeDataString(BuildAdminConsentMessage(deploymentModeConfiguration));
+                        context.Response.Redirect($"/?authError={encodedMessage}");
+                    }
+
+                    return Task.CompletedTask;
+                };
+            });
 
         services.AddScoped<GraphServiceClient>(serviceProvider =>
         {
@@ -70,5 +132,14 @@ public static class DependencyInjection
         services.AddScoped<ImportWorkflowCoordinator>();
 
         return services;
+    }
+
+    private static string BuildAdminConsentMessage(ImportToPlanner.Application.Models.DeploymentModeConfiguration deploymentModeConfiguration)
+    {
+        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
+
+        return deploymentModeConfiguration.AdminConsentUri is null
+            ? "Administrator consent is required before this hosted tenant can continue."
+            : $"Administrator consent is required before this hosted tenant can continue. Ask your administrator to approve access: {deploymentModeConfiguration.AdminConsentUri}";
     }
 }

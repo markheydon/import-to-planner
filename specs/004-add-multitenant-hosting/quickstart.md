@@ -20,6 +20,19 @@ regressing the current import workflow.
 
 ## Recommended Verification Order
 
+## Verification checkpoints
+
+Use this checklist to capture explicit hosted and self-hosted evidence before sign-off.
+
+| Checkpoint | Command or action | Evidence to capture |
+| --- | --- | --- |
+| Automated regression baseline | `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj` and `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj` | Passing test output for tenant context, consent handling, and workflow behaviour |
+| Architecture boundary check | `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --filter FullyQualifiedName~ArchitectureComplianceTests` | Passing architecture-boundary assertion output |
+| Self-hosted runtime-mode verification | Run focused planner-behaviour tests with `PlannerGateway__UseGraph=false` and `PlannerGateway__UseGraph=true` | Matching workflow semantics and no runtime-mode regressions |
+| Hosted sign-in and tenant isolation | Exercise hosted sign-in with users from at least two supported tenants | Captured evidence that tenant metadata and workflow context remain isolated |
+| Hosted consent and admin path | Trigger both user-consent and admin-consent-required flows | Captured guidance output with a clear administrator path and no unhandled failure |
+| Hosted telemetry and privacy | Inspect logs/traces exported by OTLP pipeline | Evidence of tenant-safe dimensions and absence of secret values |
+
 ### 1. Run focused automated tests first
 
 ```bash

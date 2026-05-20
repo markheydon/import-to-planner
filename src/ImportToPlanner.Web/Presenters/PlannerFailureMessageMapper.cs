@@ -5,7 +5,7 @@ namespace ImportToPlanner.Web.Presenters;
 /// <summary>
 /// Maps neutral planner failures to user-safe messages for web presentation.
 /// </summary>
-internal static class PlannerFailureMessageMapper
+public static class PlannerFailureMessageMapper
 {
     /// <summary>
     /// Converts a neutral planner failure into user-safe text.
@@ -15,6 +15,20 @@ internal static class PlannerFailureMessageMapper
     public static string ToUserSafeMessage(PlannerOperationFailure failure)
     {
         ArgumentNullException.ThrowIfNull(failure);
+
+        if (failure.Category == PlannerFailureCategory.Authorisation
+            && !string.IsNullOrWhiteSpace(failure.Message)
+            && failure.Message.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Administrator consent is required for this tenant. Ask your Microsoft 365 administrator to approve access, then sign in again.";
+        }
+
+        if (failure.Category == PlannerFailureCategory.Authentication
+            && !string.IsNullOrWhiteSpace(failure.Message)
+            && failure.Message.Contains("unsupported account", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Unsupported account type. Sign in with a supported work or school account.";
+        }
 
         return failure.Category switch
         {

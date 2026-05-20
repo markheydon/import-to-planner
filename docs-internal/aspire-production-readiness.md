@@ -49,6 +49,24 @@ Use `Staging` as the single shared non-production environment name. GitHub Actio
 `Staging` automatically after successful CI, while `Production` is promoted separately with a
 manual approval step and isolated configuration.
 
+## Hosted rollout guardrails and evidence
+
+Before promoting hosted changes, capture and retain the following evidence:
+
+- `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj` and `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj` pass with no new failures.
+- Focused runtime-mode parity evidence exists for planner-facing behaviour changes in both `PlannerGateway:UseGraph=false` and `PlannerGateway:UseGraph=true` runs.
+- Hosted sign-in evidence confirms supported work or school account admission across at least two customer tenants and rejects unsupported account types before workflow entry.
+- Tenant-isolation evidence confirms hosted metadata and active workflow context are partitioned by tenant boundary.
+- Consent-flow evidence confirms both user-consent and administrator-consent-required paths render clear UK-English guidance.
+- Telemetry evidence confirms deployment mode, tenant-safe key, consent status, and failure category are emitted without tokens, secrets, or raw import payloads.
+
+Rollout guardrails:
+
+- Keep the initial hosted deployment on one active web replica unless approved scaling criteria are met.
+- Keep hosted persistence scope limited to tenant-scoped configuration, consent state, and support diagnostics.
+- Keep hosted-only configuration out of self-hosted defaults.
+- Defer extra always-on backing services until measured demand justifies the cost and complexity.
+
 ## Azure Resource Options
 
 | Stage | Recommended low-cost options | Notes |

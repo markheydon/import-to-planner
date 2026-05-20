@@ -15,12 +15,16 @@ public sealed class ImportWorkflowCoordinator(
     IPlannerGateway plannerGateway,
     IImportPlanningUseCase planningUseCase,
     IImportExecutionUseCase executionUseCase,
+    ICurrentTenantContextAccessor currentTenantContextAccessor,
+    DeploymentModeConfiguration deploymentModeConfiguration,
     ImportPlanningPresenter planningPresenter,
     ImportExecutionPresenter executionPresenter)
 {
     public async Task LoadContainersAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        ResolveTenantContext(state);
 
         var previousContainerId = state.SelectedContainer?.Id;
 
@@ -53,6 +57,8 @@ public sealed class ImportWorkflowCoordinator(
     public async Task LoadPlansAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        ResolveTenantContext(state);
 
         var previousPlanId = state.SelectedPlan?.Id;
 
@@ -87,6 +93,8 @@ public sealed class ImportWorkflowCoordinator(
     public async Task BuildPreviewAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        ResolveTenantContext(state);
 
         state.ParseErrors.Clear();
         state.PlanningViewModel = null;
@@ -139,6 +147,8 @@ public sealed class ImportWorkflowCoordinator(
     public async Task ExecuteAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        ResolveTenantContext(state);
 
         if (state.CurrentPlanningRequest is null || state.PlanningViewModel is null)
         {
@@ -202,5 +212,25 @@ public sealed class ImportWorkflowCoordinator(
         state.CurrentPlanningRequest = null;
         state.ExecutionReport = null;
         state.IsPreviewStale = hadPreviewState;
+    }
+
+    private void ResolveTenantContext(WorkflowCoordinationState state)
+    {
+        if (!deploymentModeConfiguration.UseGraphGateway)
+        {
+            return;
+        }
+
+        var resolvedContext = currentTenantContextAccessor.GetRequiredContext();
+        state.IsUnsupportedAccount = false;
+
+        if (state.ActiveTenantContext is not null
+            && !string.Equals(state.ActiveTenantContext.TenantId, resolvedContext.TenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            state.IsTenantContextMismatch = true;
+            InvalidatePreviewAndExecutionState(state);
+        }
+
+        state.ActiveTenantContext = resolvedContext;
     }
 }

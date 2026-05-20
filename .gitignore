@@ -426,3 +426,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Universal OS/editor artefacts
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
