@@ -3,8 +3,6 @@ using ImportToPlanner.Application.Models;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web;
 using ImportToPlanner.Web.Components;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,7 +42,10 @@ builder.Services
     .AddImportWorkflow()
     .AddInfrastructure(builder.Configuration);
 
-ConfigureDataProtection(builder, deploymentModeConfiguration);
+HostedDataProtectionConfigurator.Configure(
+    builder.Services,
+    builder.Configuration,
+    deploymentModeConfiguration);
 
 var app = builder.Build();
 
@@ -168,27 +169,4 @@ static Uri? BuildAdminConsentUri(IConfiguration configuration, string authorityT
     };
 
     return adminConsentBuilder.Uri;
-}
-
-static void ConfigureDataProtection(WebApplicationBuilder builder, DeploymentModeConfiguration deploymentModeConfiguration)
-{
-    ArgumentNullException.ThrowIfNull(builder);
-    ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
-
-    if (deploymentModeConfiguration.Mode != DeploymentMode.HostedSharedMultiTenant
-        || !deploymentModeConfiguration.HostedStorageEnabled)
-    {
-        return;
-    }
-
-    builder.Services.AddDataProtection();
-    builder.Services.Configure<DataProtectionOptions>(options =>
-    {
-        options.ApplicationDiscriminator = "ImportToPlanner.Hosted";
-    });
-
-    builder.Services.Configure<KeyManagementOptions>(options =>
-    {
-        options.NewKeyLifetime = TimeSpan.FromDays(14);
-    });
 }

@@ -18,6 +18,7 @@ This document tracks deployment preparation only. It does **not** change current
 | `PlannerGateway:UseGraph` | `false` by default for in-memory mode; set `true` only when testing real tenant flows locally. | `true` when the hosted instance should call Microsoft Graph; keep `false` only for non-production smoke environments. |
 | `AzureAd:TenantId`, `AzureAd:ClientId`, `AzureAd:Instance`, `AzureAd:CallbackPath` | Store in user secrets for local Graph-mode testing. | Provide via platform-managed app settings and secrets; never commit values. |
 | `AzureAd:ClientCertificates:0:SourceType`, `AzureAd:ClientCertificates:0:CertificateDiskPath`, `AzureAd:ClientCertificates:0:CertificatePassword` | Use `SourceType: Path` with an absolute Linux, WSL, or macOS-visible path to a local `.pfx`. | Prefer a cloud-native certificate source, such as Key Vault or certificate store integration, and avoid mounted disk-path certificates where possible. |
+| `HostedStorage:ConnectionString`, `HostedStorage:DataProtectionContainer`, `HostedStorage:DataProtectionBlob` | Leave unset for ordinary local single-tenant work. Only set them when intentionally exercising hosted-storage behaviour locally. | Required when `HostedStorage:Enabled=true` so hosted deployments keep ASP.NET Core Data Protection keys durable and shared across restarts. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Usually unset unless developing against a local collector. | Set to the hosted OTLP collector endpoint to export logs, metrics, and traces; when unset, OTLP export remains disabled. |
 
 ## Health Endpoint Policy
@@ -41,6 +42,7 @@ The approved low-cost hosted baseline for the multi-tenant design is:
 - Azure Container Apps ingress owns the public hosted endpoint.
 - The AppHost remains a single `web` resource initially.
 - Minimal tenant metadata lives in Azure Table Storage only.
+- ASP.NET Core Data Protection keys live in Blob storage from that same hosted storage account.
 - Platform-managed app settings and secrets are preferred.
 - Azure Key Vault is added only when certificate handling genuinely requires it.
 - Existing OTLP routing is reused before any paid monitoring expansion.
@@ -64,6 +66,7 @@ Rollout guardrails:
 
 - Keep the initial hosted deployment on one active web replica unless approved scaling criteria are met.
 - Keep hosted persistence scope limited to tenant-scoped configuration, consent state, and support diagnostics.
+- Keep durable Data Protection storage as a hosted-only concern; ordinary self-hosted local runs stay storage-free by default.
 - Keep hosted-only configuration out of self-hosted defaults.
 - Defer extra always-on backing services until measured demand justifies the cost and complexity.
 

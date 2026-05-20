@@ -54,6 +54,7 @@ aspire stop
 
 For the default single-tenant in-memory profile, no container runtime is required.
 For hosted-storage scenarios, a container runtime is required so Azurite can run.
+Durable ASP.NET Core Data Protection storage is only part of that hosted-storage path; ordinary local single-tenant runs stay storage-free by default.
 
 ## Configuration matrix
 
@@ -68,6 +69,8 @@ The key runtime switches are:
 | `SelfHostedSingleTenant` | `false` | `false` | First-run local exploration and most workflow/UI work |
 | `SelfHostedSingleTenant` | `true` | `false` | Single-tenant Graph integration testing |
 | `HostedSharedMultiTenant` | `true` | `true` | Hosted multi-tenant sign-in, consent, and tenant metadata behaviour |
+
+When `HostedStorage:Enabled=true`, local hosted emulation also uses Blob-backed Data Protection keys so sign-in cookies remain valid across hosted-style restarts. Do not add hosted storage settings for ordinary self-hosted single-tenant work unless you are explicitly testing that hosted path.
 
 ## Minimum Graph prerequisites
 
