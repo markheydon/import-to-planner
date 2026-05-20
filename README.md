@@ -97,6 +97,12 @@ Architecture and governance references:
 
 ## Getting Started
 
+### Choose your path
+
+- Run it locally for yourself: start with self-hosted single-tenant in-memory mode. This is the recommended first run and needs no Entra ID or Microsoft Graph credentials.
+- Run it against your own tenant: use self-hosted single-tenant Graph mode when you want to exercise real Planner behaviour.
+- Work on hosted support: use the hosted shared multi-tenant path through Aspire when you need tenant-aware sign-in, consent, or hosted storage behaviour.
+
 ### Prerequisites
 
 - .NET 10 SDK.
@@ -105,7 +111,7 @@ Architecture and governance references:
   - Entra ID app registration with required delegated permissions.
   - Local configuration for `AzureAd` and Graph settings.
 - Optional local tooling:
-  - Aspire CLI for AppHost workflows.
+  - Aspire CLI for developer workflows and hosted-path verification.
   - Node.js (LTS) for local JavaScript syntax checks used in CI.
   - GitHub CLI for issue and pull request workflows.
 
@@ -119,18 +125,25 @@ dotnet test ImportToPlanner.slnx
 git ls-files '*.js' | xargs -n1 node --check
 ```
 
-### Run in in-memory mode
+### First run in VS Code
 
-The repository defaults to in-memory mode:
+The repository includes ready-made Aspire launch profiles in [.vscode/launch.json](.vscode/launch.json):
+
+- `Aspire: Run (Single Tenant - In Memory)` - recommended first run for contributors and local evaluation.
+- `Aspire: Run (Single Tenant + Graph)` - self-hosted single-tenant sign-in and real Planner calls.
+- `Aspire: Run (Multi Tenant + Hosted Storage)` - hosted shared multi-tenant verification with local hosted-storage emulation.
+
+The first profile is deliberately ordered first so a new VS Code user lands on the simplest path.
+
+### Run locally without Aspire
+
+The base application settings stay self-hosted and single-tenant, but the Development override in [src/ImportToPlanner.Web/appsettings.Development.json](src/ImportToPlanner.Web/appsettings.Development.json) is hosted-oriented for this branch's multi-tenant work. If you want a plain local run without Aspire, set explicit overrides:
 
 ```bash
+DeploymentMode__Mode=SelfHostedSingleTenant \
+HostedStorage__Enabled=false \
+PlannerGateway__UseGraph=false \
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
-```
-
-Or explicitly set the mode:
-
-```bash
-PlannerGateway__UseGraph=false dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
 Expected behaviour:
@@ -139,12 +152,14 @@ Expected behaviour:
 - Pre-seeded container and plan data.
 - Full stepped workflow available for local validation.
 
-### Run in Graph mode
+### Run self-hosted single-tenant with Graph
 
-Set the gateway mode and start the web app:
+Use this path when you want to test against your own tenant. Set the self-hosted values together with your `AzureAd` and Graph settings, ideally through user secrets:
 
 ```bash
 dotnet user-secrets set "PlannerGateway:UseGraph" "true" --project src/ImportToPlanner.Web
+dotnet user-secrets set "DeploymentMode:Mode" "SelfHostedSingleTenant" --project src/ImportToPlanner.Web
+dotnet user-secrets set "HostedStorage:Enabled" "false" --project src/ImportToPlanner.Web
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
@@ -153,9 +168,11 @@ Expected behaviour:
 - Unauthenticated sessions are redirected to sign-in.
 - Container and plan data are loaded from Microsoft Graph.
 
-See [src/ImportToPlanner.Web/appsettings.json](src/ImportToPlanner.Web/appsettings.json) for configuration shape and [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md) for implementation guidance.
+See [src/ImportToPlanner.Web/appsettings.json](src/ImportToPlanner.Web/appsettings.json) for the full configuration shape, including `AzureAd`, certificate, and Graph scope placeholders, and see [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md) for implementation guidance.
 
-### Run with Aspire AppHost
+### Use Aspire for development workflows
+
+Aspire is the recommended developer path in this branch because the AppHost and launch profiles make the supported scenarios explicit and only turn on local hosted-storage emulation when a profile needs it.
 
 ```bash
 aspire start --isolated
@@ -164,7 +181,11 @@ aspire logs web
 aspire stop
 ```
 
-For the current AppHost graph, no container runtime is required because only the web project is hosted.
+Notes:
+
+- The default AppHost run now starts in self-hosted single-tenant in-memory mode.
+- A container runtime is only needed when you enable hosted storage, such as the multi-tenant launch profile.
+- For deeper developer guidance, see [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md).
 
 ## Project Structure
 
@@ -266,10 +287,12 @@ Contributions are welcome, but scope remains intentionally focused.
 
 ## Further Reading
 
+- [specs/004-add-multitenant-hosting/quickstart.md](specs/004-add-multitenant-hosting/quickstart.md)
+- [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md)
+- [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
 - [tests/README.md](tests/README.md)
 - [docs/README.md](docs/README.md)
 - [docs-internal/README.md](docs-internal/README.md)
-- [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
 - [docs-internal/roadmap-and-limitations.md](docs-internal/roadmap-and-limitations.md)
 - [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
 - [specs/002-ui-ux-redesign/quickstart.md](specs/002-ui-ux-redesign/quickstart.md)

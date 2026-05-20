@@ -66,8 +66,8 @@ public sealed class ImportExecutionUseCaseTests
         var fakeBucket = await fakeGateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
         await fakeGateway.CreateTaskAsync("plan-alpha", fakeBucket.Id, "Existing Task", null, null, null, CancellationToken.None);
 
-        var inMemoryPlanning = new ImportPlanningUseCase(inMemoryGateway);
-        var fakePlanning = new ImportPlanningUseCase(fakeGateway);
+        var inMemoryPlanning = CreatePlanningUseCase(inMemoryGateway);
+        var fakePlanning = CreatePlanningUseCase(fakeGateway);
 
         var inMemoryPlanningOutput = new CapturePlanningOutputBoundary();
         var fakePlanningOutput = new CapturePlanningOutputBoundary();
@@ -101,7 +101,7 @@ public sealed class ImportExecutionUseCaseTests
     {
         var gateway = new FakePlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
-        var planningUseCase = new ImportPlanningUseCase(gateway);
+        var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
         var useCase = new ImportExecutionUseCase(gateway);
         var output = new CaptureExecutionOutputBoundary();
@@ -143,6 +143,22 @@ public sealed class ImportExecutionUseCaseTests
             Response = response;
             return Task.CompletedTask;
         }
+    }
+
+    private static ImportPlanningUseCase CreatePlanningUseCase(IPlannerGateway plannerGateway)
+    {
+        return new ImportPlanningUseCase(
+            plannerGateway,
+            new StaticTenantContextAccessor(),
+            new InMemoryTenantMetadataStore(),
+            new DeploymentModeConfiguration(
+                DeploymentMode.SelfHostedSingleTenant,
+                "tenant-single",
+                true,
+                false,
+                "SingleActiveReplica",
+                ["Tasks.ReadWrite"],
+                new Uri("https://example.test/admin-consent")));
     }
 
     private sealed class CaptureExecutionOutputBoundary : IImportExecutionOutputBoundary
@@ -239,5 +255,25 @@ public sealed class ImportExecutionUseCaseTests
             buckets.TryAdd(planId, []);
             tasks.TryAdd(planId, []);
         }
+    }
+
+    private sealed class StaticTenantContextAccessor : ICurrentTenantContextAccessor
+    {
+        public TenantContext GetRequiredContext() => new(
+            "tenant-a",
+            "tenant-key-a",
+            "user-a",
+            DeploymentMode.SelfHostedSingleTenant,
+            SupportedAccountType.WorkOrSchool,
+            "Tenant A");
+    }
+
+    private sealed class InMemoryTenantMetadataStore : ITenantOperationalMetadataStore
+    {
+        public Task<TenantOperationalMetadata?> GetAsync(string tenantId, CancellationToken cancellationToken)
+            => Task.FromResult<TenantOperationalMetadata?>(null);
+
+        public Task UpsertAsync(TenantOperationalMetadata metadata, CancellationToken cancellationToken)
+            => Task.CompletedTask;
     }
 }

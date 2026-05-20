@@ -26,6 +26,15 @@ Testing and safety
 - Unit-test orchestration and business logic by mocking `IPlannerGateway` implementations.
 - Do not commit tenant credentials or secrets; follow the repository's configuration patterns for local dev and CI.
 
+Hosted multi-tenant compatibility
+---------------------------------
+- Keep Graph operations bound to the active delegated tenant session from the signed-in user.
+- Reject unsupported account types before entering planner workflow operations.
+- Resolve consent outcomes into repository-owned contracts before presenter mapping; do not surface raw provider exception text.
+- Keep hosted telemetry privacy-safe: include deployment mode, tenant-safe key, consent status, and failure category only.
+- Maintain runtime-mode parity checks when planner behaviour changes by validating both
+	`PlannerGateway:UseGraph=false` and `PlannerGateway:UseGraph=true` paths.
+
 Further reading
 ---------------
 - See `.specify/memory/constitution.md` for governance-level requirements about Graph integration and observability.

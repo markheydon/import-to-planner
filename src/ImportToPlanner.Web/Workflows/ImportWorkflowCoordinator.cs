@@ -15,12 +15,16 @@ public sealed class ImportWorkflowCoordinator(
     IPlannerGateway plannerGateway,
     IImportPlanningUseCase planningUseCase,
     IImportExecutionUseCase executionUseCase,
+    ICurrentTenantContextAccessor currentTenantContextAccessor,
+    DeploymentModeConfiguration deploymentModeConfiguration,
     ImportPlanningPresenter planningPresenter,
     ImportExecutionPresenter executionPresenter)
 {
     public async Task LoadContainersAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        ResolveTenantContext(state);
 
         var previousContainerId = state.SelectedContainer?.Id;
 
@@ -53,6 +57,8 @@ public sealed class ImportWorkflowCoordinator(
     public async Task LoadPlansAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        ResolveTenantContext(state);
 
         var previousPlanId = state.SelectedPlan?.Id;
 
@@ -88,6 +94,8 @@ public sealed class ImportWorkflowCoordinator(
     {
         ArgumentNullException.ThrowIfNull(state);
 
+        ResolveTenantContext(state);
+
         state.ParseErrors.Clear();
         state.PlanningViewModel = null;
         state.ExecutionReport = null;
@@ -118,6 +126,7 @@ public sealed class ImportWorkflowCoordinator(
         if (parseResult.HasErrors)
         {
             state.StatusMessage = "Validation failed. Fix the reported issues and retry.";
+            state.StatusReferenceId = null;
             state.StatusSeverity = Severity.Error;
             return;
         }
@@ -133,12 +142,15 @@ public sealed class ImportWorkflowCoordinator(
         state.CurrentPlanningRequest = request;
         state.PlanningViewModel = planningPresenter.ViewModel;
         state.StatusMessage = "Preview generated. Review actions, then confirm execution.";
+        state.StatusReferenceId = null;
         state.StatusSeverity = Severity.Success;
     }
 
     public async Task ExecuteAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
+
+        ResolveTenantContext(state);
 
         if (state.CurrentPlanningRequest is null || state.PlanningViewModel is null)
         {
@@ -152,6 +164,7 @@ public sealed class ImportWorkflowCoordinator(
         state.StatusMessage = state.ExecutionReport is null || state.ExecutionReport.Errors.Count == 0
             ? "Execution completed successfully."
             : "Execution completed with errors.";
+        state.StatusReferenceId = null;
         state.StatusSeverity = state.ExecutionReport is null || state.ExecutionReport.Errors.Count == 0
             ? Severity.Success
             : Severity.Warning;
@@ -202,5 +215,25 @@ public sealed class ImportWorkflowCoordinator(
         state.CurrentPlanningRequest = null;
         state.ExecutionReport = null;
         state.IsPreviewStale = hadPreviewState;
+    }
+
+    private void ResolveTenantContext(WorkflowCoordinationState state)
+    {
+        if (!deploymentModeConfiguration.UseGraphGateway)
+        {
+            return;
+        }
+
+        var resolvedContext = currentTenantContextAccessor.GetRequiredContext();
+        state.IsUnsupportedAccount = false;
+
+        if (state.ActiveTenantContext is not null
+            && !string.Equals(state.ActiveTenantContext.TenantId, resolvedContext.TenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            state.IsTenantContextMismatch = true;
+            InvalidatePreviewAndExecutionState(state);
+        }
+
+        state.ActiveTenantContext = resolvedContext;
     }
 }

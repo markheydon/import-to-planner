@@ -20,6 +20,8 @@ and workflow but are intentionally outside the architecture constitution.
   confirmation, and execution reporting.
 - End-user wording and contributor-facing documentation intended for users MUST use UK
   English.
+- Public-facing and UI-facing failures MUST be shown as graceful, human-friendly,
+  actionable messages and MUST NOT expose raw exception details to end users.
 - Accessibility and responsive behaviour MUST be preserved for primary workflows across
   desktop and mobile layouts.
 

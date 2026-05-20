@@ -4,8 +4,10 @@ using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Application.Services;
 using ImportToPlanner.Domain;
+using ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -14,14 +16,14 @@ namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
 internal sealed class HomePageTestContext : BunitContext
 {
-    public HomePageTestContext(bool useGraphGateway = false)
+    public HomePageTestContext(bool useGraphGateway = false, bool isAuthenticated = true)
     {
         Services.AddMudServices(configuration =>
         {
             configuration.PopoverOptions.CheckForPopoverProvider = false;
         });
         var auth = AddAuthorization();
-        if (useGraphGateway)
+        if (useGraphGateway && isAuthenticated)
         {
             auth.SetAuthorized("graph-test-user");
         }
@@ -36,12 +38,31 @@ internal sealed class HomePageTestContext : BunitContext
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["PlannerGateway:UseGraph"] = useGraphGateway ? "true" : "false",
+                ["DeploymentMode:Mode"] = useGraphGateway ? "HostedSharedMultiTenant" : "SelfHostedSingleTenant",
+                ["DeploymentMode:AuthorityTenant"] = useGraphGateway ? "organizations" : "tenant-self-hosted",
             })
             .Build();
 
         Services.AddSingleton<IConfiguration>(config);
+        Services.AddSingleton(new DeploymentModeConfiguration(
+            useGraphGateway ? DeploymentMode.HostedSharedMultiTenant : DeploymentMode.SelfHostedSingleTenant,
+            useGraphGateway ? "organizations" : "tenant-self-hosted",
+            useGraphGateway,
+            false,
+            "SingleActiveReplica",
+            ["Tasks.ReadWrite"],
+            new Uri("https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=test")));
+        Services.AddHttpContextAccessor();
+        var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.UserFacingFailureDiagnostics", throwOnError: true)!;
+        Services.AddScoped(failureDiagnosticsType, serviceProvider => Activator.CreateInstance(
+            failureDiagnosticsType,
+            serviceProvider.GetRequiredService<IHttpContextAccessor>(),
+            serviceProvider.GetRequiredService<DeploymentModeConfiguration>())!);
         Services.AddScoped<ICsvImportParser, StubCsvImportParser>();
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
+        Services.AddScoped<ITenantOperationalMetadataStore, InMemoryTenantOperationalMetadataStore>();
+        Services.AddSingleton(TenantAccessor);
+        Services.AddScoped<ICurrentTenantContextAccessor>(_ => TenantAccessor);
         Services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
         Services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
         Services.AddScoped<ImportPlanningPresenter>();
@@ -53,6 +74,31 @@ internal sealed class HomePageTestContext : BunitContext
     }
 
     public StubPlannerGateway Gateway { get; } = new();
+
+    public StubCurrentTenantContextAccessor TenantAccessor { get; } = new();
+}
+
+internal sealed class StubCurrentTenantContextAccessor : ICurrentTenantContextAccessor
+{
+    public Exception? GetRequiredContextException { get; set; }
+
+    public TenantContext Context { get; set; } = new(
+        "tenant-a",
+        "tenant-key-a",
+        "user-a",
+        DeploymentMode.HostedSharedMultiTenant,
+        SupportedAccountType.WorkOrSchool,
+        "Tenant A");
+
+    public TenantContext GetRequiredContext()
+    {
+        if (GetRequiredContextException is not null)
+        {
+            throw GetRequiredContextException;
+        }
+
+        return Context;
+    }
 }
 
 internal sealed class StubCsvImportParser : ICsvImportParser

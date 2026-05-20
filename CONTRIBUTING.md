@@ -14,27 +14,31 @@ Thank you for your interest in contributing! This is a solo-maintained project, 
 
 ### Recommended first run
 
-The repository defaults to the in-memory planner gateway, so you can build, test, and run the app locally without tenant credentials.
+If you are using VS Code, start with the first profile in [.vscode/launch.json](.vscode/launch.json): `Aspire: Run (Single Tenant - In Memory)`. That is the recommended contributor entry point because it starts the app in the simplest supported mode while keeping the hosted and Graph profiles one click away.
+
+If you prefer the CLI, run the web app with explicit single-tenant in-memory overrides because the Development profile on this branch is hosted-oriented:
 
 ```bash
 dotnet restore ImportToPlanner.slnx
 dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
-dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
+DeploymentMode__Mode=SelfHostedSingleTenant HostedStorage__Enabled=false PlannerGateway__UseGraph=false dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
 If you prefer a containerised development environment, GitHub Codespaces is supported through `.devcontainer/devcontainer.json`.
 
 ### Optional local tooling
 
-- Aspire CLI (`aspire`) for orchestration and diagnostics.
+- Aspire CLI (`aspire`) is recommended for contributor workflows. The AppHost and VS Code launch profiles use it to switch cleanly between single-tenant local work, single-tenant Graph testing, and hosted multi-tenant verification.
 - GitHub CLI (`gh`) for issue and pull request workflows.
 - Node.js (LTS) for local JavaScript syntax checks that mirror CI.
 
-For the current AppHost in this repository, `aspire start` works without Docker or Podman because the graph only contains the web project. `aspire doctor` may still report `No container runtime detected` as a generic prerequisite warning, especially in Codespaces.
+For the current AppHost in this repository, a container runtime is only required when you enable hosted storage, such as the multi-tenant launch profile. The default single-tenant in-memory AppHost path does not need Docker or Podman. `aspire doctor` may still report `No container runtime detected` as a generic prerequisite warning, especially in Codespaces.
 
 If you plan to use AI tooling that benefits from Aspire agent setup, run `aspire agent init` locally in your environment. This repository does not commit Aspire agent or MCP configuration by default.
+
+For the full developer quick-start, including when to use Aspire versus plain local execution and how the configuration modes map together, see [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md).
 
 ### Building and running tests
 
@@ -49,7 +53,7 @@ git ls-files '*.js' | xargs -n1 node --check
 To run the web app locally:
 
 ```bash
-dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
+DeploymentMode__Mode=SelfHostedSingleTenant HostedStorage__Enabled=false PlannerGateway__UseGraph=false dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
 If you need to work against a real tenant, see the Graph setup guidance in `README.md` before switching `PlannerGateway:UseGraph` to `true`.
