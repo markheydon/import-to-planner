@@ -243,6 +243,7 @@ csx/
 ecf/
 rcf/
 __*storage__/
+__azurite_*__.json
 
 # Windows Store app package directories and files
 AppPackages/
