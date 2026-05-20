@@ -40,4 +40,23 @@ public static class PlannerFailureMessageMapper
             _ => "An unexpected planner error occurred. Retry and check logs if the issue continues.",
         };
     }
+
+    /// <summary>
+    /// Converts a blocked consent resolution into a user-safe message.
+    /// </summary>
+    /// <param name="resolution">The structured consent resolution.</param>
+    /// <returns>A user-safe error message.</returns>
+    public static string ToConsentBlockedMessage(ConsentResolution resolution)
+    {
+        ArgumentNullException.ThrowIfNull(resolution);
+
+        return resolution.Status switch
+        {
+            ConsentResolutionStatus.AdminConsentRequired => resolution.AdminConsentUri is null
+                ? "Administrator consent is required before this hosted tenant can continue."
+                : $"Administrator consent is required before this hosted tenant can continue. Ask your administrator to approve access: {resolution.AdminConsentUri}",
+            ConsentResolutionStatus.Declined => "Consent was declined. Sign in again and complete consent, or contact your administrator.",
+            _ => "Hosted consent cannot be validated right now. Retry shortly or contact your administrator.",
+        };
+    }
 }

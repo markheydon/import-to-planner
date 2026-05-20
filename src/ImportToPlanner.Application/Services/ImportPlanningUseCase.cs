@@ -1,4 +1,5 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 
 namespace ImportToPlanner.Application.Services;
@@ -29,7 +30,7 @@ public sealed class ImportPlanningUseCase(
             or ConsentResolutionStatus.Declined
             or ConsentResolutionStatus.Unavailable)
         {
-            throw new InvalidOperationException(ResolveConsentMessage(consentResolution));
+            throw new ConsentBlockedException(consentResolution);
         }
 
         var existingPlan = await plannerGateway.GetPlanByIdAsync(request.PlanId, cancellationToken)
@@ -173,20 +174,6 @@ public sealed class ImportPlanningUseCase(
                 deploymentModeConfiguration.AdminConsentUri,
                 "consent.unavailable",
                 metadata.LastSupportDiagnosticCode),
-        };
-    }
-
-    private static string ResolveConsentMessage(ConsentResolution consentResolution)
-    {
-        ArgumentNullException.ThrowIfNull(consentResolution);
-
-        return consentResolution.Status switch
-        {
-            ConsentResolutionStatus.AdminConsentRequired => consentResolution.AdminConsentUri is null
-                ? "Administrator consent is required before this hosted tenant can continue."
-                : $"Administrator consent is required before this hosted tenant can continue. Ask your administrator to approve access: {consentResolution.AdminConsentUri}",
-            ConsentResolutionStatus.Declined => "Consent was declined. Sign in again and complete consent, or contact your administrator.",
-            _ => "Hosted consent cannot be validated right now. Retry shortly or contact your administrator.",
         };
     }
 

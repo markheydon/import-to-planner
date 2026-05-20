@@ -22,13 +22,13 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         null);
 
     [Fact]
-    public async Task GetAuthorizationTokenAsync_WhenUserIsUnauthenticated_ThrowsInvalidOperationException()
+    public async Task GetAuthorizationTokenAsync_WhenUserIsUnauthenticated_ThrowsGraphUnauthenticatedContextException()
     {
         var tokenAcquisition = new FakeTokenAcquisition();
         var user = new ClaimsPrincipal(new ClaimsIdentity());
         var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration);
 
-        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var exception = await Assert.ThrowsAsync<GraphUnauthenticatedContextException>(() =>
             provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
 
         Assert.Contains("authenticated user context", exception.Message, StringComparison.OrdinalIgnoreCase);
