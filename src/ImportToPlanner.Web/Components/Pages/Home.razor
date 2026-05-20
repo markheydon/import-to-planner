@@ -52,7 +52,7 @@
                 <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
             }
 
-            @if (!string.IsNullOrWhiteSpace(statusMessage) && !showUnsupportedAccountGuidance)
+            @if (!string.IsNullOrWhiteSpace(statusMessage) && !showUnsupportedAccountGuidance && !showAdminConsentGuidance)
             {
                 <MudAlert Severity="@StatusMessageSeverity" Dense="true">
                     <MudText Typo="Typo.body2">@statusMessage</MudText>

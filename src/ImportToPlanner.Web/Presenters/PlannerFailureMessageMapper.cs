@@ -5,7 +5,7 @@ namespace ImportToPlanner.Web.Presenters;
 /// <summary>
 /// Maps neutral planner failures to user-safe messages for web presentation.
 /// </summary>
-public static class PlannerFailureMessageMapper
+internal static class PlannerFailureMessageMapper
 {
     /// <summary>
     /// Converts a neutral planner failure into user-safe text.

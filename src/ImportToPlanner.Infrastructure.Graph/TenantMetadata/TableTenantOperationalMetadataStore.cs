@@ -10,7 +10,7 @@ namespace ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 /// </summary>
 internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMetadataStore, IDisposable
 {
-    private const string TenantPartitionKey = "tenant";
+    private const string OperationalMetadataRowKey = "operational";
     private readonly TableClient tableClient;
     private volatile bool tableCreated;
     private readonly SemaphoreSlim initSemaphore = new(1, 1);
@@ -38,8 +38,8 @@ internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMe
         try
         {
             var response = await tableClient.GetEntityAsync<TenantOperationalMetadataEntity>(
-                TenantPartitionKey,
                 tenantId,
+                OperationalMetadataRowKey,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return response.Value.ToModel();
@@ -92,9 +92,9 @@ internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMe
 
     private sealed class TenantOperationalMetadataEntity : ITableEntity
     {
-        public string PartitionKey { get; set; } = TenantPartitionKey;
+        public string PartitionKey { get; set; } = string.Empty;
 
-        public string RowKey { get; set; } = string.Empty;
+        public string RowKey { get; set; } = OperationalMetadataRowKey;
 
         public DateTimeOffset? Timestamp { get; set; }
 
@@ -115,8 +115,8 @@ internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMe
             ArgumentNullException.ThrowIfNull(model);
             return new TenantOperationalMetadataEntity
             {
-                PartitionKey = TenantPartitionKey,
-                RowKey = model.TenantId,
+                PartitionKey = model.TenantId,
+                RowKey = OperationalMetadataRowKey,
                 ConsentStatus = model.ConsentStatus.ToString(),
                 ConfigurationState = model.ConfigurationState,
                 LastConsentCheckUtc = model.LastConsentCheckUtc,
@@ -132,7 +132,7 @@ internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMe
                 : ConsentResolutionStatus.Unknown;
 
             return new TenantOperationalMetadata(
-                RowKey,
+                PartitionKey,
                 consentStatus,
                 ConfigurationState,
                 LastConsentCheckUtc,
