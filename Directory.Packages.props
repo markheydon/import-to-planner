@@ -14,24 +14,34 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+
     <!-- CSV parsing -->
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
+
     <!-- Blazor UI (MudBlazor) -->
     <PackageVersion Include="MudBlazor" Version="9.4.0" />
-    <!-- Microsoft Graph and identity/authentication -->
-    <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
-    <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.3" />
-    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.28.0" />
-    <PackageVersion Include="Microsoft.Graph" Version="6.0.3" />
+
+    <!-- Microsoft Graph & Kiota -->
+    <PackageVersion Include="Microsoft.Graph" Version="6.1.0" />
     <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="2.0.0" />
+
+    <!-- Identity / Authentication -->
     <PackageVersion Include="Microsoft.Identity.Web" Version="4.9.0" />
     <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.9.0" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
-    <!-- Resilience and service discovery for service defaults -->
+
+    <!-- Azure SDKs -->
+    <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
+    <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.3" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.5.0" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.28.0" />
+
+    <!-- Resilience & Service Discovery -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
+
     <!-- OpenTelemetry exporters and instrumentation -->
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />

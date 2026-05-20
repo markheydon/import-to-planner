@@ -19,6 +19,7 @@ public sealed class HostedAuthenticationEventTests
             .Get(OpenIdConnectDefaults.AuthenticationScheme);
 
         var httpContext = new DefaultHttpContext();
+        httpContext.RequestServices = serviceProvider;
         var context = new AuthenticationFailedContext(
             httpContext,
             CreateOpenIdConnectScheme(),
@@ -44,6 +45,7 @@ public sealed class HostedAuthenticationEventTests
             .Get(OpenIdConnectDefaults.AuthenticationScheme);
 
         var httpContext = new DefaultHttpContext();
+        httpContext.RequestServices = serviceProvider;
         var context = new RemoteFailureContext(
             httpContext,
             CreateOpenIdConnectScheme(),

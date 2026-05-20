@@ -11,7 +11,9 @@ namespace ImportToPlanner.Web;
 /// </summary>
 internal sealed class ClaimsTenantContextAccessor(
     IHttpContextAccessor httpContextAccessor,
-    DeploymentModeConfiguration deploymentModeConfiguration) : ICurrentTenantContextAccessor
+    DeploymentModeConfiguration deploymentModeConfiguration,
+    ILogger<ClaimsTenantContextAccessor> logger,
+    UserFacingFailureDiagnostics failureDiagnostics) : ICurrentTenantContextAccessor
 {
     private const string CommonAuthorityTenant = "common";
     private const string OrganizationsAuthorityTenant = "organizations";
@@ -24,7 +26,10 @@ internal sealed class ClaimsTenantContextAccessor(
         var user = httpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated != true)
         {
-            throw new InvalidOperationException("An authenticated user context is required to resolve the active tenant context.");
+            throw CreateAndRecordFailure(
+                "An authenticated user context is required to resolve the active tenant context.",
+                PlannerFailureCategory.Authentication.ToString(),
+                "tenant_context.unauthenticated");
         }
 
         var tenantId = ResolveTenantId(user);
@@ -32,18 +37,29 @@ internal sealed class ClaimsTenantContextAccessor(
         if (deploymentModeConfiguration.Mode == DeploymentMode.HostedSharedMultiTenant
             && accountType != SupportedAccountType.WorkOrSchool)
         {
-            throw new InvalidOperationException("Unsupported account type. Sign in with a supported work or school account.");
+            throw CreateAndRecordFailure(
+                "Unsupported account type. Sign in with a supported work or school account.",
+                PlannerFailureCategory.Authentication.ToString(),
+                "tenant_context.unsupported_account",
+                tenantId);
         }
 
         if (string.IsNullOrWhiteSpace(tenantId))
         {
-            throw new InvalidOperationException("Unable to resolve the tenant identifier from the current sign-in.");
+            throw CreateAndRecordFailure(
+                "Unable to resolve the tenant identifier from the current sign-in.",
+                PlannerFailureCategory.Authentication.ToString(),
+                "tenant_context.tenant_id_missing");
         }
 
         var objectId = ResolveUserIdentifier(user);
         if (string.IsNullOrWhiteSpace(objectId))
         {
-            throw new InvalidOperationException("Unable to resolve the user identifier from the current sign-in.");
+            throw CreateAndRecordFailure(
+                "Unable to resolve the user identifier from the current sign-in.",
+                PlannerFailureCategory.Authentication.ToString(),
+                "tenant_context.user_id_missing",
+                tenantId);
         }
 
         return new TenantContext(
@@ -131,5 +147,30 @@ internal sealed class ClaimsTenantContextAccessor(
 
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(tenantId));
         return Convert.ToHexStringLower(hash[..8]);
+    }
+
+    private InvalidOperationException CreateAndRecordFailure(
+        string message,
+        string failureCategory,
+        string failureCode,
+        string? tenantId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        ArgumentException.ThrowIfNullOrWhiteSpace(failureCategory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(failureCode);
+
+        var exception = new InvalidOperationException(message);
+        _ = failureDiagnostics.RecordHandledFailure(
+            logger,
+            exception,
+            "tenant_context.resolve",
+            failureCategory,
+            message,
+            LogLevel.Warning,
+            consentStatus: ConsentResolutionStatus.Unknown,
+            failureCode: failureCode,
+            tenantKeyOverride: string.IsNullOrWhiteSpace(tenantId) ? null : BuildTenantKey(tenantId));
+
+        return exception;
     }
 }

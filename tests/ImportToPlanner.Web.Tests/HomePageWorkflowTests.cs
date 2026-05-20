@@ -154,6 +154,22 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task HomePage_InHostedMode_WhenAuthErrorQueryIncludesReference_ShowsReferenceId()
+    {
+        await using var ctx = new HomePageTestContext(useGraphGateway: true, isAuthenticated: false);
+        var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
+        navigationManager.NavigateTo("/?authError=Unsupported%20account%20type.%20Sign%20in%20with%20a%20supported%20work%20or%20school%20account.&authRef=trace-123", forceLoad: false);
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Unsupported account type", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Reference ID: trace-123", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
     public async Task HomePage_InHostedMode_WhenTokenAcquisitionRequiresInteraction_TriggersOneTimeReauthentication()
     {
         await using var ctx = new HomePageTestContext(useGraphGateway: true);

@@ -79,7 +79,12 @@ public sealed class ClaimsTenantContextAccessorTests
         };
 
         var accessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.ClaimsTenantContextAccessor", throwOnError: true)!;
-        return (ICurrentTenantContextAccessor)Activator.CreateInstance(accessorType, httpContextAccessor, deploymentModeConfiguration)!;
+        var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.UserFacingFailureDiagnostics", throwOnError: true)!;
+        var failureDiagnostics = Activator.CreateInstance(failureDiagnosticsType, httpContextAccessor, deploymentModeConfiguration)!;
+        var nullLoggerType = typeof(Microsoft.Extensions.Logging.Abstractions.NullLogger<>).MakeGenericType(accessorType);
+        var logger = Activator.CreateInstance(nullLoggerType)!;
+
+        return (ICurrentTenantContextAccessor)Activator.CreateInstance(accessorType, httpContextAccessor, deploymentModeConfiguration, logger, failureDiagnostics)!;
     }
 
     private static DeploymentModeConfiguration CreateDeploymentModeConfiguration(DeploymentMode mode, string authorityTenant)

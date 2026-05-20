@@ -1,3 +1,4 @@
+using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Authentication;
@@ -16,6 +17,8 @@ namespace ImportToPlanner.Web;
 /// </summary>
 public static class DependencyInjection
 {
+    private const string AuthenticationErrorQueryKey = "authError";
+    private const string AuthenticationReferenceQueryKey = "authRef";
     private const string UnsupportedAccountErrorMessage = "Unsupported account type. Sign in with a supported work or school account.";
 
     /// <summary>
@@ -34,6 +37,7 @@ public static class DependencyInjection
         services.AddMudServices();
         services.AddCascadingAuthenticationState();
         services.AddHttpContextAccessor();
+        services.AddScoped<UserFacingFailureDiagnostics>();
         services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
 
         var graphScopes = configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
@@ -94,9 +98,15 @@ public static class DependencyInjection
                         return;
                     }
 
-                    if (TryMapHostedAuthenticationFailure(context.Exception?.Message, deploymentModeConfiguration, out var userSafeMessage))
+                    if (TryMapHostedAuthenticationFailure(context.Exception?.Message, deploymentModeConfiguration, out var failure))
                     {
-                        RedirectToHomeWithAuthError(context, userSafeMessage);
+                        var failurePresentation = RecordHostedAuthenticationFailure(
+                            context.HttpContext,
+                            deploymentModeConfiguration,
+                            context.Exception,
+                            failure,
+                            "open_id_connect.authentication_failed");
+                        RedirectToHomeWithAuthError(context, failurePresentation);
                     }
                 };
 
@@ -118,9 +128,15 @@ public static class DependencyInjection
                         return;
                     }
 
-                    if (TryMapHostedAuthenticationFailure(context.Failure?.Message, deploymentModeConfiguration, out var userSafeMessage))
+                    if (TryMapHostedAuthenticationFailure(context.Failure?.Message, deploymentModeConfiguration, out var failure))
                     {
-                        RedirectToHomeWithAuthError(context, userSafeMessage);
+                        var failurePresentation = RecordHostedAuthenticationFailure(
+                            context.HttpContext,
+                            deploymentModeConfiguration,
+                            context.Failure,
+                            failure,
+                            "open_id_connect.remote_failure");
+                        RedirectToHomeWithAuthError(context, failurePresentation);
                     }
                 };
             });
@@ -131,7 +147,8 @@ public static class DependencyInjection
             var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
             var deploymentModeConfiguration = serviceProvider.GetRequiredService<ImportToPlanner.Application.Models.DeploymentModeConfiguration>();
             var logger = serviceProvider.GetRequiredService<ILogger<MicrosoftIdentityAccessTokenProvider>>();
-            var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, graphScopes);
+            var failureDiagnostics = serviceProvider.GetRequiredService<UserFacingFailureDiagnostics>();
+            var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, graphScopes, failureDiagnostics);
             var authenticationProvider = new BaseBearerTokenAuthenticationProvider(accessTokenProvider);
             return new GraphServiceClient(authenticationProvider);
         });
@@ -173,19 +190,23 @@ public static class DependencyInjection
     private static bool TryMapHostedAuthenticationFailure(
         string? failureMessage,
         ImportToPlanner.Application.Models.DeploymentModeConfiguration deploymentModeConfiguration,
-        out string userSafeMessage)
+        out HostedAuthenticationFailure failure)
     {
         ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
 
         if (string.IsNullOrWhiteSpace(failureMessage))
         {
-            userSafeMessage = string.Empty;
+            failure = default;
             return false;
         }
 
         if (failureMessage.Contains("unsupported account", StringComparison.OrdinalIgnoreCase))
         {
-            userSafeMessage = UnsupportedAccountErrorMessage;
+            failure = new HostedAuthenticationFailure(
+                UnsupportedAccountErrorMessage,
+                PlannerFailureCategory.Authentication.ToString(),
+                ConsentResolutionStatus.Unknown,
+                "auth.unsupported_account");
             return true;
         }
 
@@ -194,31 +215,75 @@ public static class DependencyInjection
             || failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
             || failureMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
         {
-            userSafeMessage = BuildAdminConsentMessage(deploymentModeConfiguration);
+            failure = new HostedAuthenticationFailure(
+                BuildAdminConsentMessage(deploymentModeConfiguration),
+                PlannerFailureCategory.Authorisation.ToString(),
+                ConsentResolutionStatus.AdminConsentRequired,
+                "auth.admin_consent_required");
             return true;
         }
 
-        userSafeMessage = string.Empty;
+        failure = default;
         return false;
     }
 
-    private static void RedirectToHomeWithAuthError(AuthenticationFailedContext context, string userSafeMessage)
+    private static FailurePresentation RecordHostedAuthenticationFailure(
+        HttpContext httpContext,
+        ImportToPlanner.Application.Models.DeploymentModeConfiguration deploymentModeConfiguration,
+        Exception? exception,
+        HostedAuthenticationFailure failure,
+        string operation)
     {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentException.ThrowIfNullOrWhiteSpace(userSafeMessage);
+        ArgumentNullException.ThrowIfNull(httpContext);
+        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
 
-        context.HandleResponse();
-        var encodedMessage = Uri.EscapeDataString(userSafeMessage);
-        context.Response.Redirect($"/?authError={encodedMessage}");
+        var loggerFactory = httpContext.RequestServices.GetRequiredService<ILoggerFactory>();
+        var logger = loggerFactory.CreateLogger(typeof(DependencyInjection).FullName!);
+        var failureDiagnostics = httpContext.RequestServices.GetRequiredService<UserFacingFailureDiagnostics>();
+        return failureDiagnostics.RecordHandledFailure(
+            logger,
+            exception,
+            operation,
+            failure.FailureCategory,
+            failure.UserSafeMessage,
+            LogLevel.Warning,
+            consentStatus: failure.ConsentStatus,
+            failureCode: failure.FailureCode);
     }
 
-    private static void RedirectToHomeWithAuthError(RemoteFailureContext context, string userSafeMessage)
+    private static void RedirectToHomeWithAuthError(AuthenticationFailedContext context, FailurePresentation failurePresentation)
     {
         ArgumentNullException.ThrowIfNull(context);
-        ArgumentException.ThrowIfNullOrWhiteSpace(userSafeMessage);
+        ArgumentException.ThrowIfNullOrWhiteSpace(failurePresentation.UserMessage);
 
         context.HandleResponse();
-        var encodedMessage = Uri.EscapeDataString(userSafeMessage);
-        context.Response.Redirect($"/?authError={encodedMessage}");
+        context.Response.Redirect(BuildAuthenticationErrorRedirectUri(failurePresentation));
     }
+
+    private static void RedirectToHomeWithAuthError(RemoteFailureContext context, FailurePresentation failurePresentation)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentException.ThrowIfNullOrWhiteSpace(failurePresentation.UserMessage);
+
+        context.HandleResponse();
+        context.Response.Redirect(BuildAuthenticationErrorRedirectUri(failurePresentation));
+    }
+
+    private static string BuildAuthenticationErrorRedirectUri(FailurePresentation failurePresentation)
+    {
+        var encodedMessage = Uri.EscapeDataString(failurePresentation.UserMessage);
+        if (string.IsNullOrWhiteSpace(failurePresentation.ReferenceId))
+        {
+            return $"/?{AuthenticationErrorQueryKey}={encodedMessage}";
+        }
+
+        var encodedReferenceId = Uri.EscapeDataString(failurePresentation.ReferenceId);
+        return $"/?{AuthenticationErrorQueryKey}={encodedMessage}&{AuthenticationReferenceQueryKey}={encodedReferenceId}";
+    }
+
+    private readonly record struct HostedAuthenticationFailure(
+        string UserSafeMessage,
+        string FailureCategory,
+        ConsentResolutionStatus ConsentStatus,
+        string FailureCode);
 }

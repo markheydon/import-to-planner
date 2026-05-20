@@ -26,6 +26,8 @@ public sealed class WorkflowCoordinationState
 
     public string? StatusMessage { get; set; }
 
+    public string? StatusReferenceId { get; set; }
+
     public Severity StatusSeverity { get; set; } = Severity.Info;
 
     public bool IsBusy { get; set; }

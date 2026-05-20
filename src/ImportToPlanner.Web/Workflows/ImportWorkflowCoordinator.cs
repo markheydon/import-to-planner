@@ -126,6 +126,7 @@ public sealed class ImportWorkflowCoordinator(
         if (parseResult.HasErrors)
         {
             state.StatusMessage = "Validation failed. Fix the reported issues and retry.";
+            state.StatusReferenceId = null;
             state.StatusSeverity = Severity.Error;
             return;
         }
@@ -141,6 +142,7 @@ public sealed class ImportWorkflowCoordinator(
         state.CurrentPlanningRequest = request;
         state.PlanningViewModel = planningPresenter.ViewModel;
         state.StatusMessage = "Preview generated. Review actions, then confirm execution.";
+        state.StatusReferenceId = null;
         state.StatusSeverity = Severity.Success;
     }
 
@@ -162,6 +164,7 @@ public sealed class ImportWorkflowCoordinator(
         state.StatusMessage = state.ExecutionReport is null || state.ExecutionReport.Errors.Count == 0
             ? "Execution completed successfully."
             : "Execution completed with errors.";
+        state.StatusReferenceId = null;
         state.StatusSeverity = state.ExecutionReport is null || state.ExecutionReport.Errors.Count == 0
             ? Severity.Success
             : Severity.Warning;

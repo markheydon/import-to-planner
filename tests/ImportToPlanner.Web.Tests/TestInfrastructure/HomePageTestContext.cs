@@ -7,6 +7,7 @@ using ImportToPlanner.Domain;
 using ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor.Services;
@@ -51,6 +52,12 @@ internal sealed class HomePageTestContext : BunitContext
             "SingleActiveReplica",
             ["Tasks.ReadWrite"],
             new Uri("https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=test")));
+        Services.AddHttpContextAccessor();
+        var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.UserFacingFailureDiagnostics", throwOnError: true)!;
+        Services.AddScoped(failureDiagnosticsType, serviceProvider => Activator.CreateInstance(
+            failureDiagnosticsType,
+            serviceProvider.GetRequiredService<IHttpContextAccessor>(),
+            serviceProvider.GetRequiredService<DeploymentModeConfiguration>())!);
         Services.AddScoped<ICsvImportParser, StubCsvImportParser>();
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
         Services.AddScoped<ITenantOperationalMetadataStore, InMemoryTenantOperationalMetadataStore>();

@@ -26,6 +26,7 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
     private readonly DeploymentModeConfiguration deploymentModeConfiguration;
     private readonly ILogger<MicrosoftIdentityAccessTokenProvider> logger;
     private readonly IReadOnlyCollection<string> scopes;
+    private readonly UserFacingFailureDiagnostics? failureDiagnostics;
 
     public MicrosoftIdentityAccessTokenProvider(
         ITokenAcquisition tokenAcquisition,
@@ -47,6 +48,17 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
         DeploymentModeConfiguration deploymentModeConfiguration,
         ILogger<MicrosoftIdentityAccessTokenProvider> logger,
         IReadOnlyCollection<string> scopes)
+        : this(tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, scopes, null)
+    {
+    }
+
+    public MicrosoftIdentityAccessTokenProvider(
+        ITokenAcquisition tokenAcquisition,
+        IHttpContextAccessor httpContextAccessor,
+        DeploymentModeConfiguration deploymentModeConfiguration,
+        ILogger<MicrosoftIdentityAccessTokenProvider> logger,
+        IReadOnlyCollection<string> scopes,
+        UserFacingFailureDiagnostics? failureDiagnostics)
     {
         ArgumentNullException.ThrowIfNull(tokenAcquisition);
         ArgumentNullException.ThrowIfNull(httpContextAccessor);
@@ -59,6 +71,7 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
         this.deploymentModeConfiguration = deploymentModeConfiguration;
         this.logger = logger;
         this.scopes = scopes;
+        this.failureDiagnostics = failureDiagnostics;
     }
 
     public AllowedHostsValidator AllowedHostsValidator { get; } = new AllowedHostsValidator(["graph.microsoft.com"]);
@@ -111,6 +124,16 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
                 HasClaimForDiagnostics(user, ClaimTypes.NameIdentifier),
                 user.Identities.Count(),
                 user.Identities.Count(identity => identity.IsAuthenticated));
+
+            _ = failureDiagnostics?.RecordHandledFailure(
+                logger,
+                exception,
+                "graph_token.acquire",
+                PlannerFailureCategory.Authentication.ToString(),
+                "Microsoft Graph access requires additional user interaction.",
+                Microsoft.Extensions.Logging.LogLevel.Warning,
+                consentStatus: ConsentResolutionStatus.Unknown,
+                failureCode: "graph.token.user_null");
 
             throw;
         }
