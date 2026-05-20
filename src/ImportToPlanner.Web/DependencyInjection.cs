@@ -1,10 +1,10 @@
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.Kiota.Abstractions.Authentication;
 using MudBlazor.Services;
 

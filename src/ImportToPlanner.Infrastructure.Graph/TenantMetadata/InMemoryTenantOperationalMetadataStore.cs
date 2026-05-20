@@ -1,6 +1,6 @@
+using System.Collections.Concurrent;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
-using System.Collections.Concurrent;
 
 namespace ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 
