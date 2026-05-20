@@ -109,7 +109,9 @@ storage path, then verify:
 4. A tenant with user consent enabled can satisfy delegated consent and continue.
 5. A tenant requiring administrator approval sees a clear administrator path rather
    than an unhandled failure.
-6. Returning under a different tenant context does not reuse prior tenant metadata.
+6. Expected hosted authentication failures return users to graceful in-app guidance
+  rather than exposing raw framework exception pages.
+7. Returning under a different tenant context does not reuse prior tenant metadata.
 
 ### 5. Verify planner runtime-mode parity where planner behaviour changed
 
