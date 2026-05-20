@@ -57,7 +57,7 @@ public sealed class ClaimsTenantContextAccessorTests
     public void GetRequiredContext_WhenHostedAndConsumerTenant_ThrowsUnsupportedAccountError()
     {
         var user = CreateAuthenticatedPrincipal(
-            new Claim("tid", "9188040d-6c67-4c5b-b112-36a304b66dad"),
+            new Claim("tid", AuthTenantConstants.ConsumerTenantId),
             new Claim("oid", "user-123"));
         var accessor = CreateAccessor(
             user,

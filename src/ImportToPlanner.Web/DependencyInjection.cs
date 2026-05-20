@@ -69,7 +69,7 @@ public static class DependencyInjection
                     var tenantId = context.Principal?.FindFirst("tid")?.Value;
                     var identityProvider = context.Principal?.FindFirst("idp")?.Value;
                     if (string.IsNullOrWhiteSpace(tenantId)
-                        || string.Equals(tenantId, "9188040d-6c67-4c5b-b112-36a304b66dad", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(tenantId, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase)
                         || (!string.IsNullOrWhiteSpace(identityProvider) && identityProvider.Contains("live.com", StringComparison.OrdinalIgnoreCase)))
                     {
                         context.Fail(UnsupportedAccountErrorMessage);
