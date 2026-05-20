@@ -26,6 +26,8 @@ public sealed class WorkflowCoordinationState
 
     public string? StatusMessage { get; set; }
 
+    public string? StatusReferenceId { get; set; }
+
     public Severity StatusSeverity { get; set; } = Severity.Info;
 
     public bool IsBusy { get; set; }
@@ -37,6 +39,14 @@ public sealed class WorkflowCoordinationState
     public bool NoGroupsFound { get; set; }
 
     public bool IsPreviewStale { get; set; }
+
+    public TenantContext? ActiveTenantContext { get; set; }
+
+    public ConsentResolution? ConsentResolution { get; set; }
+
+    public bool IsUnsupportedAccount { get; set; }
+
+    public bool IsTenantContextMismatch { get; set; }
 
     public ImportPlanningRequest? CurrentPlanningRequest { get; set; }
 

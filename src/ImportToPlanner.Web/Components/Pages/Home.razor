@@ -1,11 +1,13 @@
 @page "/"
 @using ImportToPlanner.Application.Exceptions
+@using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
 @inject WorkflowCoordinationState WorkflowState
 @inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 @inject ILogger<Home> Logger
+@inject UserFacingFailureDiagnostics FailureDiagnostics
 
 <PageTitle>Import To Planner</PageTitle>
 
@@ -50,9 +52,44 @@
                 <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
             }
 
-            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            @if (!string.IsNullOrWhiteSpace(statusMessage) && !showUnsupportedAccountGuidance && !showAdminConsentGuidance)
             {
-                <MudAlert Severity="@StatusMessageSeverity" Dense="true">@statusMessage</MudAlert>
+                <MudAlert Severity="@StatusMessageSeverity" Dense="true">
+                    <MudText Typo="Typo.body2">@statusMessage</MudText>
+                    @if (!string.IsNullOrWhiteSpace(statusReferenceId))
+                    {
+                        <MudText Typo="Typo.caption">Reference ID: @statusReferenceId</MudText>
+                    }
+                </MudAlert>
+            }
+
+            @if (isTenantContextMismatch)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Tenant context changed since your previous sign-in. The workflow now uses the current tenant context and requires a fresh preview.
+                </MudAlert>
+            }
+
+            @if (showAdminConsentGuidance)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    <MudText Typo="Typo.body2">Hosted access requires administrator consent for this tenant. Ask your Microsoft 365 administrator to approve access, then sign in again.</MudText>
+                    @if (!string.IsNullOrWhiteSpace(statusReferenceId))
+                    {
+                        <MudText Typo="Typo.caption">Reference ID: @statusReferenceId</MudText>
+                    }
+                </MudAlert>
+            }
+
+            @if (showUnsupportedAccountGuidance)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">
+                    <MudText Typo="Typo.body2">Unsupported account type. Sign in with a supported work or school account.</MudText>
+                    @if (!string.IsNullOrWhiteSpace(statusReferenceId))
+                    {
+                        <MudText Typo="Typo.caption">Reference ID: @statusReferenceId</MudText>
+                    }
+                </MudAlert>
             }
 
             <MudPaper Elevation="@GetStepElevation(1)" Outlined="true" Class="@GetStepClass(1)">
@@ -295,6 +332,10 @@
 </MudContainer>
 
 @code {
+    private const string InteractiveTokenAcquisitionRequiredMessage = "Sign-in completed, but Microsoft Graph access still needs confirmation. Sign out and sign in again if access does not continue.";
+    private const string AuthenticationReferenceQueryKey = "authRef";
+    private const string TokenReauthenticationQueryKey = "tokenReauth";
+
     [CascadingParameter]
     private ThemeState? ThemeState { get; set; }
 
@@ -340,6 +381,12 @@
         set => WorkflowState.StatusSeverity = value;
     }
 
+    private string? statusReferenceId
+    {
+        get => WorkflowState.StatusReferenceId;
+        set => WorkflowState.StatusReferenceId = value;
+    }
+
     private bool isBusy
     {
         get => WorkflowState.IsBusy;
@@ -369,6 +416,20 @@
         get => WorkflowState.IsPreviewStale;
         set => WorkflowState.IsPreviewStale = value;
     }
+
+    private bool isTenantContextMismatch
+    {
+        get => WorkflowState.IsTenantContextMismatch;
+        set => WorkflowState.IsTenantContextMismatch = value;
+    }
+
+    private bool showAdminConsentGuidance =>
+        !string.IsNullOrWhiteSpace(statusMessage)
+        && statusMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase);
+
+    private bool showUnsupportedAccountGuidance =>
+        !string.IsNullOrWhiteSpace(statusMessage)
+        && statusMessage.Contains("unsupported account", StringComparison.OrdinalIgnoreCase);
 
     private ImportPlanningViewModel? preview => WorkflowState.PlanningViewModel;
 
@@ -427,6 +488,30 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var hasAuthErrorFromQuery = false;
+        var hasTokenReauthenticationQuery = false;
+        var query = new Uri(NavigationManager.Uri).Query;
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var parsedQuery = QueryHelpers.ParseQuery(query);
+            var authReferenceId = parsedQuery.TryGetValue(AuthenticationReferenceQueryKey, out var authReferenceValues)
+                && !string.IsNullOrWhiteSpace(authReferenceValues)
+                    ? authReferenceValues.ToString()
+                    : null;
+            if (parsedQuery.TryGetValue("authError", out var authErrorValues)
+                && !string.IsNullOrWhiteSpace(authErrorValues))
+            {
+                hasAuthErrorFromQuery = true;
+                SetStatus(authErrorValues.ToString(), Severity.Warning, authReferenceId);
+            }
+
+            if (parsedQuery.TryGetValue(TokenReauthenticationQueryKey, out var tokenReauthenticationValues)
+                && string.Equals(tokenReauthenticationValues.ToString(), "1", StringComparison.Ordinal))
+            {
+                hasTokenReauthenticationQuery = true;
+            }
+        }
+
         isUsingGraphGateway = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
         if (isUsingGraphGateway)
         {
@@ -434,6 +519,12 @@
             var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
             if (!isAuthenticated)
             {
+                if (hasAuthErrorFromQuery)
+                {
+                    // Keep the user on the page with the auth error message instead of re-triggering sign-in.
+                    return;
+                }
+
                 NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
                 return;
             }
@@ -442,16 +533,20 @@
         try
         {
             await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
+
+            if (hasTokenReauthenticationQuery)
+            {
+                RemoveTokenReauthenticationQueryFlag();
+            }
         }
         catch (Exception ex)
         {
-            if (TryRedirectToSignInOnChallenge(ex))
+            if (await TryHandleAuthenticationChallengeAsync(ex))
             {
                 return;
             }
 
-            Logger.LogError(ex, "Failed to load available containers during initialisation.");
-            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.initialise.load_containers", Severity.Error);
         }
     }
 
@@ -518,13 +613,12 @@
         }
         catch (Exception ex)
         {
-            if (TryRedirectToSignInOnChallenge(ex))
+            if (await TryHandleAuthenticationChallengeAsync(ex))
             {
                 return;
             }
 
-            Logger.LogError(ex, "Failed to refresh containers.");
-            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.refresh_containers", Severity.Error);
         }
         finally
         {
@@ -547,13 +641,12 @@
         }
         catch (Exception ex)
         {
-            if (TryRedirectToSignInOnChallenge(ex))
+            if (await TryHandleAuthenticationChallengeAsync(ex))
             {
                 return;
             }
 
-            Logger.LogError(ex, "Failed to refresh plans for container '{ContainerId}'.", selectedContainer.Id);
-            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.refresh_plans", Severity.Error);
         }
         finally
         {
@@ -611,13 +704,12 @@
         }
         catch (Exception ex)
         {
-            if (TryRedirectToSignInOnChallenge(ex))
+            if (await TryHandleAuthenticationChallengeAsync(ex))
             {
                 return;
             }
 
-            Logger.LogError(ex, "Failed to load plans for container '{ContainerId}'.", selectedContainer.Id);
-            SetStatus(ToUserSafePlannerMessage(ex), Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.select_container.load_plans", Severity.Error);
         }
         finally
         {
@@ -717,15 +809,13 @@
         }
         catch (Exception ex)
         {
-            if (TryRedirectToSignInOnChallenge(ex))
+            if (await TryHandleAuthenticationChallengeAsync(ex))
             {
                 return;
             }
 
-            Logger.LogError(ex, "Preview generation failed.");
-            var userSafeMessage = ToUserSafePlannerMessage(ex);
-            parseErrors.Add(new ImportValidationError(0, "System", userSafeMessage));
-            SetStatus(userSafeMessage, Severity.Error);
+            var failurePresentation = HandleUserSafeFailure(ex, "workflow.build_preview", Severity.Error);
+            parseErrors.Add(new ImportValidationError(0, "System", failurePresentation.UserMessage));
         }
         finally
         {
@@ -748,32 +838,27 @@
         }
         catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
         {
-            Logger.LogWarning(ex, "Execution blocked because preview is stale.");
             isPreviewStale = true;
-            SetStatus(ex.Message, Severity.Warning);
+            HandleUserSafeFailure(ex, "workflow.execute.stale_preview", Severity.Warning);
         }
         catch (InvalidOperationException ex)
         {
-            if (TryRedirectToSignInOnChallenge(ex))
+            if (await TryHandleAuthenticationChallengeAsync(ex))
             {
                 return;
             }
 
-            Logger.LogWarning(ex, "Execution blocked by workflow constraints.");
             isPreviewStale = false;
-            SetStatus(ToUserSafePlannerMessage(ex), Severity.Warning);
+            HandleUserSafeFailure(ex, "workflow.execute.invalid_operation", Severity.Warning);
         }
         catch (Exception ex)
         {
-            if (TryRedirectToSignInOnChallenge(ex))
+            if (await TryHandleAuthenticationChallengeAsync(ex))
             {
                 return;
             }
 
-            Logger.LogError(ex, "Execution failed.");
-            var userSafeMessage = ToUserSafePlannerMessage(ex);
-
-            SetStatus(userSafeMessage, Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.execute", Severity.Error);
         }
         finally
         {
@@ -781,32 +866,214 @@
         }
     }
 
-    private void SetStatus(string? message, Severity severity)
+    private void SetStatus(string? message, Severity severity, string? referenceId = null)
     {
         statusMessage = message;
         statusMessageSeverity = severity;
+        statusReferenceId = string.IsNullOrWhiteSpace(message) ? null : referenceId;
     }
 
-    private bool TryRedirectToSignInOnChallenge(Exception exception)
+    private async Task<bool> TryHandleAuthenticationChallengeAsync(Exception exception)
     {
         if (exception is not Microsoft.Identity.Web.MicrosoftIdentityWebChallengeUserException)
         {
             return false;
         }
 
-        NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+        var failurePresentation = FailureDiagnostics.RecordHandledFailure(
+            Logger,
+            exception,
+            "workflow.authentication.challenge",
+            PlannerFailureCategory.Authentication.ToString(),
+            InteractiveTokenAcquisitionRequiredMessage,
+            LogLevel.Warning,
+            tenantContext: WorkflowState.ActiveTenantContext,
+            consentStatus: WorkflowState.ConsentResolution?.Status ?? ConsentResolutionStatus.Unknown,
+            failureCode: "graph.token.challenge_required");
+
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated != true)
+        {
+            NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+            return true;
+        }
+
+        if (!HasTokenReauthenticationQueryFlag())
+        {
+            NavigationManager.NavigateTo(BuildInteractiveChallengeUri(authState.User), forceLoad: true);
+            return true;
+        }
+
+        SetStatus(InteractiveTokenAcquisitionRequiredMessage, Severity.Warning, failurePresentation.ReferenceId);
         return true;
+    }
+
+    private FailurePresentation HandleUserSafeFailure(Exception exception, string operation, Severity severity)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+
+        var userSafeMessage = exception is ImportToPlanner.Application.Exceptions.StaleImportPreviewException
+            ? exception.Message
+            : ToUserSafePlannerMessage(exception);
+        var failurePresentation = FailureDiagnostics.RecordHandledFailure(
+            Logger,
+            exception,
+            operation,
+            ResolveFailureCategory(exception),
+            userSafeMessage,
+            severity == Severity.Error ? LogLevel.Error : LogLevel.Warning,
+            tenantContext: WorkflowState.ActiveTenantContext,
+            consentStatus: ResolveConsentStatus(exception),
+            failureCode: ResolveFailureCode(exception));
+
+        SetStatus(failurePresentation.UserMessage, severity, failurePresentation.ReferenceId);
+        return failurePresentation;
+    }
+
+    private bool HasTokenReauthenticationQueryFlag()
+    {
+        var query = new Uri(NavigationManager.Uri).Query;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return false;
+        }
+
+        var parsedQuery = QueryHelpers.ParseQuery(query);
+        return parsedQuery.TryGetValue(TokenReauthenticationQueryKey, out var tokenReauthenticationValue)
+               && string.Equals(tokenReauthenticationValue.ToString(), "1", StringComparison.Ordinal);
+    }
+
+    private void RemoveTokenReauthenticationQueryFlag()
+    {
+        var currentUri = new Uri(NavigationManager.Uri);
+        var parsedQuery = QueryHelpers.ParseQuery(currentUri.Query);
+        if (!parsedQuery.Remove(TokenReauthenticationQueryKey))
+        {
+            return;
+        }
+
+        var remainingQuery = parsedQuery
+            .SelectMany(
+                static pair => pair.Value,
+                static (pair, value) => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(value ?? string.Empty)}");
+
+        var queryString = string.Join("&", remainingQuery);
+        var targetUri = string.IsNullOrEmpty(queryString)
+            ? currentUri.AbsolutePath
+            : $"{currentUri.AbsolutePath}?{queryString}";
+
+        if (!string.IsNullOrWhiteSpace(currentUri.Fragment))
+        {
+            targetUri += currentUri.Fragment;
+        }
+
+        NavigationManager.NavigateTo(targetUri, forceLoad: false, replace: true);
+    }
+
+    private string BuildInteractiveChallengeUri(System.Security.Claims.ClaimsPrincipal user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        var scopes = Configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
+        var challengeScope = string.Join(' ', scopes);
+        var loginHint = user.FindFirst("preferred_username")?.Value ?? user.Identity?.Name ?? string.Empty;
+        var redirectUri = $"/?{TokenReauthenticationQueryKey}=1";
+
+        var encodedRedirectUri = Uri.EscapeDataString(redirectUri);
+        var encodedScope = Uri.EscapeDataString(challengeScope);
+        var encodedLoginHint = Uri.EscapeDataString(loginHint);
+
+        return $"MicrosoftIdentity/Account/Challenge?redirectUri={encodedRedirectUri}&scope={encodedScope}&loginHint={encodedLoginHint}";
     }
 
     private static string ToUserSafePlannerMessage(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+
+        if (exception is InvalidOperationException invalidOperationException)
+        {
+            if (invalidOperationException.Message.Contains("Unsupported account", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Unsupported account type. Sign in with a supported work or school account.";
+            }
+
+            if (invalidOperationException.Message.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
+            {
+                return invalidOperationException.Message;
+            }
+
+            if (invalidOperationException.Message.Contains("tenant context", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Tenant context could not be resolved for this hosted session. Sign in again and retry.";
+            }
+        }
+
         if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
         {
             return PlannerFailureMessageMapper.ToUserSafeMessage(failure);
         }
 
         return "An unexpected planner error occurred. Retry and check logs if the issue continues.";
+    }
+
+    private ConsentResolutionStatus ResolveConsentStatus(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        if (WorkflowState.ConsentResolution is not null)
+        {
+            return WorkflowState.ConsentResolution.Status;
+        }
+
+        var userSafeMessage = exception is ImportToPlanner.Application.Exceptions.StaleImportPreviewException
+            ? exception.Message
+            : ToUserSafePlannerMessage(exception);
+
+        return userSafeMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase)
+            ? ConsentResolutionStatus.AdminConsentRequired
+            : ConsentResolutionStatus.Unknown;
+    }
+
+    private static string ResolveFailureCategory(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
+        {
+            return failure.Category.ToString();
+        }
+
+        if (exception is ImportToPlanner.Application.Exceptions.StaleImportPreviewException)
+        {
+            return PlannerFailureCategory.Conflict.ToString();
+        }
+
+        if (exception is InvalidOperationException invalidOperationException
+            && invalidOperationException.Message.Contains("tenant context", StringComparison.OrdinalIgnoreCase))
+        {
+            return PlannerFailureCategory.Authentication.ToString();
+        }
+
+        return PlannerFailureCategory.Unknown.ToString();
+    }
+
+    private static string? ResolveFailureCode(Exception exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
+        {
+            return failure.DiagnosticCode;
+        }
+
+        return exception switch
+        {
+            ImportToPlanner.Application.Exceptions.StaleImportPreviewException => "preview.stale",
+            InvalidOperationException invalidOperationException when invalidOperationException.Message.Contains("tenant context", StringComparison.OrdinalIgnoreCase) => "tenant_context.unresolved",
+            InvalidOperationException invalidOperationException when invalidOperationException.Message.Contains("Unsupported account", StringComparison.OrdinalIgnoreCase) => "auth.unsupported_account",
+            _ => null,
+        };
     }
 
     private static string FormatContainer(PlannerContainer? container)

@@ -242,6 +242,8 @@ csx/
 # Microsoft Azure Emulator
 ecf/
 rcf/
+__*storage__/
+__azurite_*__.json
 
 # Windows Store app package directories and files
 AppPackages/
@@ -426,3 +428,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Universal OS/editor artefacts
+.DS_Store
+Thumbs.db
+*.swp
+.idea/

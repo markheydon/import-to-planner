@@ -23,21 +23,27 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     private const int MaxRetryAfterSeconds = 60;
     private const int TransientRowFailureRetryCount = 1;
     private readonly GraphServiceClient graphClient;
+    private readonly ICurrentTenantContextAccessor? currentTenantContextAccessor;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GraphPlannerGateway"/> class.
     /// </summary>
     /// <param name="graphServiceClient">The delegated Graph client.</param>
-    public GraphPlannerGateway(GraphServiceClient graphServiceClient)
+    /// <param name="currentTenantContextAccessor">The optional active tenant context accessor.</param>
+    public GraphPlannerGateway(
+        GraphServiceClient graphServiceClient,
+        ICurrentTenantContextAccessor? currentTenantContextAccessor = null)
     {
         ArgumentNullException.ThrowIfNull(graphServiceClient);
         graphClient = graphServiceClient;
+        this.currentTenantContextAccessor = currentTenantContextAccessor;
     }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
         var containers = new List<PlannerContainer>();
 
         var me = await ExecuteGraphCallAsync(
@@ -107,6 +113,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<PlannerPlan?> GetPlanByIdAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
 
         try
@@ -134,6 +141,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<IReadOnlyList<PlannerPlan>> GetPlansAsync(string containerId, ContainerType containerType, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
         ValidateRequired(containerId, nameof(containerId));
 
         var getPlansOperation = $"loading planner plans for container '{containerId}'";
@@ -224,6 +232,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<IReadOnlyList<PlannerBucket>> GetBucketsAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
 
         var bucketsResponse = await ExecuteGraphCallAsync(
@@ -262,6 +271,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<PlannerBucket> CreateBucketAsync(string planId, string bucketName, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketName, nameof(bucketName));
 
@@ -288,6 +298,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
 
         var tasksResponse = await ExecuteGraphCallAsync(
@@ -338,6 +349,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketId, nameof(bucketId));
         ValidateRequired(taskName, nameof(taskName));
@@ -367,6 +379,11 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         }
 
         return new PlannerTaskSnapshot(created.Id, created.Title, created.PlanId ?? planId);
+    }
+
+    private void EnsureDelegatedTenantSession()
+    {
+        _ = currentTenantContextAccessor?.GetRequiredContext();
     }
 
     private static async Task<T> ExecuteWithTransientRowRetryAsync<T>(

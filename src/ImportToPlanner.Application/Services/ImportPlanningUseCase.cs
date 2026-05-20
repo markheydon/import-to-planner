@@ -1,4 +1,5 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 
 namespace ImportToPlanner.Application.Services;
@@ -6,7 +7,11 @@ namespace ImportToPlanner.Application.Services;
 /// <summary>
 /// Builds import previews from validated planning requests.
 /// </summary>
-public sealed class ImportPlanningUseCase(IPlannerGateway plannerGateway) : IImportPlanningUseCase
+public sealed class ImportPlanningUseCase(
+    IPlannerGateway plannerGateway,
+    ICurrentTenantContextAccessor currentTenantContextAccessor,
+    ITenantOperationalMetadataStore tenantOperationalMetadataStore,
+    DeploymentModeConfiguration deploymentModeConfiguration) : IImportPlanningUseCase
 {
     private const string DefaultBucketName = "General";
     private const string TaskAlreadyExistsReason = "already exists";
@@ -19,6 +24,14 @@ public sealed class ImportPlanningUseCase(IPlannerGateway plannerGateway) : IImp
     {
         ValidateRequest(request);
         ArgumentNullException.ThrowIfNull(outputBoundary);
+
+        var consentResolution = await ResolveConsentAsync(cancellationToken).ConfigureAwait(false);
+        if (consentResolution.Status is ConsentResolutionStatus.AdminConsentRequired
+            or ConsentResolutionStatus.Declined
+            or ConsentResolutionStatus.Unavailable)
+        {
+            throw new ConsentBlockedException(consentResolution);
+        }
 
         var existingPlan = await plannerGateway.GetPlanByIdAsync(request.PlanId, cancellationToken)
             ?? throw new InvalidOperationException("The selected plan was not found. Refresh plans and select an existing plan.");
@@ -113,6 +126,55 @@ public sealed class ImportPlanningUseCase(IPlannerGateway plannerGateway) : IImp
         };
 
         await outputBoundary.PresentAsync(response, cancellationToken);
+    }
+
+    private async Task<ConsentResolution> ResolveConsentAsync(CancellationToken cancellationToken)
+    {
+        if (deploymentModeConfiguration.Mode != DeploymentMode.HostedSharedMultiTenant
+            || !deploymentModeConfiguration.UseGraphGateway)
+        {
+            return ConsentResolution.Granted(deploymentModeConfiguration.RequiredScopes);
+        }
+
+        var tenantContext = currentTenantContextAccessor.GetRequiredContext();
+        var metadata = await tenantOperationalMetadataStore.GetAsync(tenantContext.TenantId, cancellationToken).ConfigureAwait(false);
+
+        if (metadata is null)
+        {
+            return new ConsentResolution(
+                ConsentResolutionStatus.UserConsentAvailable,
+                deploymentModeConfiguration.RequiredScopes,
+                deploymentModeConfiguration.AdminConsentUri,
+                "consent.user-consent-available");
+        }
+
+        return metadata.ConsentStatus switch
+        {
+            ConsentResolutionStatus.Granted => ConsentResolution.Granted(deploymentModeConfiguration.RequiredScopes),
+            ConsentResolutionStatus.UserConsentAvailable => new ConsentResolution(
+                ConsentResolutionStatus.UserConsentAvailable,
+                deploymentModeConfiguration.RequiredScopes,
+                deploymentModeConfiguration.AdminConsentUri,
+                "consent.user-consent-available"),
+            ConsentResolutionStatus.AdminConsentRequired => new ConsentResolution(
+                ConsentResolutionStatus.AdminConsentRequired,
+                deploymentModeConfiguration.RequiredScopes,
+                deploymentModeConfiguration.AdminConsentUri,
+                "consent.admin-consent-required",
+                metadata.LastSupportDiagnosticCode),
+            ConsentResolutionStatus.Declined => new ConsentResolution(
+                ConsentResolutionStatus.Declined,
+                deploymentModeConfiguration.RequiredScopes,
+                deploymentModeConfiguration.AdminConsentUri,
+                "consent.declined",
+                metadata.LastSupportDiagnosticCode),
+            _ => new ConsentResolution(
+                ConsentResolutionStatus.Unavailable,
+                deploymentModeConfiguration.RequiredScopes,
+                deploymentModeConfiguration.AdminConsentUri,
+                "consent.unavailable",
+                metadata.LastSupportDiagnosticCode),
+        };
     }
 
     private static IReadOnlyList<string>? ResolveGoalList(string? goal)

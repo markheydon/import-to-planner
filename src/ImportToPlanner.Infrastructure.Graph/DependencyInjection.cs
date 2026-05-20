@@ -1,4 +1,6 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Infrastructure.Graph.TenantMetadata;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ImportToPlanner.Infrastructure.Graph;
@@ -12,15 +14,28 @@ public static class DependencyInjection
     /// Adds infrastructure services required for CSV import and planner gateway access.
     /// </summary>
     /// <param name="services">The service collection to register dependencies with.</param>
-    /// <param name="useGraphGateway">
-    /// A value indicating whether to use the Microsoft Graph planner gateway implementation.
-    /// </param>
+    /// <param name="configuration">The application configuration.</param>
     /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, bool useGraphGateway)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var useGraphGateway = bool.TryParse(configuration["PlannerGateway:UseGraph"], out var graphMode) && graphMode;
+        var hostedStorageEnabled = bool.TryParse(configuration["HostedStorage:Enabled"], out var hostedStorageMode) && hostedStorageMode;
 
         services.AddScoped<ICsvImportParser, CsvImportParser>();
+        services.AddSingleton<ITenantOperationalMetadataStore>(_ =>
+        {
+            var hostedStorageConnectionString = configuration["HostedStorage:ConnectionString"];
+            if (hostedStorageEnabled && !string.IsNullOrWhiteSpace(hostedStorageConnectionString))
+            {
+                var tableName = configuration["HostedStorage:TenantMetadataTable"] ?? "TenantOperationalMetadata";
+                return new TableTenantOperationalMetadataStore(hostedStorageConnectionString, tableName);
+            }
+
+            return new InMemoryTenantOperationalMetadataStore();
+        });
 
         if (useGraphGateway)
         {

@@ -74,6 +74,10 @@ across contributors.
   sole purpose is external API shape preservation.
 - Use-case implementations MUST return structured response data, not user-facing prose.
   UI-specific wording MUST be produced by presenter or UI adapter layers.
+- Public-facing delivery adapters (for example web UI surfaces and user-facing API
+	responses) MUST present failures in a human-friendly, actionable form. Raw
+	exception detail MUST be kept in diagnostics channels and MUST NOT be exposed
+	directly to end users.
 - External provider details (for example Microsoft Graph API shapes, Kiota models, and UI
   component behaviours) MUST be translated at adapter boundaries before reaching
   Application or Domain.
@@ -111,4 +115,4 @@ Compliance review expectations:
 - Constitution compliance MUST be checked in planning and pull request review.
 - Non-compliance MUST be tracked as explicit follow-up work or resolved before release.
 
-**Version**: 2.0.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-13
+**Version**: 2.0.1 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-20
