@@ -16,6 +16,11 @@ public static class PlannerFailureMessageMapper
     {
         ArgumentNullException.ThrowIfNull(failure);
 
+        if (IsConsentBlockedFailure(failure))
+        {
+            return failure.Message;
+        }
+
         if (failure.Category == PlannerFailureCategory.Authorisation
             && !string.IsNullOrWhiteSpace(failure.Message)
             && failure.Message.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
@@ -59,4 +64,14 @@ public static class PlannerFailureMessageMapper
             _ => "Hosted consent cannot be validated right now. Retry shortly or contact your administrator.",
         };
     }
+
+    private static bool IsConsentBlockedFailure(PlannerOperationFailure failure)
+        => failure.Category == PlannerFailureCategory.Authorisation
+            && failure.Target == PlannerFailureTarget.Workflow
+            && !string.IsNullOrWhiteSpace(failure.Message)
+            && failure.DiagnosticCode is "consent.blocked"
+                or "auth.admin_consent_required"
+                or nameof(ConsentResolutionStatus.AdminConsentRequired)
+                or nameof(ConsentResolutionStatus.Declined)
+                or nameof(ConsentResolutionStatus.Unavailable);
 }

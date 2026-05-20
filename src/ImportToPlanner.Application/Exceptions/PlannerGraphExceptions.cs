@@ -8,7 +8,7 @@ namespace ImportToPlanner.Application.Exceptions;
 public sealed class ConsentBlockedException : Exception
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="ConsentBlockedException"/> class.
+    /// Initialises a new instance of the <see cref="ConsentBlockedException"/> class.
     /// </summary>
     /// <param name="resolution">The structured consent resolution that blocked execution.</param>
     public ConsentBlockedException(ConsentResolution resolution)
