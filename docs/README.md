@@ -14,6 +14,9 @@ For automation and AI agents: treat `docs/` as public content. Avoid placing int
 instructions or credentials here. If you add project-level policies that affect agents,
 update `.github/copilot-instructions.md` or `AGENTS.md` as appropriate.
 
+If you want to contribute to the codebase or debug the application locally, use the internal
+developer guidance in `docs-internal/` instead of adding contributor-only setup detail here.
+
 ## Deployment Modes
 
 Import To Planner supports two operational modes:
@@ -28,6 +31,10 @@ Operational setup differences:
 	operational metadata persistence and data-protection key persistence.
 - Hosted rollout readiness, guardrails, and evidence requirements are tracked in
 	`docs-internal/aspire-production-readiness.md`.
+
+For people who simply want to run the app for their own organisation, the recommended starting
+point is self-hosted single-tenant mode. Hosted shared multi-tenant mode is primarily for a shared
+service deployment that admits multiple supported work or school tenants.
 
 ## Hosted Consent and Data Handling
 

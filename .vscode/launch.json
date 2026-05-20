@@ -4,7 +4,18 @@
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Aspire: Run (Single Tenant)",
+      "name": "Aspire: Run (Single Tenant - In Memory)",
+      "program": "${workspaceFolder}",
+      "env": {
+        "DeploymentMode__Mode": "SelfHostedSingleTenant",
+        "PlannerGateway__UseGraph": "false",
+        "HostedStorage__Enabled": "false"
+      }
+    },
+    {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Aspire: Run (Single Tenant + Graph)",
       "program": "${workspaceFolder}",
       "env": {
         "DeploymentMode__Mode": "SelfHostedSingleTenant",
@@ -15,7 +26,7 @@
     {
       "type": "aspire",
       "request": "launch",
-      "name": "Aspire: Run (Multi Tenant)",
+      "name": "Aspire: Run (Multi Tenant + Hosted Storage)",
       "program": "${workspaceFolder}",
       "env": {
         "DeploymentMode__Mode": "HostedSharedMultiTenant",
