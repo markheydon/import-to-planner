@@ -5,6 +5,7 @@ using ImportToPlanner.Web.Components.Pages;
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
 using ImportToPlanner.Web.Workflows;
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 
@@ -128,7 +129,25 @@ public sealed class HomePageWorkflowTests
 
         cut.WaitForAssertion(() =>
         {
+            const string unsupportedAccountGuidance = "Unsupported account type. Sign in with a supported work or school account.";
+            var occurrenceCount = cut.Markup.Split(unsupportedAccountGuidance, StringSplitOptions.None).Length - 1;
+            Assert.Equal(1, occurrenceCount);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_InHostedMode_WhenAuthErrorQueryExists_DoesNotReTriggerSignInChallenge()
+    {
+        await using var ctx = new HomePageTestContext(useGraphGateway: true, isAuthenticated: false);
+        var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
+        navigationManager.NavigateTo("/?authError=Unsupported%20account%20type.%20Sign%20in%20with%20a%20supported%20work%20or%20school%20account.", forceLoad: false);
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
             Assert.Contains("Unsupported account type", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("MicrosoftIdentity/Account/SignIn", navigationManager.Uri, StringComparison.OrdinalIgnoreCase);
         });
     }
 

@@ -51,7 +51,7 @@
                 <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
             }
 
-            @if (!string.IsNullOrWhiteSpace(statusMessage))
+            @if (!string.IsNullOrWhiteSpace(statusMessage) && !showUnsupportedAccountGuidance)
             {
                 <MudAlert Severity="@StatusMessageSeverity" Dense="true">@statusMessage</MudAlert>
             }
@@ -463,6 +463,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var hasAuthErrorFromQuery = false;
         var query = new Uri(NavigationManager.Uri).Query;
         if (!string.IsNullOrWhiteSpace(query) && query.Contains("authError=", StringComparison.OrdinalIgnoreCase))
         {
@@ -470,6 +471,7 @@
             if (parsedQuery.TryGetValue("authError", out var authErrorValues)
                 && !string.IsNullOrWhiteSpace(authErrorValues))
             {
+                hasAuthErrorFromQuery = true;
                 SetStatus(authErrorValues.ToString(), Severity.Warning);
             }
         }
@@ -481,6 +483,12 @@
             var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
             if (!isAuthenticated)
             {
+                if (hasAuthErrorFromQuery)
+                {
+                    // Keep the user on the page with the auth error message instead of re-triggering sign-in.
+                    return;
+                }
+
                 NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
                 return;
             }

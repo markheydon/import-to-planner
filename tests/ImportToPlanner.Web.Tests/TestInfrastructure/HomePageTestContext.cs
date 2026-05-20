@@ -15,14 +15,14 @@ namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
 internal sealed class HomePageTestContext : BunitContext
 {
-    public HomePageTestContext(bool useGraphGateway = false)
+    public HomePageTestContext(bool useGraphGateway = false, bool isAuthenticated = true)
     {
         Services.AddMudServices(configuration =>
         {
             configuration.PopoverOptions.CheckForPopoverProvider = false;
         });
         var auth = AddAuthorization();
-        if (useGraphGateway)
+        if (useGraphGateway && isAuthenticated)
         {
             auth.SetAuthorized("graph-test-user");
         }

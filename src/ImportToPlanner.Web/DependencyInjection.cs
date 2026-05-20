@@ -1,5 +1,6 @@
 using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
@@ -15,6 +16,8 @@ namespace ImportToPlanner.Web;
 /// </summary>
 public static class DependencyInjection
 {
+    private const string UnsupportedAccountErrorMessage = "Unsupported account type. Sign in with a supported work or school account.";
+
     /// <summary>
     /// Adds web UI, authentication, and Graph client services.
     /// </summary>
@@ -57,7 +60,7 @@ public static class DependencyInjection
                         || string.Equals(tenantId, "9188040d-6c67-4c5b-b112-36a304b66dad", StringComparison.OrdinalIgnoreCase)
                         || (!string.IsNullOrWhiteSpace(identityProvider) && identityProvider.Contains("live.com", StringComparison.OrdinalIgnoreCase)))
                     {
-                        context.Fail("Unsupported account type. Sign in with a supported work or school account.");
+                        context.Fail(UnsupportedAccountErrorMessage);
                     }
 
                     return Task.CompletedTask;
@@ -70,10 +73,9 @@ public static class DependencyInjection
                         return Task.CompletedTask;
                     }
 
-                    if (context.Exception?.Message.Contains("admin_consent", StringComparison.OrdinalIgnoreCase) == true
-                        || context.Exception?.Message.Contains("consent_required", StringComparison.OrdinalIgnoreCase) == true)
+                    if (TryMapHostedAuthenticationFailure(context.Exception?.Message, deploymentModeConfiguration, out var userSafeMessage))
                     {
-                        context.Fail(BuildAdminConsentMessage(deploymentModeConfiguration));
+                        RedirectToHomeWithAuthError(context, userSafeMessage);
                     }
 
                     return Task.CompletedTask;
@@ -86,14 +88,9 @@ public static class DependencyInjection
                         return Task.CompletedTask;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(context.Failure?.Message)
-                        && (context.Failure.Message.Contains("admin_consent", StringComparison.OrdinalIgnoreCase)
-                            || context.Failure.Message.Contains("consent_required", StringComparison.OrdinalIgnoreCase)
-                            || context.Failure.Message.Contains("access_denied", StringComparison.OrdinalIgnoreCase)))
+                    if (TryMapHostedAuthenticationFailure(context.Failure?.Message, deploymentModeConfiguration, out var userSafeMessage))
                     {
-                        context.HandleResponse();
-                        var encodedMessage = Uri.EscapeDataString(BuildAdminConsentMessage(deploymentModeConfiguration));
-                        context.Response.Redirect($"/?authError={encodedMessage}");
+                        RedirectToHomeWithAuthError(context, userSafeMessage);
                     }
 
                     return Task.CompletedTask;
@@ -141,5 +138,57 @@ public static class DependencyInjection
         return deploymentModeConfiguration.AdminConsentUri is null
             ? "Administrator consent is required before this hosted tenant can continue."
             : $"Administrator consent is required before this hosted tenant can continue. Ask your administrator to approve access: {deploymentModeConfiguration.AdminConsentUri}";
+    }
+
+    private static bool TryMapHostedAuthenticationFailure(
+        string? failureMessage,
+        ImportToPlanner.Application.Models.DeploymentModeConfiguration deploymentModeConfiguration,
+        out string userSafeMessage)
+    {
+        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
+
+        if (string.IsNullOrWhiteSpace(failureMessage))
+        {
+            userSafeMessage = string.Empty;
+            return false;
+        }
+
+        if (failureMessage.Contains("unsupported account", StringComparison.OrdinalIgnoreCase))
+        {
+            userSafeMessage = UnsupportedAccountErrorMessage;
+            return true;
+        }
+
+        if (failureMessage.Contains("admin_consent", StringComparison.OrdinalIgnoreCase)
+            || failureMessage.Contains("consent_required", StringComparison.OrdinalIgnoreCase)
+            || failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
+            || failureMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
+        {
+            userSafeMessage = BuildAdminConsentMessage(deploymentModeConfiguration);
+            return true;
+        }
+
+        userSafeMessage = string.Empty;
+        return false;
+    }
+
+    private static void RedirectToHomeWithAuthError(AuthenticationFailedContext context, string userSafeMessage)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userSafeMessage);
+
+        context.HandleResponse();
+        var encodedMessage = Uri.EscapeDataString(userSafeMessage);
+        context.Response.Redirect($"/?authError={encodedMessage}");
+    }
+
+    private static void RedirectToHomeWithAuthError(RemoteFailureContext context, string userSafeMessage)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userSafeMessage);
+
+        context.HandleResponse();
+        var encodedMessage = Uri.EscapeDataString(userSafeMessage);
+        context.Response.Redirect($"/?authError={encodedMessage}");
     }
 }
