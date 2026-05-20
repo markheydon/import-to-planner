@@ -174,22 +174,31 @@ public sealed class ImportWorkflowCoordinator(
     {
         ArgumentNullException.ThrowIfNull(exception);
 
+        if (exception is ConsentBlockedException consentException)
+        {
+            failure = new PlannerOperationFailure(
+                PlannerFailureCategory.Authorisation,
+                PlannerFailureTarget.Workflow,
+                null,
+                PlannerFailureMessageMapper.ToConsentBlockedMessage(consentException.Resolution),
+                false,
+                consentException.Resolution.DiagnosticCode ?? "consent.blocked");
+            return true;
+        }
+
         if (exception is PlannerOperationException plannerException)
         {
             failure = plannerException.Failure;
             return true;
         }
 
-        if (exception is InvalidOperationException invalidOperationException &&
-            invalidOperationException.Message.Contains(
-                "authenticated user context is required to acquire a graph access token",
-                StringComparison.OrdinalIgnoreCase))
+        if (exception is GraphUnauthenticatedContextException)
         {
             failure = new PlannerOperationFailure(
                 PlannerFailureCategory.Authentication,
                 PlannerFailureTarget.Workflow,
                 null,
-                invalidOperationException.Message,
+                exception.Message,
                 false,
                 "Authentication");
             return true;

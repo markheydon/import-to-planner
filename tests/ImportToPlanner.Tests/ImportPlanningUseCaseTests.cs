@@ -1,4 +1,5 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Application.Services;
 using ImportToPlanner.Domain;
@@ -59,7 +60,7 @@ public sealed class ImportPlanningUseCaseTests
     }
 
     [Fact]
-    public async Task HandleAsync_WhenHostedConsentRequiresAdministrator_ThrowsInvalidOperationException()
+    public async Task HandleAsync_WhenHostedConsentRequiresAdministrator_ThrowsConsentBlockedException()
     {
         var gateway = new FakePlannerGateway();
         gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
@@ -83,10 +84,10 @@ public sealed class ImportPlanningUseCaseTests
             "Plan A",
             [new CsvTaskRow(2, "Task A", null, null, null, null)]);
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var ex = await Assert.ThrowsAsync<ConsentBlockedException>(() =>
             useCase.HandleAsync(request, new CapturePlanningOutputBoundary(), CancellationToken.None));
 
-        Assert.Contains("Administrator consent is required", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(ConsentResolutionStatus.AdminConsentRequired, ex.Resolution.Status);
     }
 
     private static ImportPlanningUseCase CreateUseCase(

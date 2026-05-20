@@ -1,7 +1,6 @@
 using ImportToPlanner.Application.Models;
-using Microsoft.Extensions.Hosting;
 
-namespace ImportToPlanner.Tests;
+namespace ImportToPlanner.Web.Tests;
 
 public sealed class HostedTelemetryTests
 {
@@ -24,7 +23,7 @@ public sealed class HostedTelemetryTests
             SupportedAccountType.WorkOrSchool,
             "Tenant A");
 
-        var dimensions = Extensions.BuildHostedTelemetryDimensions(
+        var dimensions = HostedTelemetryHelper.BuildHostedTelemetryDimensions(
             deployment,
             tenantContext,
             ConsentResolutionStatus.AdminConsentRequired,
@@ -41,7 +40,7 @@ public sealed class HostedTelemetryTests
     public void BuildHostedTelemetryDimensions_DoesNotIncludeSensitiveValues()
     {
         var deployment = DeploymentModeConfiguration.Default;
-        var dimensions = Extensions.BuildHostedTelemetryDimensions(
+        var dimensions = HostedTelemetryHelper.BuildHostedTelemetryDimensions(
             deployment,
             null,
             ConsentResolutionStatus.Unknown,

@@ -7,7 +7,7 @@ namespace ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 /// <summary>
 /// Provides an in-memory tenant metadata store used when hosted storage is not configured.
 /// </summary>
-public sealed class InMemoryTenantOperationalMetadataStore : ITenantOperationalMetadataStore
+internal sealed class InMemoryTenantOperationalMetadataStore : ITenantOperationalMetadataStore
 {
     private readonly ConcurrentDictionary<string, TenantOperationalMetadata> records =
         new(StringComparer.OrdinalIgnoreCase);

@@ -63,7 +63,7 @@ internal sealed class UserFacingFailureDiagnostics(
         string? failureCode,
         string? tenantKeyOverride)
     {
-        var state = Microsoft.Extensions.Hosting.Extensions
+        var state = HostedTelemetryHelper
             .BuildHostedTelemetryDimensions(deploymentModeConfiguration, tenantContext, consentStatus, failureCategory)
             .ToDictionary(static pair => pair.Key, static pair => (object?)pair.Value, StringComparer.Ordinal);
 

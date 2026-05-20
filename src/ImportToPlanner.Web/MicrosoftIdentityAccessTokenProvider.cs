@@ -92,7 +92,7 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
         var user = httpContextAccessor.HttpContext?.User;
         if (user?.Identity?.IsAuthenticated != true)
         {
-            throw new InvalidOperationException("An authenticated user context is required to acquire a Graph access token.");
+            throw new GraphUnauthenticatedContextException();
         }
 
         user = EnsureMsalAccountIdentifiers(user, ResolveFallbackTenantIdentifier());

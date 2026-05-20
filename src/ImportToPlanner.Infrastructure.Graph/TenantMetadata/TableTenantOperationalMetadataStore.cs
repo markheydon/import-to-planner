@@ -8,10 +8,12 @@ namespace ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 /// <summary>
 /// Provides Azure Table Storage persistence for tenant-scoped operational metadata.
 /// </summary>
-public sealed class TableTenantOperationalMetadataStore : ITenantOperationalMetadataStore
+internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMetadataStore, IDisposable
 {
     private const string TenantPartitionKey = "tenant";
     private readonly TableClient tableClient;
+    private volatile bool tableCreated;
+    private readonly SemaphoreSlim initSemaphore = new(1, 1);
 
     /// <summary>
     /// Initialises a new instance of the <see cref="TableTenantOperationalMetadataStore"/> class.
@@ -62,7 +64,30 @@ public sealed class TableTenantOperationalMetadataStore : ITenantOperationalMeta
 
     private async Task EnsureCreatedAsync(CancellationToken cancellationToken)
     {
-        await tableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
+        if (tableCreated)
+        {
+            return;
+        }
+
+        await initSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (!tableCreated)
+            {
+                await tableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
+                tableCreated = true;
+            }
+        }
+        finally
+        {
+            initSemaphore.Release();
+        }
+    }
+
+    /// <inheritdoc/>
+    public void Dispose()
+    {
+        initSemaphore.Dispose();
     }
 
     private sealed class TenantOperationalMetadataEntity : ITableEntity

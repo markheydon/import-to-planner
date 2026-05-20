@@ -17,8 +17,4 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
-  </ItemGroup>
-
 </Project>

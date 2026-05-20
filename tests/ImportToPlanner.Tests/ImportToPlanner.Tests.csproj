@@ -25,7 +25,6 @@
     <ProjectReference Include="..\..\src\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Domain\ImportToPlanner.Domain.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Infrastructure.Graph\ImportToPlanner.Infrastructure.Graph.csproj" />
-    <ProjectReference Include="..\..\src\ImportToPlanner.ServiceDefaults\ImportToPlanner.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>
