@@ -7,6 +7,8 @@ using ImportToPlanner.Web.Tests.TestInfrastructure;
 using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Identity.Client;
+using Microsoft.Identity.Web;
 using MudBlazor;
 
 namespace ImportToPlanner.Web.Tests;
@@ -152,6 +154,52 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task HomePage_InHostedMode_WhenTokenAcquisitionRequiresInteraction_TriggersOneTimeReauthentication()
+    {
+        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        ctx.Gateway.GetAvailableContainersException = CreateChallengeException();
+        var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
+
+        _ = ctx.Render<Home>();
+
+        Assert.Contains("MicrosoftIdentity/Account/Challenge", navigationManager.Uri, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("tokenReauth%3D1", navigationManager.Uri, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task HomePage_InHostedMode_WhenReauthenticationAlreadyAttempted_ShowsInteractionGuidanceWithoutLoop()
+    {
+        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        ctx.Gateway.GetAvailableContainersException = CreateChallengeException();
+        var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
+        navigationManager.NavigateTo("/?tokenReauth=1", forceLoad: false);
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Microsoft Graph access still needs confirmation", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("MicrosoftIdentity/Account/Challenge", navigationManager.Uri, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_InHostedMode_WhenTokenReauthenticationQueryIsPresentAndLoadSucceeds_ClearsQueryWithoutWarning()
+    {
+        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
+        navigationManager.NavigateTo("/?tokenReauth=1", forceLoad: false);
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.DoesNotContain("tokenReauth=1", navigationManager.Uri, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Microsoft Graph access still needs confirmation", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
     public async Task Coordinator_WhenTenantChanges_MarksTenantContextMismatch()
     {
         await using var ctx = new HomePageTestContext(useGraphGateway: true);
@@ -184,4 +232,10 @@ public sealed class HomePageWorkflowTests
         Assert.Contains("Step 5", selfHostedCut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Step 5", hostedCut.Markup, StringComparison.OrdinalIgnoreCase);
     }
+
+    private static MicrosoftIdentityWebChallengeUserException CreateChallengeException()
+        => new(
+            new MsalUiRequiredException("invalid_grant", "Interactive sign-in is required to acquire the downstream Graph token."),
+            ["Tasks.ReadWrite"],
+            userflow: string.Empty);
 }

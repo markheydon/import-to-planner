@@ -13,7 +13,10 @@ internal sealed class ClaimsTenantContextAccessor(
     IHttpContextAccessor httpContextAccessor,
     DeploymentModeConfiguration deploymentModeConfiguration) : ICurrentTenantContextAccessor
 {
-    private const string ConsumerTenantId = "9188040d-6c67-4c5b-b112-36a304b66dad";
+    private const string CommonAuthorityTenant = "common";
+    private const string OrganizationsAuthorityTenant = "organizations";
+    private const string LegacyObjectIdentifierClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+    private const string LegacyTenantIdentifierClaimType = "http://schemas.microsoft.com/identity/claims/tenantid";
 
     /// <inheritdoc/>
     public TenantContext GetRequiredContext()
@@ -24,9 +27,10 @@ internal sealed class ClaimsTenantContextAccessor(
             throw new InvalidOperationException("An authenticated user context is required to resolve the active tenant context.");
         }
 
-        var tenantId = user.FindFirstValue("tid");
+        var tenantId = ResolveTenantId(user);
         var accountType = ResolveAccountType(user, tenantId);
-        if (accountType != SupportedAccountType.WorkOrSchool)
+        if (deploymentModeConfiguration.Mode == DeploymentMode.HostedSharedMultiTenant
+            && accountType != SupportedAccountType.WorkOrSchool)
         {
             throw new InvalidOperationException("Unsupported account type. Sign in with a supported work or school account.");
         }
@@ -36,7 +40,7 @@ internal sealed class ClaimsTenantContextAccessor(
             throw new InvalidOperationException("Unable to resolve the tenant identifier from the current sign-in.");
         }
 
-        var objectId = user.FindFirstValue("oid") ?? user.FindFirstValue("sub");
+        var objectId = ResolveUserIdentifier(user);
         if (string.IsNullOrWhiteSpace(objectId))
         {
             throw new InvalidOperationException("Unable to resolve the user identifier from the current sign-in.");
@@ -51,12 +55,38 @@ internal sealed class ClaimsTenantContextAccessor(
             user.FindFirstValue("tenant_display_name"));
     }
 
-    private static SupportedAccountType ResolveAccountType(ClaimsPrincipal user, string? tenantId)
+    private string? ResolveTenantId(ClaimsPrincipal user)
     {
         ArgumentNullException.ThrowIfNull(user);
 
+        var tenantId = user.FindFirstValue("tid")
+            ?? user.FindFirstValue(LegacyTenantIdentifierClaimType);
+        if (!string.IsNullOrWhiteSpace(tenantId))
+        {
+            return tenantId;
+        }
+
+        if (deploymentModeConfiguration.Mode != DeploymentMode.SelfHostedSingleTenant)
+        {
+            return null;
+        }
+
+        return ResolveSelfHostedAuthorityTenant();
+    }
+
+    private SupportedAccountType ResolveAccountType(ClaimsPrincipal user, string? tenantId)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        if (deploymentModeConfiguration.Mode != DeploymentMode.HostedSharedMultiTenant)
+        {
+            return string.IsNullOrWhiteSpace(tenantId)
+                ? SupportedAccountType.Unknown
+                : SupportedAccountType.WorkOrSchool;
+        }
+
         if (string.IsNullOrWhiteSpace(tenantId)
-            || string.Equals(tenantId, ConsumerTenantId, StringComparison.OrdinalIgnoreCase))
+            || string.Equals(tenantId, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase))
         {
             return SupportedAccountType.Unsupported;
         }
@@ -69,6 +99,30 @@ internal sealed class ClaimsTenantContextAccessor(
         }
 
         return SupportedAccountType.WorkOrSchool;
+    }
+
+    private string? ResolveSelfHostedAuthorityTenant()
+    {
+        var authorityTenant = deploymentModeConfiguration.AuthorityTenant;
+        if (string.IsNullOrWhiteSpace(authorityTenant)
+            || string.Equals(authorityTenant, CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(authorityTenant, OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(authorityTenant, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return authorityTenant;
+    }
+
+    private static string? ResolveUserIdentifier(ClaimsPrincipal user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        return user.FindFirstValue("oid")
+            ?? user.FindFirstValue(LegacyObjectIdentifierClaimType)
+            ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? user.FindFirstValue("sub");
     }
 
     private static string BuildTenantKey(string tenantId)

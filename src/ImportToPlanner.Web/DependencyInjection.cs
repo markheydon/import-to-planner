@@ -47,11 +47,23 @@ public static class DependencyInjection
             .Configure<ImportToPlanner.Application.Models.DeploymentModeConfiguration>((options, deploymentModeConfiguration) =>
             {
                 options.ResponseType = OpenIdConnectResponseType.Code;
-                options.Events.OnTokenValidated = context =>
+
+                var existingOnTokenValidated = options.Events.OnTokenValidated;
+                options.Events.OnTokenValidated = async context =>
                 {
+                    if (existingOnTokenValidated is not null)
+                    {
+                        await existingOnTokenValidated(context);
+                    }
+
+                    if (context.Result?.Handled == true)
+                    {
+                        return;
+                    }
+
                     if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
                     {
-                        return Task.CompletedTask;
+                        return;
                     }
 
                     var tenantId = context.Principal?.FindFirst("tid")?.Value;
@@ -62,38 +74,54 @@ public static class DependencyInjection
                     {
                         context.Fail(UnsupportedAccountErrorMessage);
                     }
-
-                    return Task.CompletedTask;
                 };
 
-                options.Events.OnAuthenticationFailed = context =>
+                var existingOnAuthenticationFailed = options.Events.OnAuthenticationFailed;
+                options.Events.OnAuthenticationFailed = async context =>
                 {
+                    if (existingOnAuthenticationFailed is not null)
+                    {
+                        await existingOnAuthenticationFailed(context).ConfigureAwait(false);
+                    }
+
+                    if (context.Result?.Handled == true)
+                    {
+                        return;
+                    }
+
                     if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
                     {
-                        return Task.CompletedTask;
+                        return;
                     }
 
                     if (TryMapHostedAuthenticationFailure(context.Exception?.Message, deploymentModeConfiguration, out var userSafeMessage))
                     {
                         RedirectToHomeWithAuthError(context, userSafeMessage);
                     }
-
-                    return Task.CompletedTask;
                 };
 
-                options.Events.OnRemoteFailure = context =>
+                var existingOnRemoteFailure = options.Events.OnRemoteFailure;
+                options.Events.OnRemoteFailure = async context =>
                 {
+                    if (existingOnRemoteFailure is not null)
+                    {
+                        await existingOnRemoteFailure(context).ConfigureAwait(false);
+                    }
+
+                    if (context.Result?.Handled == true)
+                    {
+                        return;
+                    }
+
                     if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
                     {
-                        return Task.CompletedTask;
+                        return;
                     }
 
                     if (TryMapHostedAuthenticationFailure(context.Failure?.Message, deploymentModeConfiguration, out var userSafeMessage))
                     {
                         RedirectToHomeWithAuthError(context, userSafeMessage);
                     }
-
-                    return Task.CompletedTask;
                 };
             });
 
@@ -101,7 +129,9 @@ public static class DependencyInjection
         {
             var tokenAcquisition = serviceProvider.GetRequiredService<ITokenAcquisition>();
             var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
-            var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, graphScopes);
+            var deploymentModeConfiguration = serviceProvider.GetRequiredService<ImportToPlanner.Application.Models.DeploymentModeConfiguration>();
+            var logger = serviceProvider.GetRequiredService<ILogger<MicrosoftIdentityAccessTokenProvider>>();
+            var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, graphScopes);
             var authenticationProvider = new BaseBearerTokenAuthenticationProvider(accessTokenProvider);
             return new GraphServiceClient(authenticationProvider);
         });

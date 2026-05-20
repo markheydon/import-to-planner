@@ -15,6 +15,7 @@ builder.Services.AddSingleton(deploymentModeConfiguration);
 
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 {
+    ["DeploymentMode:AuthorityTenant"] = deploymentModeConfiguration.AuthorityTenant,
     ["AzureAd:TenantId"] = deploymentModeConfiguration.AuthorityTenant,
 });
 
@@ -82,18 +83,21 @@ static DeploymentModeConfiguration ResolveDeploymentModeConfiguration(IConfigura
             : DeploymentMode.SelfHostedSingleTenant,
     };
 
-    var authorityTenant = configuration["DeploymentMode:AuthorityTenant"];
-    if (string.IsNullOrWhiteSpace(authorityTenant))
-    {
-        authorityTenant = configuration["AzureAd:TenantId"];
-    }
+    var configuredAuthorityTenant = configuration["DeploymentMode:AuthorityTenant"];
+    var configuredAzureAdTenant = configuration["AzureAd:TenantId"];
 
-    if (string.IsNullOrWhiteSpace(authorityTenant))
+    var authorityTenant = mode switch
     {
-        authorityTenant = mode == DeploymentMode.HostedSharedMultiTenant
-            ? "organizations"
-            : "common";
-    }
+        DeploymentMode.SelfHostedSingleTenant =>
+            IsConcreteTenantIdentifier(configuredAzureAdTenant)
+                ? configuredAzureAdTenant!
+                : IsConcreteTenantIdentifier(configuredAuthorityTenant)
+                    ? configuredAuthorityTenant!
+                    : "common",
+        _ => configuredAuthorityTenant ?? configuredAzureAdTenant ?? "organizations",
+    };
+
+    authorityTenant = NormalizePlaceholderAuthorityTenant(authorityTenant, mode);
 
     var scopes = configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? [];
     var adminConsentUri = BuildAdminConsentUri(configuration, authorityTenant);
@@ -106,6 +110,35 @@ static DeploymentModeConfiguration ResolveDeploymentModeConfiguration(IConfigura
         configuration["DeploymentMode:InitialHostedReplicaPolicy"] ?? "SingleActiveReplica",
         scopes,
         adminConsentUri);
+
+    bool IsConcreteTenantIdentifier(string? tenantId)
+    {
+        if (string.IsNullOrWhiteSpace(tenantId))
+        {
+            return false;
+        }
+
+        if (tenantId.StartsWith("__REPLACE", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !string.Equals(tenantId, "common", StringComparison.OrdinalIgnoreCase)
+               && !string.Equals(tenantId, "organizations", StringComparison.OrdinalIgnoreCase)
+             && !string.Equals(tenantId, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    string NormalizePlaceholderAuthorityTenant(string authorityTenant, DeploymentMode mode)
+    {
+        if (!authorityTenant.StartsWith("__REPLACE", StringComparison.OrdinalIgnoreCase))
+        {
+            return authorityTenant;
+        }
+
+        return mode == DeploymentMode.HostedSharedMultiTenant
+            ? "organizations"
+            : "common";
+    }
 }
 
 static Uri? BuildAdminConsentUri(IConfiguration configuration, string authorityTenant)
