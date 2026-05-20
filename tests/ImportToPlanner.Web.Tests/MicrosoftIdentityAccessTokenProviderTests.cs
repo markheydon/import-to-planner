@@ -2,6 +2,7 @@ using System.Security.Claims;
 using ImportToPlanner.Application.Models;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
 using Microsoft.Kiota.Abstractions.Authentication;
@@ -90,10 +91,100 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         Assert.Equal("person@contoso.com", tokenAcquisition.CapturedUser.FindFirst("login_hint")?.Value);
     }
 
+    [Fact]
+    public async Task GetAuthorizationTokenAsync_WhenUserNullChallengeOccurs_LogsClaimPresenceWithoutClaimValues()
+    {
+        var challengeException = CreateChallengeException("user_null");
+        var tokenAcquisition = new FakeTokenAcquisition(challengeException);
+        var logger = new TestLogger<MicrosoftIdentityAccessTokenProvider>();
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim("oid", "object-id-1234567890"),
+            new Claim("tid", "tenant-id-0987654321"),
+            new Claim("preferred_username", "person@contoso.com"),
+            new Claim("upn", "principal@contoso.com"),
+            new Claim("email", "mailbox@contoso.com"),
+            new Claim(ClaimTypes.Name, "Example Person"),
+            new Claim(ClaimTypes.NameIdentifier, "name-identifier-123456"),
+        ], authenticationType: "test-auth"));
+        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration, logger);
+
+        var exception = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
+            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Same(challengeException, exception);
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Warning, entry.LogLevel);
+        Assert.Same(challengeException, entry.Exception);
+        Assert.Equal(true, entry.State["UidPresent"]);
+        Assert.Equal(true, entry.State["UtidPresent"]);
+        Assert.Equal(true, entry.State["OidPresent"]);
+        Assert.Equal(true, entry.State["TidPresent"]);
+        Assert.Equal(true, entry.State["PreferredUsernamePresent"]);
+        Assert.Equal(true, entry.State["UpnPresent"]);
+        Assert.Equal(true, entry.State["EmailPresent"]);
+        Assert.Equal(true, entry.State["NamePresent"]);
+        Assert.Equal(true, entry.State["NameIdentifierPresent"]);
+        Assert.Equal(1, entry.State["IdentityCount"]);
+        Assert.Equal(1, entry.State["AuthenticatedIdentityCount"]);
+        Assert.All(
+            entry.State.Where(pair => !string.Equals(pair.Key, "{OriginalFormat}", StringComparison.Ordinal)),
+            pair => Assert.True(
+                pair.Value is bool or int,
+                $"Unexpected diagnostic value type for {pair.Key}: {pair.Value?.GetType().Name ?? "<null>"}"));
+        Assert.DoesNotContain("person@contoso.com", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("principal@contoso.com", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("mailbox@contoso.com", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("object-id-1234567890", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("tenant-id-0987654321", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("Example Person", entry.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("name-identifier-123456", entry.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task GetAuthorizationTokenAsync_WhenUserNullChallengeOccurs_LogsMissingClaimsAsFalse()
+    {
+        var tokenAcquisition = new FakeTokenAcquisition(CreateChallengeException("user_null"));
+        var logger = new TestLogger<MicrosoftIdentityAccessTokenProvider>();
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+        [
+            new Claim("oid", "object-id"),
+            new Claim("tid", "tenant-id"),
+        ], authenticationType: "test-auth"));
+        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration, logger);
+
+        _ = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
+            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(false, entry.State["PreferredUsernamePresent"]);
+        Assert.Equal(false, entry.State["UpnPresent"]);
+        Assert.Equal(false, entry.State["EmailPresent"]);
+        Assert.Equal(false, entry.State["NamePresent"]);
+        Assert.Equal(false, entry.State["NameIdentifierPresent"]);
+        Assert.All(
+            entry.State.Where(pair => !string.Equals(pair.Key, "{OriginalFormat}", StringComparison.Ordinal)),
+            pair => Assert.True(
+                pair.Value is bool or int,
+                $"Unexpected diagnostic value type for {pair.Key}: {pair.Value?.GetType().Name ?? "<null>"}"));
+        Assert.DoesNotContain("<missing>", entry.Message, StringComparison.Ordinal);
+    }
+
     private static IAccessTokenProvider CreateProvider(
         ITokenAcquisition tokenAcquisition,
         ClaimsPrincipal user,
         DeploymentModeConfiguration deploymentModeConfiguration)
+        => CreateProvider(
+            tokenAcquisition,
+            user,
+            deploymentModeConfiguration,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<MicrosoftIdentityAccessTokenProvider>.Instance);
+
+    private static IAccessTokenProvider CreateProvider(
+        ITokenAcquisition tokenAcquisition,
+        ClaimsPrincipal user,
+        DeploymentModeConfiguration deploymentModeConfiguration,
+        ILogger<MicrosoftIdentityAccessTokenProvider> logger)
     {
         var httpContextAccessor = new HttpContextAccessor
         {
@@ -104,11 +195,24 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         };
 
         var providerType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.MicrosoftIdentityAccessTokenProvider", throwOnError: true)!;
-        return (IAccessTokenProvider)Activator.CreateInstance(providerType, tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, GraphScopes)!;
+        return (IAccessTokenProvider)Activator.CreateInstance(providerType, tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, GraphScopes)!;
     }
+
+    private static MicrosoftIdentityWebChallengeUserException CreateChallengeException(string errorCode)
+        => new(
+            new MsalUiRequiredException(errorCode, "Interactive sign-in is required to acquire the downstream Graph token."),
+            ["Tasks.ReadWrite"],
+            userflow: string.Empty);
 
     private sealed class FakeTokenAcquisition : ITokenAcquisition
     {
+        private readonly Exception? exceptionToThrow;
+
+        public FakeTokenAcquisition(Exception? exceptionToThrow = null)
+        {
+            this.exceptionToThrow = exceptionToThrow;
+        }
+
         public ClaimsPrincipal? CapturedUser { get; private set; }
         public string? CapturedAuthenticationScheme { get; private set; }
 
@@ -122,6 +226,12 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         {
             CapturedUser = user;
             CapturedAuthenticationScheme = authenticationScheme;
+
+            if (exceptionToThrow is not null)
+            {
+                return Task.FromException<string>(exceptionToThrow);
+            }
+
             return Task.FromResult("token");
         }
 
@@ -164,5 +274,45 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             MsalUiRequiredException msalUiRequiredException,
             HttpResponse? httpResponse = null)
             => Task.CompletedTask;
+    }
+
+    private sealed class TestLogger<T> : ILogger<T>
+    {
+        public List<LogEntry> Entries { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state)
+            where TState : notnull
+            => NullScope.Instance;
+
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel)
+            => true;
+
+        public void Log<TState>(
+            Microsoft.Extensions.Logging.LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+        {
+            var structuredState = state as IEnumerable<KeyValuePair<string, object?>>;
+            var capturedState = structuredState?.ToDictionary(pair => pair.Key, pair => pair.Value) ?? new Dictionary<string, object?>();
+            Entries.Add(new LogEntry(logLevel, eventId, exception, formatter(state, exception), capturedState));
+        }
+    }
+
+    private sealed record LogEntry(
+        Microsoft.Extensions.Logging.LogLevel LogLevel,
+        EventId EventId,
+        Exception? Exception,
+        string Message,
+        IReadOnlyDictionary<string, object?> State);
+
+    private sealed class NullScope : IDisposable
+    {
+        public static NullScope Instance { get; } = new();
+
+        public void Dispose()
+        {
+        }
     }
 }

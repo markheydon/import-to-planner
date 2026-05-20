@@ -97,19 +97,20 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
         {
             logger.LogWarning(
                 exception,
-                "Graph token acquisition failed with user_null. Claim snapshot: uid={Uid}, utid={Utid}, oid={Oid}, tid={Tid}, objectidentifier={LegacyOid}, tenantid={LegacyTid}, preferred_username={PreferredUsername}, upn={Upn}, email={Email}, name={Name}, nameidentifier={NameIdentifier}, identities={IdentityCount}.",
-                GetClaimForDiagnostics(user, UniqueObjectIdentifierClaimType),
-                GetClaimForDiagnostics(user, UniqueTenantIdentifierClaimType),
-                GetClaimForDiagnostics(user, ObjectIdentifierClaimType),
-                GetClaimForDiagnostics(user, TenantIdentifierClaimType),
-                GetClaimForDiagnostics(user, LegacyObjectIdentifierClaimType),
-                GetClaimForDiagnostics(user, LegacyTenantIdentifierClaimType),
-                GetClaimForDiagnostics(user, PreferredUsernameClaimType),
-                GetClaimForDiagnostics(user, UpnClaimType, ClaimTypes.Upn),
-                GetClaimForDiagnostics(user, EmailClaimType, ClaimTypes.Email),
-                GetClaimForDiagnostics(user, "name", ClaimTypes.Name),
-                GetClaimForDiagnostics(user, ClaimTypes.NameIdentifier),
-                user.Identities.Count());
+                "Graph token acquisition failed with user_null. Claim state: uid_present={UidPresent}, utid_present={UtidPresent}, oid_present={OidPresent}, tid_present={TidPresent}, objectidentifier_present={LegacyOidPresent}, tenantid_present={LegacyTidPresent}, preferred_username_present={PreferredUsernamePresent}, upn_present={UpnPresent}, email_present={EmailPresent}, name_present={NamePresent}, nameidentifier_present={NameIdentifierPresent}, identities={IdentityCount}, authenticated_identities={AuthenticatedIdentityCount}.",
+                HasClaimForDiagnostics(user, UniqueObjectIdentifierClaimType),
+                HasClaimForDiagnostics(user, UniqueTenantIdentifierClaimType),
+                HasClaimForDiagnostics(user, ObjectIdentifierClaimType),
+                HasClaimForDiagnostics(user, TenantIdentifierClaimType),
+                HasClaimForDiagnostics(user, LegacyObjectIdentifierClaimType),
+                HasClaimForDiagnostics(user, LegacyTenantIdentifierClaimType),
+                HasClaimForDiagnostics(user, PreferredUsernameClaimType),
+                HasClaimForDiagnostics(user, UpnClaimType, ClaimTypes.Upn),
+                HasClaimForDiagnostics(user, EmailClaimType, ClaimTypes.Email),
+                HasClaimForDiagnostics(user, "name", ClaimTypes.Name),
+                HasClaimForDiagnostics(user, ClaimTypes.NameIdentifier),
+                user.Identities.Count(),
+                user.Identities.Count(identity => identity.IsAuthenticated));
 
             throw;
         }
@@ -226,22 +227,11 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
         return null;
     }
 
-    private static string GetClaimForDiagnostics(ClaimsPrincipal principal, params string[] claimTypes)
+    private static bool HasClaimForDiagnostics(ClaimsPrincipal principal, params string[] claimTypes)
     {
         ArgumentNullException.ThrowIfNull(principal);
         ArgumentNullException.ThrowIfNull(claimTypes);
 
-        var value = FindFirstClaimValue(principal, claimTypes);
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "<missing>";
-        }
-
-        if (value.Length <= 12)
-        {
-            return value;
-        }
-
-        return string.Concat(value.AsSpan(0, 6), "...", value.AsSpan(value.Length - 4));
+        return !string.IsNullOrWhiteSpace(FindFirstClaimValue(principal, claimTypes));
     }
 }
