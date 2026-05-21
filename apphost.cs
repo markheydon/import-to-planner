@@ -1,5 +1,5 @@
 #:sdk Aspire.AppHost.Sdk@13.3.4
-#:package Aspire.Hosting.Azure.AppContainers@13.3.4
+#:package Aspire.Hosting.Azure.AppContainers
 
 using Azure.Provisioning.AppContainers;
 
