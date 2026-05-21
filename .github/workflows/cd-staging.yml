@@ -1,0 +1,87 @@
+name: CD - Staging
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    branches:
+      - main
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cd-staging-${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: Staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Set up Azure Developer CLI
+        uses: Azure/setup-azd@v2
+
+      - name: Install Aspire CLI
+        run: dotnet tool install --global aspire.cli --version 13.3.4
+
+      - name: Add global .NET tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify required staging settings
+        env:
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          HOSTED_STORAGE_CONNECTION_STRING: ${{ secrets.HOSTED_STORAGE_CONNECTION_STRING }}
+        shell: bash
+        run: |
+          : "${AZURE_LOCATION:?Missing Staging variable AZURE_LOCATION}"
+          : "${HOSTED_STORAGE_CONNECTION_STRING:?Missing Staging secret HOSTED_STORAGE_CONNECTION_STRING}"
+
+      - name: Deploy AppHost to staging
+        env:
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          DeploymentMode__Mode: HostedSharedMultiTenant
+          PlannerGateway__UseGraph: "true"
+          HostedStorage__Enabled: "true"
+          HostedStorage__ConnectionString: ${{ secrets.HOSTED_STORAGE_CONNECTION_STRING }}
+          HostedStorage__TenantMetadataTable: ${{ vars.HOSTED_STORAGE_TENANT_METADATA_TABLE || 'TenantOperationalMetadata' }}
+          HostedStorage__DataProtectionContainer: ${{ vars.HOSTED_STORAGE_DATA_PROTECTION_CONTAINER || 'dataprotection' }}
+          HostedStorage__DataProtectionBlob: ${{ vars.HOSTED_STORAGE_DATA_PROTECTION_BLOB || 'keys.xml' }}
+          DeploymentMode__AuthorityTenant: ${{ secrets.DEPLOYMENT_AUTHORITY_TENANT }}
+          AzureAd__TenantId: ${{ secrets.AZURE_AD_TENANT_ID }}
+        run: |
+          if [[ -n "${AZURE_ENV_NAME}" ]]; then
+            azd env select "${AZURE_ENV_NAME}"
+          fi
+
+          aspire deploy \
+            --apphost apphost.cs \
+            --environment Staging \
+            --non-interactive \
+            --nologo
