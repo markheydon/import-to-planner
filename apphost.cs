@@ -1,4 +1,7 @@
 #:sdk Aspire.AppHost.Sdk@13.3.4
+#:package Aspire.Hosting.Azure.AppContainers@13.3.4
+
+using Azure.Provisioning.AppContainers;
 
 #pragma warning disable ASPIRECSHARPAPPS001
 var builder = DistributedApplication.CreateBuilder(args);
@@ -23,6 +26,14 @@ if (isHostedStorageEnabled)
 var web = builder.AddCSharpApp("web", "./src/ImportToPlanner.Web/ImportToPlanner.Web.csproj", options =>
 {
 	options.LaunchProfileName = "https";
+});
+
+web.PublishAsAzureContainerApp((_, app) =>
+{
+	app.Template ??= new ContainerAppTemplate();
+	app.Template.Scale ??= new ContainerAppScale();
+	app.Template.Scale.MinReplicas = 0;
+	app.Template.Scale.MaxReplicas = 1;
 });
 
 web.WithEnvironment("DeploymentMode__Mode", deploymentMode)
