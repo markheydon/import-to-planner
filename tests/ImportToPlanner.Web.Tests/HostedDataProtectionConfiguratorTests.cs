@@ -38,6 +38,29 @@ public sealed class HostedDataProtectionConfiguratorTests
         Assert.Contains(serviceProvider.GetServices<IHostedService>(), service => service is HostedDataProtectionContainerBootstrapper);
     }
 
+    [Fact]
+    public void Configure_WhenHostedConnectionStringIsProvidedViaAspireConnectionStrings_RegistersHostedBlobDataProtection()
+    {
+        var services = new ServiceCollection();
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:hostedstorageblobs"] = "UseDevelopmentStorage=true",
+            ["HostedStorage:DataProtectionContainer"] = "dataprotection",
+            ["HostedStorage:DataProtectionBlob"] = "keys.xml",
+        });
+
+        var exception = Record.Exception(() => HostedDataProtectionConfigurator.Configure(
+            services,
+            configuration,
+            CreateDeploymentModeConfiguration(DeploymentMode.HostedSharedMultiTenant, hostedStorageEnabled: true)));
+
+        Assert.Null(exception);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        Assert.NotNull(serviceProvider.GetRequiredService<IDataProtectionProvider>());
+        Assert.Contains(serviceProvider.GetServices<IHostedService>(), service => service is HostedDataProtectionContainerBootstrapper);
+    }
+
     [Theory]
     [InlineData("HostedStorage:ConnectionString")]
     [InlineData("HostedStorage:DataProtectionContainer")]

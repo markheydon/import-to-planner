@@ -58,7 +58,7 @@ internal sealed record HostedDataProtectionStorageSettings(
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var connectionString = configuration["HostedStorage:ConnectionString"];
+        var connectionString = ResolveHostedStorageConnectionString(configuration);
         var containerName = configuration["HostedStorage:DataProtectionContainer"];
         var blobName = configuration["HostedStorage:DataProtectionBlob"];
 
@@ -86,6 +86,12 @@ internal sealed record HostedDataProtectionStorageSettings(
 
         return new HostedDataProtectionStorageSettings(connectionString!, containerName!, blobName!);
     }
+
+    private static string? ResolveHostedStorageConnectionString(IConfiguration configuration)
+        => configuration["HostedStorage:ConnectionString"]
+           ?? configuration.GetConnectionString("hostedstorageblobs")
+           ?? configuration.GetConnectionString("hostedstoragetables")
+           ?? configuration.GetConnectionString("hostedstorage");
 
     public BlobContainerClient CreateContainerClient()
         => new(ConnectionString, ContainerName);

@@ -56,11 +56,9 @@ jobs:
       - name: Verify required staging settings
         env:
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
-          HOSTED_STORAGE_CONNECTION_STRING: ${{ secrets.HOSTED_STORAGE_CONNECTION_STRING }}
         shell: bash
         run: |
           : "${AZURE_LOCATION:?Missing Staging variable AZURE_LOCATION}"
-          : "${HOSTED_STORAGE_CONNECTION_STRING:?Missing Staging secret HOSTED_STORAGE_CONNECTION_STRING}"
 
       - name: Deploy AppHost to staging
         env:
@@ -69,7 +67,6 @@ jobs:
           DeploymentMode__Mode: HostedSharedMultiTenant
           PlannerGateway__UseGraph: "true"
           HostedStorage__Enabled: "true"
-          HostedStorage__ConnectionString: ${{ secrets.HOSTED_STORAGE_CONNECTION_STRING }}
           HostedStorage__TenantMetadataTable: ${{ vars.HOSTED_STORAGE_TENANT_METADATA_TABLE || 'TenantOperationalMetadata' }}
           HostedStorage__DataProtectionContainer: ${{ vars.HOSTED_STORAGE_DATA_PROTECTION_CONTAINER || 'dataprotection' }}
           HostedStorage__DataProtectionBlob: ${{ vars.HOSTED_STORAGE_DATA_PROTECTION_BLOB || 'keys.xml' }}

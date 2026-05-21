@@ -1,5 +1,6 @@
 #:sdk Aspire.AppHost.Sdk@13.3.4
 #:package Aspire.Hosting.Azure.AppContainers
+#:package Aspire.Hosting.Azure.Storage
 
 using Azure.Provisioning.AppContainers;
 
@@ -9,19 +10,12 @@ var builder = DistributedApplication.CreateBuilder(args);
 var deploymentMode = GetEnvironmentOrDefault("DeploymentMode__Mode", "SelfHostedSingleTenant");
 var plannerGatewayUseGraph = GetEnvironmentOrDefault("PlannerGateway__UseGraph", "false");
 var hostedStorageEnabled = GetEnvironmentOrDefault("HostedStorage__Enabled", "false");
-var hostedStorageConnectionString = GetEnvironmentOrDefault("HostedStorage__ConnectionString", "UseDevelopmentStorage=true");
 var hostedStorageTenantMetadataTable = GetEnvironmentOrDefault("HostedStorage__TenantMetadataTable", "TenantOperationalMetadata");
 var hostedStorageDataProtectionContainer = GetEnvironmentOrDefault("HostedStorage__DataProtectionContainer", "dataprotection");
 var hostedStorageDataProtectionBlob = GetEnvironmentOrDefault("HostedStorage__DataProtectionBlob", "keys.xml");
 var deploymentAuthorityTenant = GetOptionalEnvironment("DeploymentMode__AuthorityTenant");
 var azureAdTenantId = GetOptionalEnvironment("AzureAd__TenantId");
 var isHostedStorageEnabled = string.Equals(hostedStorageEnabled, "true", StringComparison.OrdinalIgnoreCase);
-
-if (isHostedStorageEnabled)
-{
-	_ = builder
-		.AddContainer("hostedstorage", "mcr.microsoft.com/azure-storage/azurite");
-}
 
 var containerAppsEnvironment = builder
 	.AddAzureContainerAppEnvironment("containerapps");
@@ -57,7 +51,13 @@ if (!string.IsNullOrWhiteSpace(azureAdTenantId))
 
 if (isHostedStorageEnabled)
 {
-	web.WithEnvironment("HostedStorage__ConnectionString", hostedStorageConnectionString)
+	var hostedStorage = builder.AddAzureStorage("hostedstorage")
+		.RunAsEmulator();
+	var hostedStorageBlobs = hostedStorage.AddBlobs("hostedstorageblobs");
+	var hostedStorageTables = hostedStorage.AddTables("hostedstoragetables");
+
+	web.WithReference(hostedStorageBlobs)
+		.WithReference(hostedStorageTables)
 		.WithEnvironment("HostedStorage__TenantMetadataTable", hostedStorageTenantMetadataTable)
 		.WithEnvironment("HostedStorage__DataProtectionContainer", hostedStorageDataProtectionContainer)
 		.WithEnvironment("HostedStorage__DataProtectionBlob", hostedStorageDataProtectionBlob);

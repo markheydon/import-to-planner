@@ -42,6 +42,7 @@
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.6.0" />
     <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.3.4" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.3.4" />
 
     <!-- OpenTelemetry exporters and instrumentation -->
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />

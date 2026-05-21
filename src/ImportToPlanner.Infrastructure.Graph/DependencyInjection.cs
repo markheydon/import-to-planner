@@ -27,7 +27,7 @@ public static class DependencyInjection
         services.AddScoped<ICsvImportParser, CsvImportParser>();
         services.AddSingleton<ITenantOperationalMetadataStore>(_ =>
         {
-            var hostedStorageConnectionString = configuration["HostedStorage:ConnectionString"];
+            var hostedStorageConnectionString = ResolveHostedStorageConnectionString(configuration);
             if (hostedStorageEnabled && !string.IsNullOrWhiteSpace(hostedStorageConnectionString))
             {
                 var tableName = configuration["HostedStorage:TenantMetadataTable"] ?? "TenantOperationalMetadata";
@@ -47,5 +47,15 @@ public static class DependencyInjection
         }
 
         return services;
+    }
+
+    private static string? ResolveHostedStorageConnectionString(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return configuration["HostedStorage:ConnectionString"]
+            ?? configuration.GetConnectionString("hostedstorageblobs")
+            ?? configuration.GetConnectionString("hostedstoragetables")
+            ?? configuration.GetConnectionString("hostedstorage");
     }
 }
