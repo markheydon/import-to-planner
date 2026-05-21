@@ -23,9 +23,10 @@ if (isHostedStorageEnabled)
 		.AddContainer("hostedstorage", "mcr.microsoft.com/azure-storage/azurite");
 }
 
-_ = builder
-	.AddAzureContainerAppEnvironment("containerapps")
-	.WithDashboard(false);
+var containerAppsEnvironment = builder
+	.AddAzureContainerAppEnvironment("containerapps");
+
+containerAppsEnvironment.WithDashboard(false);
 
 var web = builder.AddCSharpApp("web", "./src/ImportToPlanner.Web/ImportToPlanner.Web.csproj", options =>
 {

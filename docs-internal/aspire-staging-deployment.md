@@ -14,7 +14,7 @@ Workflow file:
 
 ## AppHost deployment configuration
 
-`/home/runner/work/import-to-planner/import-to-planner/apphost.cs` now publishes the `web` resource as an Azure Container App with low-cost scale settings:
+`apphost.cs` now publishes the `web` resource as an Azure Container App with low-cost scale settings:
 
 - `minReplicas = 0`
 - `maxReplicas = 1`
