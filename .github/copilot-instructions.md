@@ -55,5 +55,5 @@ See `AGENTS.md` for agent delegation. By default, coding, architecture, and test
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read specs/004-add-multitenant-hosting/plan.md
+shell commands, and other important information, read specs/005-simplify-graph-path/plan.md
 <!-- SPECKIT END -->
