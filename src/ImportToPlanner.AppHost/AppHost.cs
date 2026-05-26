@@ -1,4 +1,16 @@
+using Microsoft.Extensions.Hosting;
+
 var builder = DistributedApplication.CreateBuilder(args);
+
+var appRuntimeEnvironment = builder.Environment.IsProduction()
+    ? "Production"
+    : builder.Environment.IsStaging()
+        ? "Staging"
+        : "Development";
+var minWebReplicas = builder.Environment.IsProduction() ? 1 : 0;
+
+builder.AddAzureContainerAppEnvironment("aca-env")
+    .WithDashboard(!builder.Environment.IsProduction());
 
 // Shared local storage emulator for blob and table resources.
 var storage = builder.AddAzureStorage("storage")
@@ -13,11 +25,19 @@ var dataProtectionContainer = storage.AddBlobContainer("dataprotection", blobCon
 var tables = storage.AddTables("tables");
 
 builder.AddProject<Projects.ImportToPlanner_Web>("web")
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
+    .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
+    .WithExternalHttpEndpoints()
     .WithReference(blobs)
     .WaitFor(blobs)
     .WithReference(dataProtectionContainer)
     .WaitFor(dataProtectionContainer)
     .WithReference(tables)
-    .WaitFor(tables);
+    .WaitFor(tables)
+    .PublishAsAzureContainerApp((_, app) =>
+    {
+        app.Template.Scale.MinReplicas = minWebReplicas;
+        app.Template.Scale.MaxReplicas = 1;
+    });
 
 builder.Build().Run();
