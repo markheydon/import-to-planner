@@ -2,6 +2,7 @@ using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace ImportToPlanner.Infrastructure.Graph;
 
@@ -10,6 +11,20 @@ namespace ImportToPlanner.Infrastructure.Graph;
 /// </summary>
 public static class DependencyInjection
 {
+    /// <summary>
+    /// Adds Aspire-managed Azure Table Storage client registrations required by infrastructure adapters.
+    /// </summary>
+    /// <param name="builder">The host application builder.</param>
+    /// <returns>The same <see cref="IHostApplicationBuilder"/> for chaining.</returns>
+    public static IHostApplicationBuilder AddInfrastructureStorageClients(this IHostApplicationBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.AddAzureTableServiceClient(connectionName: "tables");
+
+        return builder;
+    }
+
     /// <summary>
     /// Adds infrastructure services required for CSV import and planner gateway access.
     /// </summary>
@@ -21,30 +36,18 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var useGraphGateway = bool.TryParse(configuration["PlannerGateway:UseGraph"], out var graphMode) && graphMode;
-        var hostedStorageEnabled = bool.TryParse(configuration["HostedStorage:Enabled"], out var hostedStorageMode) && hostedStorageMode;
+        var tableName = configuration["Storage:TenantMetadataTable"];
+        if (string.IsNullOrWhiteSpace(tableName))
+        {
+            throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:TenantMetadataTable'.");
+        }
 
         services.AddScoped<ICsvImportParser, CsvImportParser>();
-        services.AddSingleton<ITenantOperationalMetadataStore>(_ =>
-        {
-            var hostedStorageConnectionString = configuration["HostedStorage:ConnectionString"];
-            if (hostedStorageEnabled && !string.IsNullOrWhiteSpace(hostedStorageConnectionString))
-            {
-                var tableName = configuration["HostedStorage:TenantMetadataTable"] ?? "TenantOperationalMetadata";
-                return new TableTenantOperationalMetadataStore(hostedStorageConnectionString, tableName);
-            }
-
-            return new InMemoryTenantOperationalMetadataStore();
-        });
-
-        if (useGraphGateway)
-        {
-            services.AddScoped<IPlannerGateway, GraphPlannerGateway>();
-        }
-        else
-        {
-            services.AddScoped<IPlannerGateway, InMemoryPlannerGateway>();
-        }
+        services.AddSingleton<ITenantOperationalMetadataStore>(serviceProvider =>
+            new TableTenantOperationalMetadataStore(
+                serviceProvider.GetRequiredService<Azure.Data.Tables.TableServiceClient>(),
+                tableName));
+        services.AddScoped<IPlannerGateway, GraphPlannerGateway>();
 
         return services;
     }

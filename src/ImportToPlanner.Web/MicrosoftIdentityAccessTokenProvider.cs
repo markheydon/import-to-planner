@@ -23,7 +23,7 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
     private const string OrganizationsAuthorityTenant = "organizations";
     private readonly ITokenAcquisition tokenAcquisition;
     private readonly IHttpContextAccessor httpContextAccessor;
-    private readonly DeploymentModeConfiguration deploymentModeConfiguration;
+    private readonly TenantAuthorityConfiguration tenantAuthorityConfiguration;
     private readonly ILogger<MicrosoftIdentityAccessTokenProvider> logger;
     private readonly IReadOnlyCollection<string> scopes;
     private readonly UserFacingFailureDiagnostics? failureDiagnostics;
@@ -31,12 +31,12 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
     public MicrosoftIdentityAccessTokenProvider(
         ITokenAcquisition tokenAcquisition,
         IHttpContextAccessor httpContextAccessor,
-        DeploymentModeConfiguration deploymentModeConfiguration,
+        TenantAuthorityConfiguration tenantAuthorityConfiguration,
         IReadOnlyCollection<string> scopes)
         : this(
             tokenAcquisition,
             httpContextAccessor,
-            deploymentModeConfiguration,
+            tenantAuthorityConfiguration,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<MicrosoftIdentityAccessTokenProvider>.Instance,
             scopes)
     {
@@ -45,30 +45,30 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
     public MicrosoftIdentityAccessTokenProvider(
         ITokenAcquisition tokenAcquisition,
         IHttpContextAccessor httpContextAccessor,
-        DeploymentModeConfiguration deploymentModeConfiguration,
+        TenantAuthorityConfiguration tenantAuthorityConfiguration,
         ILogger<MicrosoftIdentityAccessTokenProvider> logger,
         IReadOnlyCollection<string> scopes)
-        : this(tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, scopes, null)
+        : this(tokenAcquisition, httpContextAccessor, tenantAuthorityConfiguration, logger, scopes, null)
     {
     }
 
     public MicrosoftIdentityAccessTokenProvider(
         ITokenAcquisition tokenAcquisition,
         IHttpContextAccessor httpContextAccessor,
-        DeploymentModeConfiguration deploymentModeConfiguration,
+        TenantAuthorityConfiguration tenantAuthorityConfiguration,
         ILogger<MicrosoftIdentityAccessTokenProvider> logger,
         IReadOnlyCollection<string> scopes,
         UserFacingFailureDiagnostics? failureDiagnostics)
     {
         ArgumentNullException.ThrowIfNull(tokenAcquisition);
         ArgumentNullException.ThrowIfNull(httpContextAccessor);
-        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
+        ArgumentNullException.ThrowIfNull(tenantAuthorityConfiguration);
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(scopes);
 
         this.tokenAcquisition = tokenAcquisition;
         this.httpContextAccessor = httpContextAccessor;
-        this.deploymentModeConfiguration = deploymentModeConfiguration;
+        this.tenantAuthorityConfiguration = tenantAuthorityConfiguration;
         this.logger = logger;
         this.scopes = scopes;
         this.failureDiagnostics = failureDiagnostics;
@@ -174,12 +174,12 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
 
     private string? ResolveFallbackTenantIdentifier()
     {
-        if (deploymentModeConfiguration.Mode != DeploymentMode.SelfHostedSingleTenant)
+        if (tenantAuthorityConfiguration.AuthorityKind != TenantAuthorityKind.SpecificTenant)
         {
             return null;
         }
 
-        var authorityTenant = deploymentModeConfiguration.AuthorityTenant;
+        var authorityTenant = tenantAuthorityConfiguration.TenantId;
         if (string.IsNullOrWhiteSpace(authorityTenant)
             || string.Equals(authorityTenant, CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
             || string.Equals(authorityTenant, OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)

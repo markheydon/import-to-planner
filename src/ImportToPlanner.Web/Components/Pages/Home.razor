@@ -3,10 +3,10 @@
 @using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
 @inject WorkflowCoordinationState WorkflowState
-@inject IConfiguration Configuration
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 @inject ILogger<Home> Logger
+@inject IConfiguration Configuration
 @inject UserFacingFailureDiagnostics FailureDiagnostics
 
 <PageTitle>Import To Planner</PageTitle>
@@ -127,7 +127,7 @@
                         </MudButton>
                     </MudStack>
 
-                    @if (isUsingGraphGateway && noGroupsFound)
+                    @if (noGroupsFound)
                     {
                         <MudAlert Severity="Severity.Info" Dense="true">
                             No groups found. Ensure you are a member of at least one Microsoft 365 group.
@@ -393,12 +393,6 @@
         set => WorkflowState.IsBusy = value;
     }
 
-    private bool isUsingGraphGateway
-    {
-        get => WorkflowState.IsUsingGraphGateway;
-        set => WorkflowState.IsUsingGraphGateway = value;
-    }
-
     private bool noGroupsFound
     {
         get => WorkflowState.NoGroupsFound;
@@ -512,22 +506,18 @@
             }
         }
 
-        isUsingGraphGateway = Configuration.GetValue<bool>("PlannerGateway:UseGraph");
-        if (isUsingGraphGateway)
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+        if (!isAuthenticated)
         {
-            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-            var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
-            if (!isAuthenticated)
+            if (hasAuthErrorFromQuery)
             {
-                if (hasAuthErrorFromQuery)
-                {
-                    // Keep the user on the page with the auth error message instead of re-triggering sign-in.
-                    return;
-                }
-
-                NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+                // Keep the user on the page with the auth error message instead of re-triggering sign-in.
                 return;
             }
+
+            NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
+            return;
         }
 
         try

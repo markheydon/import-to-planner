@@ -14,10 +14,10 @@ The workflow preserves operational safeguards:
 4. Validate and preview.
 5. Confirm execution and review results.
 
-Two runtime modes are supported:
+The app now has one supported runtime path:
 
-- In-memory mode for local development and verification without tenant credentials.
-- Microsoft Graph mode for live Planner operations, with sign-in required before the import UI is reachable.
+- Microsoft Graph planner operations with table-backed tenant metadata and blob-backed Data Protection persistence.
+- Authentication remains authority-driven through `AzureAd:TenantId` (`organizations` or a specific tenant value).
 
 ## Key Features
 
@@ -28,7 +28,7 @@ Two runtime modes are supported:
 - Partial-success execution handling with a single retry for transient row failures.
 - Execution reporting for created items, skipped or reused items, manual actions, and errors.
 - Searchable container and plan selectors for larger tenants.
-- Behaviour parity expectations across runtime modes when planner behaviour changes.
+- Regression coverage for startup validation, authority handling, and single-path planner registration.
 
 Primary feature sources:
 
@@ -47,12 +47,12 @@ Primary feature sources:
   - MudBlazor 9.4.0
 - Core libraries:
   - CsvHelper 33.1.0
-  - Microsoft.Graph 5.105.0
-  - Microsoft.Kiota.Abstractions 1.22.2
+  - Microsoft.Graph 6.1.0
+  - Microsoft.Kiota.Abstractions 2.0.0
   - Microsoft.Identity.Web 4.9.0
   - Microsoft.Identity.Web.UI 4.9.0
 - Hosting and observability:
-  - Aspire AppHost SDK 13.3.0
+  - Aspire AppHost SDK 9.5.0
   - OpenTelemetry 1.15.x packages
   - Shared service defaults for resilience and telemetry
 - Testing:
@@ -65,7 +65,7 @@ Primary version sources:
 - [global.json](global.json)
 - [Directory.Packages.props](Directory.Packages.props)
 - [ImportToPlanner.slnx](ImportToPlanner.slnx)
-- [apphost.cs](apphost.cs)
+- [ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj](ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj)
 
 ## Project Architecture
 
@@ -77,7 +77,7 @@ flowchart LR
     Infra[ImportToPlanner.Infrastructure.Graph\nCSV parser and planner gateways] --> App
     App --> Domain[ImportToPlanner.Domain\nBusiness concepts]
     Web --> Defaults[ImportToPlanner.ServiceDefaults\nTelemetry and resilience defaults]
-    AppHost[apphost.cs\nAspire AppHost] --> Web
+    AppHost[ImportToPlanner.AppHost\nAspire AppHost] --> Web
 ```
 
 Projects in solution:
@@ -99,19 +99,18 @@ Architecture and governance references:
 
 ### Choose your path
 
-- Run it locally for yourself: start with self-hosted single-tenant in-memory mode. This is the recommended first run and needs no Entra ID or Microsoft Graph credentials.
-- Run it against your own tenant: use self-hosted single-tenant Graph mode when you want to exercise real Planner behaviour.
-- Work on hosted support: use the hosted shared multi-tenant path through Aspire when you need tenant-aware sign-in, consent, or hosted storage behaviour.
+- Run with `AzureAd:TenantId=organizations` when you need shared-organisations authority behaviour.
+- Run with a specific tenant ID when you need single-tenant authority behaviour.
+- Use Aspire for both paths so storage wiring remains consistent with production.
 
 ### Prerequisites
 
 - .NET 10 SDK.
-- Optional for Graph mode:
-  - Microsoft 365 account with Planner access.
-  - Entra ID app registration with required delegated permissions.
-  - Local configuration for `AzureAd` and Graph settings.
+- Microsoft 365 account with Planner access.
+- Entra ID app registration with required delegated permissions.
+- Local configuration for `AzureAd` and Graph settings.
 - Optional local tooling:
-  - Aspire CLI for developer workflows and hosted-path verification.
+  - Aspire CLI for developer workflows and local orchestration.
   - Node.js (LTS) for local JavaScript syntax checks used in CI.
   - GitHub CLI for issue and pull request workflows.
 
@@ -134,32 +133,30 @@ The repository includes ready-made Aspire launch profiles in [.vscode/launch.jso
 - `Aspire: Run (Multi Tenant + Hosted Storage)` - hosted shared multi-tenant verification with local hosted-storage emulation.
 
 The first profile is deliberately ordered first so a new VS Code user lands on the simplest path.
+Profile names are historical labels; all supported paths now use Graph plus storage-backed services.
 
 ### Run locally without Aspire
 
-The base application settings stay self-hosted and single-tenant, but the Development override in [src/ImportToPlanner.Web/appsettings.Development.json](src/ImportToPlanner.Web/appsettings.Development.json) is hosted-oriented for this branch's multi-tenant work. If you want a plain local run without Aspire, set explicit overrides:
+Aspire is the recommended path because it wires `storage`, `blobs`, and `tables` automatically. If you need to run the Web project directly, provide equivalent connection settings and AzureAd secrets first:
 
 ```bash
-DeploymentMode__Mode=SelfHostedSingleTenant \
-HostedStorage__Enabled=false \
-PlannerGateway__UseGraph=false \
+dotnet user-secrets set "AzureAd:TenantId" "organizations" --project src/ImportToPlanner.Web
+dotnet user-secrets set "AzureAd:ClientId" "<client-id>" --project src/ImportToPlanner.Web
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
 Expected behaviour:
 
-- No sign-in redirect.
-- Pre-seeded container and plan data.
-- Full stepped workflow available for local validation.
+- Unauthenticated users are challenged through Microsoft Identity.
+- Planner data comes from Microsoft Graph.
+- Storage-backed services use the configured connection settings.
 
-### Run self-hosted single-tenant with Graph
+### Run with a specific tenant authority
 
-Use this path when you want to test against your own tenant. Set the self-hosted values together with your `AzureAd` and Graph settings, ideally through user secrets:
+Use this path when you want sign-in constrained to one tenant:
 
 ```bash
-dotnet user-secrets set "PlannerGateway:UseGraph" "true" --project src/ImportToPlanner.Web
-dotnet user-secrets set "DeploymentMode:Mode" "SelfHostedSingleTenant" --project src/ImportToPlanner.Web
-dotnet user-secrets set "HostedStorage:Enabled" "false" --project src/ImportToPlanner.Web
+dotnet user-secrets set "AzureAd:TenantId" "<tenant-id-or-domain>" --project src/ImportToPlanner.Web
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
@@ -167,12 +164,13 @@ Expected behaviour:
 
 - Unauthenticated sessions are redirected to sign-in.
 - Container and plan data are loaded from Microsoft Graph.
+- Sign-in remains single-tenant.
 
 See [src/ImportToPlanner.Web/appsettings.json](src/ImportToPlanner.Web/appsettings.json) for the full configuration shape, including `AzureAd`, certificate, and Graph scope placeholders, and see [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md) for implementation guidance.
 
 ### Use Aspire for development workflows
 
-Aspire is the recommended developer path in this branch because the AppHost and launch profiles make the supported scenarios explicit and only turn on local hosted-storage emulation when a profile needs it.
+Aspire is the recommended developer path because the AppHost and launch profiles keep authority and storage wiring explicit and consistent.
 
 ```bash
 aspire start --isolated
@@ -183,8 +181,8 @@ aspire stop
 
 Notes:
 
-- The default AppHost run now starts in self-hosted single-tenant in-memory mode.
-- A container runtime is only needed when you enable hosted storage, such as the multi-tenant launch profile.
+- The AppHost always starts `storage`, `blobs`, `tables`, and `web`.
+- A container runtime is needed for local Azurite emulation.
 - For deeper developer guidance, see [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md).
 
 ## Project Structure
@@ -202,7 +200,7 @@ tests/
 docs/
 docs-internal/
 specs/
-apphost.cs
+ImportToPlanner.AppHost/
 ImportToPlanner.slnx
 ```
 
@@ -272,7 +270,7 @@ dotnet tool install -g dotnet-coverage
 dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test ImportToPlanner.slnx
 ```
 
-Testing expectations include regression coverage for changed behaviour and runtime-mode parity checks where planner behaviour is affected. See [tests/README.md](tests/README.md) and [.specify/memory/constitution.md](.specify/memory/constitution.md).
+Testing expectations include regression coverage for changed behaviour, startup validation, and authority-specific auth handling. See [tests/README.md](tests/README.md) and [.specify/memory/constitution.md](.specify/memory/constitution.md).
 
 ## Contributing
 

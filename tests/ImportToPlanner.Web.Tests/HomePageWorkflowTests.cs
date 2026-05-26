@@ -19,7 +19,7 @@ public sealed class HomePageWorkflowTests
     public async Task HomePage_WhenContainerLoadFailsWithAuthenticationFailure_ShowsUserSafeMessage()
     {
         await using var ctx = new HomePageTestContext();
-        ctx.Gateway.GetAvailableContainersException = StubPlannerGateway.AuthenticationFailure();
+        ctx.Gateway.GetAvailableContainersException = PlannerGatewayStub.AuthenticationFailure();
 
         var cut = ctx.Render<Home>();
 
@@ -123,7 +123,7 @@ public sealed class HomePageWorkflowTests
     [Fact]
     public async Task HomePage_InHostedMode_WithUnsupportedAccount_ShowsHostedAccountGuidance()
     {
-        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        await using var ctx = new HomePageTestContext(tenantId: "organizations");
         ctx.TenantAccessor.GetRequiredContextException =
             new InvalidOperationException("Unsupported account type. Sign in with a supported work or school account.");
 
@@ -140,7 +140,7 @@ public sealed class HomePageWorkflowTests
     [Fact]
     public async Task HomePage_InHostedMode_WhenAuthErrorQueryExists_DoesNotReTriggerSignInChallenge()
     {
-        await using var ctx = new HomePageTestContext(useGraphGateway: true, isAuthenticated: false);
+        await using var ctx = new HomePageTestContext(tenantId: "organizations", isAuthenticated: false);
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
         navigationManager.NavigateTo("/?authError=Unsupported%20account%20type.%20Sign%20in%20with%20a%20supported%20work%20or%20school%20account.", forceLoad: false);
 
@@ -156,7 +156,7 @@ public sealed class HomePageWorkflowTests
     [Fact]
     public async Task HomePage_InHostedMode_WhenAuthErrorQueryIncludesReference_ShowsReferenceId()
     {
-        await using var ctx = new HomePageTestContext(useGraphGateway: true, isAuthenticated: false);
+        await using var ctx = new HomePageTestContext(tenantId: "organizations", isAuthenticated: false);
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
         navigationManager.NavigateTo("/?authError=Unsupported%20account%20type.%20Sign%20in%20with%20a%20supported%20work%20or%20school%20account.&authRef=trace-123", forceLoad: false);
 
@@ -172,7 +172,7 @@ public sealed class HomePageWorkflowTests
     [Fact]
     public async Task HomePage_InHostedMode_WhenTokenAcquisitionRequiresInteraction_TriggersOneTimeReauthentication()
     {
-        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        await using var ctx = new HomePageTestContext(tenantId: "organizations");
         ctx.Gateway.GetAvailableContainersException = CreateChallengeException();
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
 
@@ -185,7 +185,7 @@ public sealed class HomePageWorkflowTests
     [Fact]
     public async Task HomePage_InHostedMode_WhenReauthenticationAlreadyAttempted_ShowsInteractionGuidanceWithoutLoop()
     {
-        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        await using var ctx = new HomePageTestContext(tenantId: "organizations");
         ctx.Gateway.GetAvailableContainersException = CreateChallengeException();
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
         navigationManager.NavigateTo("/?tokenReauth=1", forceLoad: false);
@@ -202,7 +202,7 @@ public sealed class HomePageWorkflowTests
     [Fact]
     public async Task HomePage_InHostedMode_WhenTokenReauthenticationQueryIsPresentAndLoadSucceeds_ClearsQueryWithoutWarning()
     {
-        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        await using var ctx = new HomePageTestContext(tenantId: "organizations");
         var navigationManager = ctx.Services.GetRequiredService<NavigationManager>();
         navigationManager.NavigateTo("/?tokenReauth=1", forceLoad: false);
 
@@ -218,7 +218,7 @@ public sealed class HomePageWorkflowTests
     [Fact]
     public async Task Coordinator_WhenTenantChanges_MarksTenantContextMismatch()
     {
-        await using var ctx = new HomePageTestContext(useGraphGateway: true);
+        await using var ctx = new HomePageTestContext(tenantId: "organizations");
         var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
         var state = new WorkflowCoordinationState
         {
@@ -235,18 +235,18 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
-    public async Task HomePage_SelfHostedAndHostedModes_PreserveStepWorkflowSemantics()
+    public async Task HomePage_SharedAndSpecificAuthorities_PreserveStepWorkflowSemantics()
     {
-        await using var selfHosted = new HomePageTestContext(useGraphGateway: false);
-        await using var hosted = new HomePageTestContext(useGraphGateway: true);
+        await using var specificAuthority = new HomePageTestContext(tenantId: "tenant-specific");
+        await using var sharedAuthority = new HomePageTestContext(tenantId: "organizations");
 
-        var selfHostedCut = selfHosted.Render<Home>();
-        var hostedCut = hosted.Render<Home>();
+        var specificAuthorityCut = specificAuthority.Render<Home>();
+        var sharedAuthorityCut = sharedAuthority.Render<Home>();
 
-        selfHostedCut.WaitForAssertion(() => Assert.Contains("Step 1", selfHostedCut.Markup, StringComparison.OrdinalIgnoreCase));
-        hostedCut.WaitForAssertion(() => Assert.Contains("Step 1", hostedCut.Markup, StringComparison.OrdinalIgnoreCase));
-        Assert.Contains("Step 5", selfHostedCut.Markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Step 5", hostedCut.Markup, StringComparison.OrdinalIgnoreCase);
+        specificAuthorityCut.WaitForAssertion(() => Assert.Contains("Step 1", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
+        sharedAuthorityCut.WaitForAssertion(() => Assert.Contains("Step 1", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("Step 5", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Step 5", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 
     private static MicrosoftIdentityWebChallengeUserException CreateChallengeException()

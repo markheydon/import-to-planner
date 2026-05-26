@@ -142,3 +142,28 @@ During and after an `aspire run` session, confirm:
   graph.
 - Ensure contributor documentation is updated to describe the new local setup and
   the removal of all mode flags.
+
+## Verification Evidence (2026-05-25)
+
+Automated verification completed:
+
+- `dotnet build ImportToPlanner.slnx` passed.
+- `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj` passed (42/42).
+- `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj` passed (42/42).
+- `dotnet test ImportToPlanner.slnx` passed (84/84).
+- `dotnet restore ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj` passed.
+- `dotnet build ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj --no-restore` passed.
+
+Checklist execution status:
+
+- [x] Automated regression baseline
+- [x] Architecture cleanup evidence (automated test coverage present)
+- [ ] AppHost interactive run (`aspire run`) in a signed-in environment
+- [ ] Missing `AzureAd:TenantId` startup-failure manual check
+- [ ] Removed-key startup-failure manual check
+- [ ] Shared-organisations authority manual auth-guard check
+- [ ] Specific-tenant authority manual auth-guard check
+- [ ] Storage persistence restart check in an interactive runtime session
+
+Manual checklist items require environment-specific credentials and interactive sign-in,
+and should be executed on a configured developer machine before release.

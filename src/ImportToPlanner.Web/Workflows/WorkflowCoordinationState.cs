@@ -34,8 +34,6 @@ public sealed class WorkflowCoordinationState
 
     public bool IgnoreExtraColumns { get; set; } = true;
 
-    public bool IsUsingGraphGateway { get; set; }
-
     public bool NoGroupsFound { get; set; }
 
     public bool IsPreviewStale { get; set; }

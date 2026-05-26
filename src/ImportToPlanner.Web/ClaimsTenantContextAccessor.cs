@@ -11,7 +11,7 @@ namespace ImportToPlanner.Web;
 /// </summary>
 internal sealed class ClaimsTenantContextAccessor(
     IHttpContextAccessor httpContextAccessor,
-    DeploymentModeConfiguration deploymentModeConfiguration,
+    TenantAuthorityConfiguration tenantAuthorityConfiguration,
     ILogger<ClaimsTenantContextAccessor> logger,
     UserFacingFailureDiagnostics failureDiagnostics) : ICurrentTenantContextAccessor
 {
@@ -34,7 +34,7 @@ internal sealed class ClaimsTenantContextAccessor(
 
         var tenantId = ResolveTenantId(user);
         var accountType = ResolveAccountType(user, tenantId);
-        if (deploymentModeConfiguration.Mode == DeploymentMode.HostedSharedMultiTenant
+        if (tenantAuthorityConfiguration.IsSharedOrganisations
             && accountType != SupportedAccountType.WorkOrSchool)
         {
             throw CreateAndRecordFailure(
@@ -66,7 +66,6 @@ internal sealed class ClaimsTenantContextAccessor(
             tenantId,
             BuildTenantKey(tenantId),
             objectId,
-            deploymentModeConfiguration.Mode,
             accountType,
             user.FindFirstValue("tenant_display_name"));
     }
@@ -82,19 +81,19 @@ internal sealed class ClaimsTenantContextAccessor(
             return tenantId;
         }
 
-        if (deploymentModeConfiguration.Mode != DeploymentMode.SelfHostedSingleTenant)
+        if (tenantAuthorityConfiguration.AuthorityKind != TenantAuthorityKind.SpecificTenant)
         {
             return null;
         }
 
-        return ResolveSelfHostedAuthorityTenant();
+        return ResolveSpecificTenantAuthorityTenant();
     }
 
     private SupportedAccountType ResolveAccountType(ClaimsPrincipal user, string? tenantId)
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        if (deploymentModeConfiguration.Mode != DeploymentMode.HostedSharedMultiTenant)
+        if (!tenantAuthorityConfiguration.IsSharedOrganisations)
         {
             return string.IsNullOrWhiteSpace(tenantId)
                 ? SupportedAccountType.Unknown
@@ -117,9 +116,9 @@ internal sealed class ClaimsTenantContextAccessor(
         return SupportedAccountType.WorkOrSchool;
     }
 
-    private string? ResolveSelfHostedAuthorityTenant()
+    private string? ResolveSpecificTenantAuthorityTenant()
     {
-        var authorityTenant = deploymentModeConfiguration.AuthorityTenant;
+        var authorityTenant = tenantAuthorityConfiguration.TenantId;
         if (string.IsNullOrWhiteSpace(authorityTenant)
             || string.Equals(authorityTenant, CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
             || string.Equals(authorityTenant, OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)

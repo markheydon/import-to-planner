@@ -26,17 +26,24 @@
     <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="2.0.0" />
 
     <!-- Identity / Authentication -->
-    <PackageVersion Include="Microsoft.Identity.Web" Version="4.9.0" />
-    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.9.0" />
+    <PackageVersion Include="Microsoft.Identity.Web" Version="4.10.0" />
+    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.10.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.8" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
 
     <!-- Azure SDKs -->
+    <PackageVersion Include="Aspire.Azure.Data.Tables" Version="13.3.5" />
+    <PackageVersion Include="Aspire.Azure.Storage.Blobs" Version="13.3.5" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.3" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.5.0" />
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.28.0" />
+
+    <!-- Aspire AppHost -->
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.3.5" />
 
     <!-- Resilience & Service Discovery -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.6.0" />

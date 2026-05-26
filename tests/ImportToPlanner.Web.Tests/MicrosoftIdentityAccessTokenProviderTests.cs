@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using ImportToPlanner.Application.Models;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -12,12 +11,9 @@ namespace ImportToPlanner.Web.Tests;
 public sealed class MicrosoftIdentityAccessTokenProviderTests
 {
     private static readonly IReadOnlyCollection<string> GraphScopes = ["User.Read"];
-    private static readonly DeploymentModeConfiguration SelfHostedDeploymentModeConfiguration = new(
-        DeploymentMode.SelfHostedSingleTenant,
+    private static readonly TenantAuthorityConfiguration SpecificTenantAuthorityConfiguration = new(
         "tenant-self-hosted",
-        true,
-        false,
-        "SingleActiveReplica",
+        TenantAuthorityKind.SpecificTenant,
         ["User.Read"],
         null);
 
@@ -26,7 +22,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     {
         var tokenAcquisition = new FakeTokenAcquisition();
         var user = new ClaimsPrincipal(new ClaimsIdentity());
-        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration);
+        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
         var exception = await Assert.ThrowsAsync<GraphUnauthenticatedContextException>(() =>
             provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
@@ -43,7 +39,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             new Claim("oid", "object-id"),
             new Claim("tid", "tenant-id"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration);
+        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
         _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"));
 
@@ -63,7 +59,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         [
             new Claim("oid", "object-id"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration);
+        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
         _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"));
 
@@ -82,7 +78,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             new Claim("tid", "tenant-id"),
             new Claim("upn", "person@contoso.com"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration);
+        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
         _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"));
 
@@ -107,7 +103,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             new Claim(ClaimTypes.Name, "Example Person"),
             new Claim(ClaimTypes.NameIdentifier, "name-identifier-123456"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration, logger);
+        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration, logger);
 
         var exception = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
             provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
@@ -151,7 +147,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             new Claim("oid", "object-id"),
             new Claim("tid", "tenant-id"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SelfHostedDeploymentModeConfiguration, logger);
+        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration, logger);
 
         _ = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
             provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
@@ -173,17 +169,17 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     private static IAccessTokenProvider CreateProvider(
         ITokenAcquisition tokenAcquisition,
         ClaimsPrincipal user,
-        DeploymentModeConfiguration deploymentModeConfiguration)
+        TenantAuthorityConfiguration authorityConfiguration)
         => CreateProvider(
             tokenAcquisition,
             user,
-            deploymentModeConfiguration,
+            authorityConfiguration,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<MicrosoftIdentityAccessTokenProvider>.Instance);
 
     private static IAccessTokenProvider CreateProvider(
         ITokenAcquisition tokenAcquisition,
         ClaimsPrincipal user,
-        DeploymentModeConfiguration deploymentModeConfiguration,
+        TenantAuthorityConfiguration authorityConfiguration,
         ILogger<MicrosoftIdentityAccessTokenProvider> logger)
     {
         var httpContextAccessor = new HttpContextAccessor
@@ -195,7 +191,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         };
 
         var providerType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.MicrosoftIdentityAccessTokenProvider", throwOnError: true)!;
-        return (IAccessTokenProvider)Activator.CreateInstance(providerType, tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, GraphScopes)!;
+        return (IAccessTokenProvider)Activator.CreateInstance(providerType, tokenAcquisition, httpContextAccessor, authorityConfiguration, logger, GraphScopes)!;
     }
 
     private static MicrosoftIdentityWebChallengeUserException CreateChallengeException(string errorCode)

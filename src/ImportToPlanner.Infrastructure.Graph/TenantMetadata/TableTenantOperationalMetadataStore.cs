@@ -18,13 +18,13 @@ internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMe
     /// <summary>
     /// Initialises a new instance of the <see cref="TableTenantOperationalMetadataStore"/> class.
     /// </summary>
-    /// <param name="connectionString">The storage connection string.</param>
+    /// <param name="tableServiceClient">The table service client resolved from DI.</param>
     /// <param name="tableName">The table name used for tenant metadata records.</param>
-    public TableTenantOperationalMetadataStore(string connectionString, string tableName)
+    public TableTenantOperationalMetadataStore(TableServiceClient tableServiceClient, string tableName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        ArgumentNullException.ThrowIfNull(tableServiceClient);
         ArgumentException.ThrowIfNullOrWhiteSpace(tableName);
-        tableClient = new TableClient(connectionString, tableName);
+        tableClient = tableServiceClient.GetTableClient(tableName);
     }
 
     /// <inheritdoc/>

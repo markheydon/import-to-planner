@@ -16,7 +16,6 @@ public sealed class ImportWorkflowCoordinator(
     IImportPlanningUseCase planningUseCase,
     IImportExecutionUseCase executionUseCase,
     ICurrentTenantContextAccessor currentTenantContextAccessor,
-    DeploymentModeConfiguration deploymentModeConfiguration,
     ImportPlanningPresenter planningPresenter,
     ImportExecutionPresenter executionPresenter)
 {
@@ -228,11 +227,6 @@ public sealed class ImportWorkflowCoordinator(
 
     private void ResolveTenantContext(WorkflowCoordinationState state)
     {
-        if (!deploymentModeConfiguration.UseGraphGateway)
-        {
-            return;
-        }
-
         var resolvedContext = currentTenantContextAccessor.GetRequiredContext();
         state.IsUnsupportedAccount = false;
 

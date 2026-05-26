@@ -22,6 +22,20 @@ public static class DependencyInjection
     private const string UnsupportedAccountErrorMessage = "Unsupported account type. Sign in with a supported work or school account.";
 
     /// <summary>
+    /// Adds Aspire-managed Azure storage service clients used by the web host.
+    /// </summary>
+    /// <param name="builder">The host application builder.</param>
+    /// <returns>The same <see cref="IHostApplicationBuilder"/> for chaining.</returns>
+    public static IHostApplicationBuilder AddWebStorageClients(this IHostApplicationBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.AddAzureBlobServiceClient(connectionName: "blobs");
+
+        return builder;
+    }
+
+    /// <summary>
     /// Adds web UI, authentication, and Graph client services.
     /// </summary>
     /// <param name="services">The service collection to register dependencies with.</param>
@@ -40,7 +54,10 @@ public static class DependencyInjection
         services.AddScoped<UserFacingFailureDiagnostics>();
         services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
 
-        var graphScopes = configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
+        var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(configuration);
+        services.AddSingleton(tenantAuthorityConfiguration);
+
+        var graphScopes = tenantAuthorityConfiguration.RequiredScopes;
 
         services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
             .AddMicrosoftIdentityWebApp(configuration.GetSection("AzureAd"))
@@ -48,7 +65,7 @@ public static class DependencyInjection
             .AddInMemoryTokenCaches();
 
         services.AddOptions<OpenIdConnectOptions>(OpenIdConnectDefaults.AuthenticationScheme)
-            .Configure<ImportToPlanner.Application.Models.DeploymentModeConfiguration>((options, deploymentModeConfiguration) =>
+            .Configure<TenantAuthorityConfiguration>((options, configuredAuthority) =>
             {
                 options.ResponseType = OpenIdConnectResponseType.Code;
 
@@ -65,7 +82,7 @@ public static class DependencyInjection
                         return;
                     }
 
-                    if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
+                    if (!configuredAuthority.IsSharedOrganisations)
                     {
                         return;
                     }
@@ -93,16 +110,15 @@ public static class DependencyInjection
                         return;
                     }
 
-                    if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
+                    if (!configuredAuthority.IsSharedOrganisations)
                     {
                         return;
                     }
 
-                    if (TryMapHostedAuthenticationFailure(context.Exception?.Message, deploymentModeConfiguration, out var failure))
+                    if (TryMapHostedAuthenticationFailure(context.Exception?.Message, configuredAuthority, out var failure))
                     {
                         var failurePresentation = RecordHostedAuthenticationFailure(
                             context.HttpContext,
-                            deploymentModeConfiguration,
                             context.Exception,
                             failure,
                             "open_id_connect.authentication_failed");
@@ -123,16 +139,15 @@ public static class DependencyInjection
                         return;
                     }
 
-                    if (deploymentModeConfiguration.Mode != ImportToPlanner.Application.Models.DeploymentMode.HostedSharedMultiTenant)
+                    if (!configuredAuthority.IsSharedOrganisations)
                     {
                         return;
                     }
 
-                    if (TryMapHostedAuthenticationFailure(context.Failure?.Message, deploymentModeConfiguration, out var failure))
+                    if (TryMapHostedAuthenticationFailure(context.Failure?.Message, configuredAuthority, out var failure))
                     {
                         var failurePresentation = RecordHostedAuthenticationFailure(
                             context.HttpContext,
-                            deploymentModeConfiguration,
                             context.Failure,
                             failure,
                             "open_id_connect.remote_failure");
@@ -145,10 +160,10 @@ public static class DependencyInjection
         {
             var tokenAcquisition = serviceProvider.GetRequiredService<ITokenAcquisition>();
             var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
-            var deploymentModeConfiguration = serviceProvider.GetRequiredService<ImportToPlanner.Application.Models.DeploymentModeConfiguration>();
+            var configuredAuthority = serviceProvider.GetRequiredService<TenantAuthorityConfiguration>();
             var logger = serviceProvider.GetRequiredService<ILogger<MicrosoftIdentityAccessTokenProvider>>();
             var failureDiagnostics = serviceProvider.GetRequiredService<UserFacingFailureDiagnostics>();
-            var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, deploymentModeConfiguration, logger, graphScopes, failureDiagnostics);
+            var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, configuredAuthority, logger, graphScopes, failureDiagnostics);
             var authenticationProvider = new BaseBearerTokenAuthenticationProvider(accessTokenProvider);
             return new GraphServiceClient(authenticationProvider);
         });
@@ -178,21 +193,21 @@ public static class DependencyInjection
         return services;
     }
 
-    private static string BuildAdminConsentMessage(ImportToPlanner.Application.Models.DeploymentModeConfiguration deploymentModeConfiguration)
+    private static string BuildAdminConsentMessage(TenantAuthorityConfiguration tenantAuthorityConfiguration)
     {
-        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
+        ArgumentNullException.ThrowIfNull(tenantAuthorityConfiguration);
 
-        return deploymentModeConfiguration.AdminConsentUri is null
-            ? "Administrator consent is required before this hosted tenant can continue."
-            : $"Administrator consent is required before this hosted tenant can continue. Ask your administrator to approve access: {deploymentModeConfiguration.AdminConsentUri}";
+        return tenantAuthorityConfiguration.AdminConsentUri is null
+            ? "Administrator consent is required before this tenant can continue."
+            : $"Administrator consent is required before this tenant can continue. Ask your administrator to approve access: {tenantAuthorityConfiguration.AdminConsentUri}";
     }
 
     private static bool TryMapHostedAuthenticationFailure(
         string? failureMessage,
-        ImportToPlanner.Application.Models.DeploymentModeConfiguration deploymentModeConfiguration,
+        TenantAuthorityConfiguration tenantAuthorityConfiguration,
         out HostedAuthenticationFailure failure)
     {
-        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
+        ArgumentNullException.ThrowIfNull(tenantAuthorityConfiguration);
 
         if (string.IsNullOrWhiteSpace(failureMessage))
         {
@@ -216,7 +231,7 @@ public static class DependencyInjection
             || failureMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
         {
             failure = new HostedAuthenticationFailure(
-                BuildAdminConsentMessage(deploymentModeConfiguration),
+                BuildAdminConsentMessage(tenantAuthorityConfiguration),
                 PlannerFailureCategory.Authorisation.ToString(),
                 ConsentResolutionStatus.AdminConsentRequired,
                 "auth.admin_consent_required");
@@ -229,13 +244,11 @@ public static class DependencyInjection
 
     private static FailurePresentation RecordHostedAuthenticationFailure(
         HttpContext httpContext,
-        ImportToPlanner.Application.Models.DeploymentModeConfiguration deploymentModeConfiguration,
         Exception? exception,
         HostedAuthenticationFailure failure,
         string operation)
     {
         ArgumentNullException.ThrowIfNull(httpContext);
-        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
 
         var loggerFactory = httpContext.RequestServices.GetRequiredService<ILoggerFactory>();
         var logger = loggerFactory.CreateLogger(typeof(DependencyInjection).FullName!);

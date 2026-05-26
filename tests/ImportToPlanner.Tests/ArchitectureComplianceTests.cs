@@ -55,4 +55,24 @@ public sealed class ArchitectureComplianceTests
         Assert.True(File.Exists(currentTenantAccessorPath));
         Assert.True(File.Exists(tenantMetadataStorePath));
     }
+
+    [Fact]
+    public void MaintainedSource_DoesNotContainRemovedRuntimeModeConcepts()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var sourceFiles = Directory.EnumerateFiles(Path.Combine(rootPath, "src"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => path.Contains("ImportToPlanner.Application", StringComparison.Ordinal)
+                || path.Contains("ImportToPlanner.Domain", StringComparison.Ordinal)
+                || path.Contains("ImportToPlanner.Web", StringComparison.Ordinal))
+            .Where(path => !path.Contains("/bin/", StringComparison.Ordinal)
+                && !path.Contains("/obj/", StringComparison.Ordinal)
+                && !path.EndsWith("StartupConfigurationValidator.cs", StringComparison.Ordinal));
+
+        foreach (var file in sourceFiles)
+        {
+            var content = File.ReadAllText(file);
+            Assert.DoesNotContain("DeploymentModeConfiguration", content, StringComparison.Ordinal);
+            Assert.DoesNotContain("enum DeploymentMode", content, StringComparison.Ordinal);
+        }
+    }
 }

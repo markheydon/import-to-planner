@@ -16,13 +16,11 @@ public enum SupportedAccountType
 /// <param name="TenantId">The authoritative tenant identifier.</param>
 /// <param name="TenantKey">A support-safe stable tenant key.</param>
 /// <param name="UserObjectId">The signed-in user object identifier.</param>
-/// <param name="Mode">The active deployment mode.</param>
 /// <param name="AccountType">The resolved account type.</param>
 /// <param name="DisplayName">The optional tenant display name.</param>
 public sealed record TenantContext(
     string TenantId,
     string TenantKey,
     string UserObjectId,
-    DeploymentMode Mode,
     SupportedAccountType AccountType,
     string? DisplayName);

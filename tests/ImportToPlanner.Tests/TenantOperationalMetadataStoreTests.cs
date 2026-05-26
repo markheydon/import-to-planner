@@ -1,14 +1,14 @@
 using ImportToPlanner.Application.Models;
-using ImportToPlanner.Infrastructure.Graph.TenantMetadata;
+using ImportToPlanner.Tests.TestDoubles;
 
 namespace ImportToPlanner.Tests;
 
 public sealed class TenantOperationalMetadataStoreTests
 {
     [Fact]
-    public async Task InMemoryStore_WhenMultipleTenantsAreStored_ReturnsTenantScopedRecordsOnly()
+    public async Task BoundaryStore_WhenMultipleTenantsAreStored_ReturnsTenantScopedRecordsOnly()
     {
-        var store = new InMemoryTenantOperationalMetadataStore();
+        var store = new TenantOperationalMetadataStoreStub();
 
         await store.UpsertAsync(
             new TenantOperationalMetadata(
