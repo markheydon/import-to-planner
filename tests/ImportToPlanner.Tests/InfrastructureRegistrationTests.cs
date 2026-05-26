@@ -18,7 +18,6 @@ public sealed class InfrastructureRegistrationTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
-                ["PlannerGateway:UseGraph"] = "false",
             })
             .Build();
 

@@ -3,6 +3,7 @@ using ImportToPlanner.Web.Presenters;
 using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
@@ -54,8 +55,13 @@ public static class DependencyInjection
         services.AddScoped<UserFacingFailureDiagnostics>();
         services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
 
-        var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(configuration);
-        services.AddSingleton(tenantAuthorityConfiguration);
+        var tenantAuthorityConfiguration = services
+            .Where(descriptor => descriptor.ServiceType == typeof(TenantAuthorityConfiguration))
+            .Select(descriptor => descriptor.ImplementationInstance)
+            .OfType<TenantAuthorityConfiguration>()
+            .LastOrDefault()
+            ?? TenantAuthorityConfiguration.FromConfiguration(configuration);
+        services.TryAddSingleton(tenantAuthorityConfiguration);
 
         var graphScopes = tenantAuthorityConfiguration.RequiredScopes;
 

@@ -43,8 +43,6 @@ internal static class StartupConfigurationValidator
             throw new InvalidOperationException($"Application startup configuration is invalid:{Environment.NewLine}{bulletList}");
         }
 
-        return;
-
         void ValidateRequiredSetting(string key)
         {
             if (string.IsNullOrWhiteSpace(configuration[key]))
