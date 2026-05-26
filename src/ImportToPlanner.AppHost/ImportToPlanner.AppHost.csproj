@@ -4,11 +4,13 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>fd3d511b-ea4f-4512-ab15-72fd3d43075a</UserSecretsId>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" />
     <PackageReference Include="Aspire.Hosting.Azure.Storage" />
   </ItemGroup>
 

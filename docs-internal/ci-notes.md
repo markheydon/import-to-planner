@@ -5,15 +5,15 @@ CI validates both the application and the AppHost.
 ## Validation Scope
 
 - Solution restore, format verification, build, and test on `ImportToPlanner.slnx`
-- Aspire AppHost restore and build via `dotnet restore apphost.cs` and `dotnet build apphost.cs --no-restore`
+- AppHost validation as part of solution-level restore/build on `ImportToPlanner.slnx`
 - JavaScript syntax validation for tracked `*.js` files via `node --check`
 
 See `.github/workflows/ci.yml` for the full pipeline.
 
 ## Practical Notes
 
-- Keep the AppHost build path healthy alongside the main solution build.
-- When planner gateway behaviour changes, keep validation in place for both runtime modes unless the change is explicitly scoped to one mode and documented as such.
+- Keep the AppHost included in the solution build path and avoid changes that require separate CI-only steps unless they are explicitly added to `.github/workflows/ci.yml`.
+- When planner-facing behaviour changes, keep validation in place for both authority paths (`AzureAd:TenantId=organizations` and tenant-specific authority) unless the change is explicitly scoped and documented.
 - Use the CI baseline as a minimum bar before enabling hosted rollout.
 - Run JavaScript syntax checks locally before pushing UI shell changes:
 

@@ -1,0 +1,62 @@
+name: Deploy Staging
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - CI
+    branches:
+      - main
+    types:
+      - completed
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-staging:
+    name: Deploy to Staging (ACA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    environment: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Install Aspire CLI
+        shell: bash
+        run: |
+          dotnet tool install --global aspire.cli --version 13.3.5
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          aspire --version
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Aspire AppHost to staging
+        shell: bash
+        env:
+          Azure__SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          Azure__Location: ${{ vars.AZURE_LOCATION }}
+          Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          Parameters__azureAdTenantId: ${{ secrets.AZURE_TENANT_ID }}
+          Parameters__azureAdClientId: ${{ secrets.AZURE_CLIENT_ID }}
+          Parameters__graphClientCertificatePassword: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_PASSWORD }}
+          Parameters__graphClientCertificateBase64: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_BASE64 }}
+        run: aspire deploy --environment Staging
