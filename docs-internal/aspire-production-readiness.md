@@ -24,8 +24,8 @@ This document tracks deployment preparation only. It does **not** change current
 
 | Key | Local development (default) | Hosted environment (production-ready expectation) |
 | --- | --- | --- |
-| `AzureAd:TenantId`, `AzureAd:ClientId`, `AzureAd:Instance`, `AzureAd:CallbackPath` | Store in user secrets for local Graph-mode testing. | Provide via platform-managed app settings and secrets; never commit values. |
-| `AzureAd:ClientCertificates:0:SourceType`, `AzureAd:ClientCertificates:0:CertificateDiskPath`, `AzureAd:ClientCertificates:0:CertificatePassword` | Use `SourceType: Path` with an absolute Linux, WSL, or macOS-visible path to a local `.pfx`. | Prefer a cloud-native certificate source, such as Key Vault or certificate store integration, and avoid mounted disk-path certificates where possible. |
+| `AzureAd:TenantId`, `AzureAd:ClientId`, `AzureAd:Instance`, `AzureAd:CallbackPath` | Store in user secrets for local Graph-mode testing. | Provide via AppHost deploy parameters (`azureAdTenantId`, `azureAdClientId`) and platform-managed defaults; never commit values. |
+| `AzureAd:ClientCertificates:0:SourceType`, `AzureAd:ClientCertificates:0:CertificateDiskPath`, `AzureAd:ClientCertificates:0:CertificatePassword`, `AzureAd:ClientCertificates:0:CertificateBase64` | Use `SourceType: Path` with an absolute Linux, WSL, or macOS-visible path to a local `.pfx`. | Current hosted baseline uses AppHost deploy parameters (`graphClientCertificatePassword`, `graphClientCertificateBase64`) and startup materialisation to `/tmp/import-to-planner-graph-client.pfx`; production should move to managed certificate sources when ready. |
 | `Storage:TenantMetadataTable`, `Storage:DataProtectionContainer`, `Storage:DataProtectionBlob` | Keep defaults from `appsettings.json` unless a local test scenario requires alternate names. | Provide explicit values through hosted configuration so metadata and Data Protection persistence remain stable across restarts. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Usually unset unless developing against a local collector. | Set to the hosted OTLP collector endpoint to export logs, metrics, and traces; when unset, OTLP export remains disabled. |
 
@@ -38,7 +38,7 @@ This document tracks deployment preparation only. It does **not** change current
 ## Deployment Handoff
 
 1. Confirm `src/ImportToPlanner.AppHost/AppHost.cs` still defines only the `web` app and the `aca-env` environment.
-2. Hand off hosted configuration values (`AzureAd:*`, `Storage:*`, certificate source, and OTLP endpoint) to the deployment owner as secret-backed settings.
+2. Hand off hosted configuration values (`AzureAd:*`, `Storage:*`, certificate source, and OTLP endpoint) to the deployment owner as secret-backed settings, including AppHost parameter mapping in CI.
 3. Verify redirect URI and delegated Graph permissions remain aligned with the target hosted URL.
 4. Run CI-equivalent validation before rollout: solution build and tests plus AppHost build.
 5. Capture post-deployment smoke checks, including sign-in, preview, execute, and telemetry flow, before enabling wider access.

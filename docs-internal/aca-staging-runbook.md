@@ -54,6 +54,40 @@ aspire secret get "Azure:Location"
 aspire secret get "Azure:ResourceGroup"
 ```
 
+Before running a manual hosted deploy, prepare runtime certificate inputs from your own `.pfx` file:
+
+1. Export or obtain the Graph client certificate `.pfx` and its password.
+2. Convert the `.pfx` file to base64 (single line, no wrapping):
+
+Linux/macOS:
+
+```bash
+base64 -w 0 /path/to/graph-client.pfx
+```
+
+PowerShell (Windows):
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\path\to\graph-client.pfx"))
+```
+
+3. Export runtime parameters for deploy (replace placeholder values):
+
+```bash
+export Parameters__azureAdTenantId="<tenant-id>"
+export Parameters__azureAdClientId="<client-id>"
+export Parameters__graphClientCertificatePassword="<certificate-password>"
+export Parameters__graphClientCertificateBase64="<single-line-base64-pfx>"
+```
+
+4. Run deploy:
+
+```bash
+aspire deploy --environment Staging
+```
+
+Important: this hosted flow does not depend on your local certificate file path. The app recreates a runtime certificate file from base64 during startup.
+
 ## GitHub staging environment mapping (what comes from where)
 
 Use this mapping when creating values under GitHub Settings > Environments > `staging`.
@@ -65,11 +99,14 @@ Use this mapping when creating values under GitHub Settings > Environments > `st
 | `AZURE_SUBSCRIPTION_ID` | Secret | Aspire deployment target settings | `aspire secret get "Azure:SubscriptionId"` |
 | `AZURE_LOCATION` | Variable | Aspire deployment target settings | `aspire secret get "Azure:Location"` |
 | `AZURE_RESOURCE_GROUP` | Variable | Aspire deployment target settings | `aspire secret get "Azure:ResourceGroup"` |
+| `GRAPH_CLIENT_CERTIFICATE_PASSWORD` | Secret | Password protecting the Graph client certificate `.pfx` | Certificate export/process owner |
+| `GRAPH_CLIENT_CERTIFICATE_BASE64` | Secret | Base64-encoded `.pfx` bytes for hosted runtime materialisation | `base64 -w 0 <path-to-pfx>` on Linux/macOS or equivalent on Windows |
 
 Why this split exists:
 
 - OIDC identity values (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`) come from identity setup.
 - Deployment target values (`subscription`, `location`, `resource group`) come from Aspire deploy prompts and local Aspire secret storage.
+- Hosted web runtime values reuse `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` for the app runtime parameters in this single-tenant baseline, plus `GRAPH_CLIENT_CERTIFICATE_*` for certificate handoff.
 
 ## 1) One-time Azure and GitHub setup
 
@@ -93,6 +130,11 @@ Add these environment variables to the same `staging` environment:
 - `AZURE_LOCATION`
 - `AZURE_RESOURCE_GROUP`
 
+Add these additional environment secrets:
+
+- `GRAPH_CLIENT_CERTIFICATE_PASSWORD`
+- `GRAPH_CLIENT_CERTIFICATE_BASE64`
+
 If you are unsure about the source of each value, use the mapping table above before saving.
 
 Recommended protections:
@@ -113,6 +155,7 @@ Required values:
 - `AzureAd:ClientCertificates:0:SourceType`
 - `AzureAd:ClientCertificates:0:CertificateDiskPath`
 - `AzureAd:ClientCertificates:0:CertificatePassword`
+- `AzureAd:ClientCertificates:0:CertificateBase64`
 - `Storage:TenantMetadataTable`
 - `Storage:DataProtectionContainer`
 - `Storage:DataProtectionBlob`
@@ -121,7 +164,8 @@ Required values:
 Notes:
 
 - The app startup validator rejects missing required keys and placeholder defaults.
-- The app currently expects a certificate file path for Microsoft Graph auth.
+- The AppHost now supplies AzureAd values via Aspire deploy parameters.
+- The app can materialise `AzureAd:ClientCertificates:0:CertificateBase64` into `AzureAd:ClientCertificates:0:CertificateDiskPath` at startup.
 
 ### About the three shared Azure values in CI
 
@@ -133,23 +177,35 @@ The staging workflow passes three `aspire deploy` values explicitly:
 
 If these are missing, GitHub deployment can authenticate to Azure successfully and still fail during `aspire deploy`.
 
-## 3) Certificate mounting approach for staging
+### Hosted runtime parameters passed by CI
 
-The current implementation uses `AzureAd:ClientCertificates:0:CertificateDiskPath`, so the certificate must be available as a file inside the container.
+The staging workflow also passes Aspire parameters for hosted web runtime settings:
 
-Recommended staging approach:
+- `Parameters__azureAdTenantId` from `AZURE_TENANT_ID`
+- `Parameters__azureAdClientId` from `AZURE_CLIENT_ID`
+- `Parameters__graphClientCertificatePassword` from `GRAPH_CLIENT_CERTIFICATE_PASSWORD`
+- `Parameters__graphClientCertificateBase64` from `GRAPH_CLIENT_CERTIFICATE_BASE64`
 
-1. Store the `.pfx` content and password as secure values (GitHub Environment secrets and/or Azure-managed secret store).
-2. Mount or materialise the certificate inside the container at a stable path, for example `/mnt/secrets/graph-client.pfx`.
-3. Set:
-   - `AzureAd:ClientCertificates:0:SourceType=Path`
-   - `AzureAd:ClientCertificates:0:CertificateDiskPath=/mnt/secrets/graph-client.pfx`
-   - `AzureAd:ClientCertificates:0:CertificatePassword=<secret>`
-4. Restrict file permissions so only the app process can read the certificate.
+If these are missing, revisions may provision but fail at runtime with startup configuration errors.
+
+## 3) Certificate handling for staging
+
+The hosted path uses base64 certificate materialisation during startup:
+
+1. Store `GRAPH_CLIENT_CERTIFICATE_BASE64` and `GRAPH_CLIENT_CERTIFICATE_PASSWORD` as GitHub Environment secrets.
+2. The AppHost forwards those values into web app configuration.
+3. At startup, the web app decodes `AzureAd:ClientCertificates:0:CertificateBase64` and writes `/tmp/import-to-planner-graph-client.pfx` with user-only read/write permissions.
+4. Microsoft.Identity.Web reads that file path using `AzureAd:ClientCertificates:0:CertificateDiskPath`.
+
+For contributors:
+
+- Do not copy another developer's local certificate path.
+- Use your own `.pfx` plus password and generate your own base64 payload.
+- The container path is fixed by runtime configuration and is created at startup from base64.
 
 Production hardening (later):
 
-- Move from file-mounted certificate material to a managed certificate source (for example, Key Vault integration) when ready.
+- Move from startup file materialisation to a managed certificate source (for example, Key Vault integration) when ready.
 
 ## 4) First deployment procedure
 

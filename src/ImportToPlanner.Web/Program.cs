@@ -11,6 +11,7 @@ builder.AddWebStorageClients();
 builder.AddInfrastructureStorageClients();
 
 ApplyLegacyCertificatePathOverrides(builder.Configuration);
+ApplyCertificateBase64Overrides(builder.Configuration);
 StartupConfigurationValidator.Validate(builder.Configuration);
 
 var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(builder.Configuration);
@@ -81,5 +82,59 @@ static void ApplyLegacyCertificatePathOverrides(IConfiguration configuration)
     if (certificatePathOverrides.Count > 0)
     {
         configurationManager.AddInMemoryCollection(certificatePathOverrides);
+    }
+}
+
+static void ApplyCertificateBase64Overrides(IConfiguration configuration)
+{
+    ArgumentNullException.ThrowIfNull(configuration);
+
+    if (configuration is not IConfigurationManager configurationManager)
+    {
+        return;
+    }
+
+    const string certificateBase64Key = "AzureAd:ClientCertificates:0:CertificateBase64";
+    const string certificateDiskPathKey = "AzureAd:ClientCertificates:0:CertificateDiskPath";
+    var certificateBase64 = configuration[certificateBase64Key];
+    if (string.IsNullOrWhiteSpace(certificateBase64))
+    {
+        return;
+    }
+
+    var certificateDiskPath = configuration[certificateDiskPathKey];
+    if (string.IsNullOrWhiteSpace(certificateDiskPath))
+    {
+        certificateDiskPath = "/tmp/import-to-planner-graph-client.pfx";
+        configurationManager.AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+            {
+                [certificateDiskPathKey] = certificateDiskPath,
+            });
+    }
+
+    byte[] certificateBytes;
+    try
+    {
+        certificateBytes = Convert.FromBase64String(certificateBase64);
+    }
+    catch (FormatException ex)
+    {
+        throw new InvalidOperationException(
+            "'AzureAd:ClientCertificates:0:CertificateBase64' is not a valid base64 string.",
+            ex);
+    }
+
+    var certificateDirectory = Path.GetDirectoryName(certificateDiskPath);
+    if (!string.IsNullOrWhiteSpace(certificateDirectory))
+    {
+        Directory.CreateDirectory(certificateDirectory);
+    }
+
+    File.WriteAllBytes(certificateDiskPath, certificateBytes);
+
+    if (OperatingSystem.IsLinux() || OperatingSystem.IsMacOS())
+    {
+        File.SetUnixFileMode(certificateDiskPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
 }

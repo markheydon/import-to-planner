@@ -55,4 +55,8 @@ jobs:
           Azure__SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           Azure__Location: ${{ vars.AZURE_LOCATION }}
           Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          Parameters__azureAdTenantId: ${{ secrets.AZURE_TENANT_ID }}
+          Parameters__azureAdClientId: ${{ secrets.AZURE_CLIENT_ID }}
+          Parameters__graphClientCertificatePassword: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_PASSWORD }}
+          Parameters__graphClientCertificateBase64: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_BASE64 }}
         run: aspire deploy --environment Staging
