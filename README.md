@@ -1,10 +1,18 @@
 # Import To Planner
 
 [![CI](https://github.com/markheydon/import-to-planner/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/markheydon/import-to-planner/actions/workflows/ci.yml)
+[![Staging Deploy](https://github.com/markheydon/import-to-planner/actions/workflows/deploy-staging.yml/badge.svg?branch=main)](https://github.com/markheydon/import-to-planner/actions/workflows/deploy-staging.yml)
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![Licence MIT](https://img.shields.io/badge/Licence-MIT-green)
 
+## Project Name and Description
+
 Import To Planner is a single-purpose Blazor application that imports CSV task lists into Microsoft Planner using a safe, operator-led flow.
+
+Primary purpose:
+
+- Provide a controlled CSV-to-Planner import workflow with validation, preview, and explicit execution confirmation.
+- Support hosted and self-hosted authority configurations through `AzureAd:TenantId` while keeping one Graph-backed runtime path.
 
 The workflow preserves operational safeguards:
 
