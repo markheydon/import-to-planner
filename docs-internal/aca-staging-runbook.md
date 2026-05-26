@@ -114,8 +114,32 @@ Why this split exists:
 
 - Create or choose a subscription for non-production staging usage.
 - Create a Microsoft Entra application/service principal for GitHub OIDC.
-- Configure a federated credential on that app for this repository and branch/workflow usage.
+- Configure a federated credential on that app for this repository and environment usage.
 - Grant deployment permissions at the staging resource-group scope (or a tightly scoped equivalent).
+
+Create the federated credential in Entra using the portal flow below:
+
+1. Open the app registration used by `AZURE_CLIENT_ID`.
+2. Go to **Certificates & secrets** > **Federated credentials** > **Add credential**.
+3. For **Federated credential scenario**, choose **GitHub Actions deploying Azure resources**.
+4. Set:
+   - **Organization**: `markheydon`
+   - **Repository**: `import-to-planner`
+   - **Entity type**: `Environment`
+   - **GitHub environment name**: `staging`
+5. Continue to credential details, add a name, and save.
+
+After saving, the generated values should align with this workflow:
+
+- Issuer: `https://token.actions.githubusercontent.com`
+- Audience: `api://AzureADTokenExchange`
+- Subject identifier: `repo:markheydon/import-to-planner:environment:staging`
+
+Notes:
+
+- The `AZURE_CLIENT_ID` GitHub secret must reference the same app registration that contains this federated credential.
+- If the credential is missing or attached to a different app registration, `azure/login` fails with `AADSTS70025`.
+- In this scenario, Issuer and Subject identifier are generated from the GitHub selections above; they are not typically entered as free text.
 
 ### GitHub Environment prerequisites
 
@@ -215,6 +239,30 @@ Production hardening (later):
 4. Confirm the shared Azure values are present in the workflow environment (`AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`, and `AZURE_RESOURCE_GROUP`).
 5. Confirm `aspire deploy --environment Staging` completed without errors.
 6. Capture deployment output and resulting ACA endpoint URL.
+
+If deployment fails at `Azure login (OIDC)` with `AADSTS70025`, verify the three federated credential values above and confirm they are configured on the app registration identified by `AZURE_CLIENT_ID`.
+
+If deployment fails at `Azure login (OIDC)` with `No subscriptions found for <client-id>`, check all of the following:
+
+1. `AZURE_SUBSCRIPTION_ID` points to the correct subscription.
+2. The service principal for `AZURE_CLIENT_ID` exists in `AZURE_TENANT_ID`.
+3. That service principal has Azure RBAC on the target scope (subscription or staging resource group).
+
+Useful checks:
+
+```bash
+az ad sp show --id "<AZURE_CLIENT_ID>"
+az role assignment list --assignee "<AZURE_CLIENT_ID>" --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>" --all -o table
+```
+
+If needed, grant staging deploy permissions at resource-group scope:
+
+```bash
+az role assignment create \
+   --assignee "<AZURE_CLIENT_ID>" \
+   --role Contributor \
+   --scope "/subscriptions/<AZURE_SUBSCRIPTION_ID>/resourceGroups/<AZURE_RESOURCE_GROUP>"
+```
 
 ## 5) First-deploy smoke checks
 
