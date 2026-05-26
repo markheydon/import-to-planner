@@ -9,13 +9,19 @@ When repository guidance conflicts, resolve according to this order:
 1. `.github/copilot-instructions.md` — repository-wide policy (highest authority)
 2. `AGENTS.md` (this file) — repo-level agent delegation and skill mapping
 3. `.specify/memory/constitution.md` — Spec Kit governance document
-4. Other instruction, skill, or agent files (for example, files under `.github/instructions/`, `.github/skills/`, or `.specify/`)
+4. Other instruction, skill, or agent files (for example, files under `.github/instructions/`, `.github/skills/`, `.agents/skills/`, or `.specify/`)
 
 This order preserves the maintainer's ability to set repository-wide overrides while allowing Spec Kit and other documentation to operate.
 
 ## Purpose
 
 Do not modify third-party-sourced skill or instruction files unless absolutely the only way to achieve the results desired or where maintainer approval has been given. Prefer updating `AGENTS.md` or `.github/copilot-instructions.md` to express repo-level overrides so upstream refreshes of third-party files do not lose local policy.
+
+## Portable vs Repository-Specific Assets
+
+- `.agents/` contains portable, generic skills and related assets. In this repository those assets may be imported from upstream tooling, such as the .NET Aspire CLI, so they should normally be treated as shared resources that are unlikely to need local edits.
+- `.github/` contains repository-specific agent customisations. Use `.github/skills/`, `.github/agents/`, `.github/instructions/`, and `.github/prompts/` for import-to-planner-specific constraints, tighter guidance, and local behaviour changes.
+- If a portable skill from `.agents/` needs repository-specific refinement, implement that refinement in `.github/` instead of changing the portable source unless the change is intentionally meant to update the shared generic skill.
 
 ## Agent registry
 
@@ -66,7 +72,7 @@ Implementation workflow expectation:
 
 ## Conflict handling and guidance
 
-If a skill or instruction file under `.github/skills/` or `.github/instructions/` conflicts with higher-priority files, follow the Precedence list above. Avoid editing third-party files; instead, add an override or clarification here or in `.github/copilot-instructions.md`.
+If a skill or instruction file under `.github/skills/`, `.agents/skills/`, or `.github/instructions/` conflicts with higher-priority files, follow the Precedence list above. Avoid editing third-party files; instead, add an override or clarification here or in `.github/copilot-instructions.md`.
 
 ## Non-Constitutional Repository Policies
 
