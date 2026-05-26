@@ -7,7 +7,7 @@ This document tracks deployment preparation only. It does **not** change current
 - Keep `src/ImportToPlanner.AppHost/AppHost.cs` scoped to a single `web` resource unless scaling requirements are explicitly approved.
 - Confirm hosted environment secrets and configuration handoff for `AzureAd:*`, `Storage:*`, certificate credential source, and `OTEL_EXPORTER_OTLP_ENDPOINT`.
 - Keep `/health` and `/alive` unexposed in non-development environments unless an authenticated or private ingress policy is in place.
-- Ensure CI keeps validating the current scope: `dotnet restore ImportToPlanner.slnx`, `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal`, `dotnet build ImportToPlanner.slnx --no-restore`, `dotnet restore src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj`, `dotnet build src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj --no-restore`, and `dotnet test ImportToPlanner.slnx --no-build`.
+- Ensure CI keeps validating the current scope: `dotnet restore ImportToPlanner.slnx`, `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal`, `dotnet build ImportToPlanner.slnx --no-restore`, and `dotnet test ImportToPlanner.slnx --no-build` (AppHost is currently validated via the solution-level restore/build).
 - Record deployment handoff ownership for AppHost settings and web app secrets before enabling hosted rollout.
 - For hosted mode, keep the first Azure rollout to two environments only: `Staging` for automatic GitHub Actions deployments and `Production` for manual promotion.
 
