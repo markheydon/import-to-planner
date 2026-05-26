@@ -1,5 +1,4 @@
 using Azure.Storage.Blobs;
-using ImportToPlanner.Application.Models;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 
@@ -12,27 +11,17 @@ internal static class HostedDataProtectionConfigurator
 
     public static void Configure(
         IServiceCollection services,
-        IConfiguration configuration,
-        DeploymentModeConfiguration deploymentModeConfiguration)
+        StorageConfiguration storageConfiguration)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
-        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
+        ArgumentNullException.ThrowIfNull(storageConfiguration);
 
-        if (deploymentModeConfiguration.Mode != DeploymentMode.HostedSharedMultiTenant
-            || !deploymentModeConfiguration.HostedStorageEnabled)
-        {
-            return;
-        }
-
-        var storageSettings = HostedDataProtectionStorageSettings.FromConfiguration(configuration);
+        var storageSettings = HostedDataProtectionStorageSettings.FromStorageConfiguration(storageConfiguration);
 
         services
             .AddDataProtection()
-            .PersistKeysToAzureBlobStorage(
-                storageSettings.ConnectionString,
-                storageSettings.ContainerName,
-                storageSettings.BlobName);
+            .PersistKeysToAzureBlobStorage(serviceProvider =>
+                storageSettings.CreateBlobClient(serviceProvider.GetRequiredService<BlobServiceClient>()));
 
         services.Configure<DataProtectionOptions>(options =>
         {
@@ -45,63 +34,27 @@ internal static class HostedDataProtectionConfigurator
         });
 
         services.AddSingleton(storageSettings);
-        services.AddHostedService<HostedDataProtectionContainerBootstrapper>();
     }
 }
 
 internal sealed record HostedDataProtectionStorageSettings(
-    string ConnectionString,
     string ContainerName,
     string BlobName)
 {
-    public static HostedDataProtectionStorageSettings FromConfiguration(IConfiguration configuration)
+    public static HostedDataProtectionStorageSettings FromStorageConfiguration(StorageConfiguration storageConfiguration)
     {
-        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(storageConfiguration);
 
-        var connectionString = configuration["HostedStorage:ConnectionString"];
-        var containerName = configuration["HostedStorage:DataProtectionContainer"];
-        var blobName = configuration["HostedStorage:DataProtectionBlob"];
-
-        var missingSettings = new List<string>();
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            missingSettings.Add("HostedStorage:ConnectionString");
-        }
-
-        if (string.IsNullOrWhiteSpace(containerName))
-        {
-            missingSettings.Add("HostedStorage:DataProtectionContainer");
-        }
-
-        if (string.IsNullOrWhiteSpace(blobName))
-        {
-            missingSettings.Add("HostedStorage:DataProtectionBlob");
-        }
-
-        if (missingSettings.Count > 0)
-        {
-            throw new InvalidOperationException(
-                $"Hosted shared multi-tenant mode with hosted storage enabled requires {string.Join(", ", missingSettings.Select(setting => $"'{setting}'"))} to configure durable Data Protection key persistence.");
-        }
-
-        return new HostedDataProtectionStorageSettings(connectionString!, containerName!, blobName!);
+        return new HostedDataProtectionStorageSettings(
+            storageConfiguration.DataProtectionContainer,
+            storageConfiguration.DataProtectionBlob);
     }
 
-    public BlobContainerClient CreateContainerClient()
-        => new(ConnectionString, ContainerName);
-}
-
-internal sealed class HostedDataProtectionContainerBootstrapper(HostedDataProtectionStorageSettings storageSettings) : IHostedService
-{
-    public async Task StartAsync(CancellationToken cancellationToken)
+    public BlobClient CreateBlobClient(BlobServiceClient blobServiceClient)
     {
-        // The Azure blob Data Protection provider expects the target container to exist already.
-        await storageSettings
-            .CreateContainerClient()
-            .CreateIfNotExistsAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        ArgumentNullException.ThrowIfNull(blobServiceClient);
+        return blobServiceClient
+            .GetBlobContainerClient(ContainerName)
+            .GetBlobClient(BlobName);
     }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-        => Task.CompletedTask;
 }

@@ -11,19 +11,18 @@ internal static class HostedTelemetryHelper
     /// Builds privacy-safe hosted telemetry dimensions for logging and tracing scopes.
     /// </summary>
     internal static IReadOnlyDictionary<string, string> BuildHostedTelemetryDimensions(
-        DeploymentModeConfiguration deploymentModeConfiguration,
+        TenantAuthorityConfiguration tenantAuthorityConfiguration,
         TenantContext? tenantContext,
         ConsentResolutionStatus consentStatus,
         string? failureCategory)
     {
-        ArgumentNullException.ThrowIfNull(deploymentModeConfiguration);
+        ArgumentNullException.ThrowIfNull(tenantAuthorityConfiguration);
 
         return new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["deployment.mode"] = deploymentModeConfiguration.Mode.ToString(),
+            ["authority.kind"] = tenantAuthorityConfiguration.AuthorityKind.ToString(),
             ["tenant.key"] = tenantContext?.TenantKey ?? "none",
             ["consent.status"] = consentStatus.ToString(),
-            ["planner.gateway.mode"] = deploymentModeConfiguration.UseGraphGateway ? "Graph" : "InMemory",
             ["failure.category"] = string.IsNullOrWhiteSpace(failureCategory) ? "None" : failureCategory,
         };
     }

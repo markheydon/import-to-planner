@@ -26,8 +26,8 @@ dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test Impor
 Repository testing notes
 ------------------------
 - Mock `IPlannerGateway` for unit tests covering orchestration logic.
-- Prefer `InMemoryPlannerGateway` for integration-style tests that exercise planner behaviour without calling real Graph endpoints.
-- See `.specify/memory/constitution.md` for mandatory testing standards (for example: verify compatibility for both configured runtime modes `PlannerGateway:UseGraph` true and false when planner gateway behaviour is affected).
+- Use explicit boundary doubles for planner and tenant metadata abstractions in integration-style tests.
+- See `.specify/memory/constitution.md` for mandatory testing standards and architecture evidence expectations.
 
 Guidance and skills
 -------------------

@@ -10,7 +10,7 @@ applyTo: 'All contributions'
 1. `.github/copilot-instructions.md` (this file) — repository-wide policy (highest authority)
 2. `AGENTS.md` (root) — repo-level agent delegation and skill mapping
 3. `.specify/memory/constitution.md` — Spec Kit governance
-4. Other instruction, skill, or agent files (for example, files under `.github/instructions/`, `.github/skills/`)
+4. Other instruction, skill, or agent files (for example, files under `.github/instructions/`, `.github/skills/`, or `.agents/skills/`)
 
 Refer to `AGENTS.md` for the authoritative agent registry and skill delegation. Avoid editing third-party-sourced skill/instruction files directly; prefer adding overrides here or in `AGENTS.md`.
 
@@ -29,6 +29,12 @@ Refer to the following discipline-specific instruction files aligned with work t
 
 This file no longer lists skills inline. See `AGENTS.md` at the repository root for the authoritative agent registry and the list of applicable skills and their delegation.
 
+## Portable vs Repository-Specific Assets
+
+- Treat assets under `.agents/` as portable, shared customisations. In this repository they primarily hold generic skills imported from upstream tooling, such as the .NET Aspire CLI, and they should usually remain unchanged unless the shared source itself is being updated.
+- Treat assets under `.github/` as repository-specific guidance. This includes `.github/skills/`, `.github/agents/`, `.github/instructions/`, and `.github/prompts/`, which are the preferred places for import-to-planner-specific tightening, overrides, and behavioural guidance.
+- When a generic skill needs repository-specific behaviour, prefer adding or adjusting `.github/` assets rather than editing the portable copy under `.agents/`.
+
 ## Language & Style
 
 - All internal and end-user-facing documentation, including code comments, must be in UK English (colour, behaviour, organisation, etc.).
@@ -42,7 +48,7 @@ See `docs-internal/microsoft-graph-guidelines.md` for implementation guidance on
 
 ## Testing & Coverage
 
-See `tests/README.md` for test-running and coverage guidance. Mandatory testing standards (for example, verifying both `PlannerGateway:UseGraph` runtime modes when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
+See `tests/README.md` for test-running and coverage guidance. Mandatory testing standards (for example, validating startup configuration and authority-specific auth guards when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
 
 
 ## PR Review Comment Handling
@@ -55,5 +61,5 @@ See `AGENTS.md` for agent delegation. By default, coding, architecture, and test
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read specs/004-add-multitenant-hosting/plan.md
+shell commands, and other important information, read specs/005-simplify-graph-path/plan.md
 <!-- SPECKIT END -->

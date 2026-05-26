@@ -13,7 +13,7 @@ public sealed class HostedAuthenticationEventTests
     [Fact]
     public async Task AddWebHostServices_WhenHostedAuthenticationFailsForUnsupportedAccount_RedirectsWithFriendlyError()
     {
-        var serviceProvider = BuildHostedServiceProvider();
+        var serviceProvider = BuildHostedServiceProvider("organizations");
         var options = serviceProvider
             .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
             .Get(OpenIdConnectDefaults.AuthenticationScheme);
@@ -39,7 +39,7 @@ public sealed class HostedAuthenticationEventTests
     [Fact]
     public async Task AddWebHostServices_WhenHostedRemoteFailureIsAccessDenied_RedirectsWithFriendlyError()
     {
-        var serviceProvider = BuildHostedServiceProvider();
+        var serviceProvider = BuildHostedServiceProvider("organizations");
         var options = serviceProvider
             .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
             .Get(OpenIdConnectDefaults.AuthenticationScheme);
@@ -60,29 +60,54 @@ public sealed class HostedAuthenticationEventTests
         Assert.Contains("Administrator%20consent", location, StringComparison.Ordinal);
     }
 
-    private static ServiceProvider BuildHostedServiceProvider()
+    [Fact]
+    public async Task AddWebHostServices_WhenSpecificTenantAuthenticationFails_DoesNotRedirectWithHostedGuidance()
+    {
+        var serviceProvider = BuildHostedServiceProvider("tenant-specific");
+        var options = serviceProvider
+            .GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>()
+            .Get(OpenIdConnectDefaults.AuthenticationScheme);
+
+        var httpContext = new DefaultHttpContext();
+        httpContext.RequestServices = serviceProvider;
+        var context = new AuthenticationFailedContext(
+            httpContext,
+            CreateOpenIdConnectScheme(),
+            options)
+        {
+            Exception = new InvalidOperationException("Unsupported account type. Sign in with a supported work or school account."),
+        };
+
+        await options.Events.AuthenticationFailed(context);
+
+        Assert.Equal(StatusCodes.Status200OK, httpContext.Response.StatusCode);
+        Assert.True(string.IsNullOrWhiteSpace(httpContext.Response.Headers.Location.ToString()));
+    }
+
+    private static ServiceProvider BuildHostedServiceProvider(string tenantId)
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["AzureAd:Instance"] = "https://login.microsoftonline.com/",
-                ["AzureAd:TenantId"] = "organizations",
+                ["AzureAd:TenantId"] = tenantId,
                 ["AzureAd:ClientId"] = "00000000-0000-0000-0000-000000000000",
                 ["AzureAd:CallbackPath"] = "/signin-oidc",
                 ["DownstreamApis:MicrosoftGraph:Scopes:0"] = "User.Read",
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:DataProtectionContainer"] = "dataprotection",
+                ["Storage:DataProtectionBlob"] = "keys.xml",
             })
             .Build();
 
+        var authority = TenantAuthorityConfiguration.FromConfiguration(configuration);
+        var storage = StorageConfiguration.FromConfiguration(configuration);
+
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddSingleton(new DeploymentModeConfiguration(
-            DeploymentMode.HostedSharedMultiTenant,
-            "organizations",
-            true,
-            false,
-            "SingleActiveReplica",
-            ["User.Read"],
-            new Uri("https://login.microsoftonline.com/organizations/v2.0/adminconsent?client_id=test")));
+        services.AddSingleton(authority);
+        services.AddSingleton(storage);
+        services.AddSingleton(new ConsentResolutionDefaults(authority.RequiredScopes, authority.AdminConsentUri));
 
         services.AddWebHostServices(configuration);
 

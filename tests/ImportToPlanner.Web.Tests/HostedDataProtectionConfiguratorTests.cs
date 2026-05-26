@@ -1,9 +1,8 @@
-using ImportToPlanner.Application.Models;
+using Azure.Storage.Blobs;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace ImportToPlanner.Web.Tests;
@@ -11,83 +10,72 @@ namespace ImportToPlanner.Web.Tests;
 public sealed class HostedDataProtectionConfiguratorTests
 {
     [Fact]
-    public void Configure_WhenHostedSharedMultiTenantWithHostedStorageEnabled_RegistersHostedBlobDataProtection()
+    public void Configure_WithValidStorageSettings_RegistersBlobBackedDataProtection()
     {
         var services = new ServiceCollection();
-        var configuration = BuildConfiguration(new Dictionary<string, string?>
-        {
-            ["HostedStorage:ConnectionString"] = "UseDevelopmentStorage=true",
-            ["HostedStorage:DataProtectionContainer"] = "dataprotection",
-            ["HostedStorage:DataProtectionBlob"] = "keys.xml",
-        });
+        services.AddSingleton(new BlobServiceClient("UseDevelopmentStorage=true"));
+        var configuration = BuildStorageConfiguration();
+        var storageConfiguration = StorageConfiguration.FromConfiguration(configuration);
 
         var exception = Record.Exception(() => HostedDataProtectionConfigurator.Configure(
             services,
-            configuration,
-            CreateDeploymentModeConfiguration(DeploymentMode.HostedSharedMultiTenant, hostedStorageEnabled: true)));
+            storageConfiguration));
 
         Assert.Null(exception);
 
         using var serviceProvider = services.BuildServiceProvider();
         var dataProtectionOptions = serviceProvider.GetRequiredService<IOptions<DataProtectionOptions>>().Value;
         var keyManagementOptions = serviceProvider.GetRequiredService<IOptions<KeyManagementOptions>>().Value;
+        var blobServiceClient = serviceProvider.GetRequiredService<BlobServiceClient>();
 
         Assert.Equal(HostedDataProtectionConfigurator.HostedApplicationDiscriminator, dataProtectionOptions.ApplicationDiscriminator);
         Assert.Equal(HostedDataProtectionConfigurator.HostedKeyLifetime, keyManagementOptions.NewKeyLifetime);
+        Assert.NotNull(blobServiceClient);
         Assert.NotNull(serviceProvider.GetRequiredService<IDataProtectionProvider>());
-        Assert.Contains(serviceProvider.GetServices<IHostedService>(), service => service is HostedDataProtectionContainerBootstrapper);
-    }
-
-    [Theory]
-    [InlineData("HostedStorage:ConnectionString")]
-    [InlineData("HostedStorage:DataProtectionContainer")]
-    [InlineData("HostedStorage:DataProtectionBlob")]
-    public void Configure_WhenHostedStorageSettingMissing_ThrowsDeterministically(string missingSetting)
-    {
-        var settings = new Dictionary<string, string?>
-        {
-            ["HostedStorage:ConnectionString"] = "UseDevelopmentStorage=true",
-            ["HostedStorage:DataProtectionContainer"] = "dataprotection",
-            ["HostedStorage:DataProtectionBlob"] = "keys.xml",
-        };
-        settings.Remove(missingSetting);
-
-        var exception = Assert.Throws<InvalidOperationException>(() => HostedDataProtectionConfigurator.Configure(
-            new ServiceCollection(),
-            BuildConfiguration(settings),
-            CreateDeploymentModeConfiguration(DeploymentMode.HostedSharedMultiTenant, hostedStorageEnabled: true)));
-
-        Assert.Contains(missingSetting, exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Configure_WhenSelfHostedSingleTenant_DoesNotRequireHostedStorage()
+    public void FromConfiguration_WhenConnectionStringMissing_ReturnsStorageConfiguration()
     {
-        var services = new ServiceCollection();
-
-        var exception = Record.Exception(() => HostedDataProtectionConfigurator.Configure(
-            services,
-            BuildConfiguration([]),
-            CreateDeploymentModeConfiguration(DeploymentMode.SelfHostedSingleTenant, hostedStorageEnabled: false)));
-
-        Assert.Null(exception);
-        Assert.DoesNotContain(services, descriptor => descriptor.ImplementationType == typeof(HostedDataProtectionContainerBootstrapper));
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IConfigureOptions<DataProtectionOptions>));
-        Assert.DoesNotContain(services, descriptor => descriptor.ServiceType == typeof(IConfigureOptions<KeyManagementOptions>));
-    }
-
-    private static IConfiguration BuildConfiguration(IEnumerable<KeyValuePair<string, string?>> settings)
-        => new ConfigurationBuilder()
-            .AddInMemoryCollection(settings)
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:DataProtectionContainer"] = "dataprotection",
+                ["Storage:DataProtectionBlob"] = "keys.xml",
+            })
             .Build();
 
-    private static DeploymentModeConfiguration CreateDeploymentModeConfiguration(DeploymentMode mode, bool hostedStorageEnabled)
-        => new(
-            mode,
-            mode == DeploymentMode.HostedSharedMultiTenant ? "organizations" : "common",
-            UseGraphGateway: true,
-            HostedStorageEnabled: hostedStorageEnabled,
-            InitialReplicaPolicy: "SingleActiveReplica",
-            RequiredScopes: ["User.Read"],
-            AdminConsentUri: null);
+        var result = StorageConfiguration.FromConfiguration(configuration);
+
+        Assert.Equal("TenantOperationalMetadata", result.TenantMetadataTable);
+        Assert.Equal("dataprotection", result.DataProtectionContainer);
+        Assert.Equal("keys.xml", result.DataProtectionBlob);
+    }
+
+    [Fact]
+    public void FromConfiguration_WhenStorageKeyMissing_ThrowsDeterministically()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:DataProtectionContainer"] = "dataprotection",
+            })
+            .Build();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => StorageConfiguration.FromConfiguration(configuration));
+
+        Assert.Contains("Storage:DataProtectionBlob", exception.Message, StringComparison.Ordinal);
+    }
+
+    private static IConfiguration BuildStorageConfiguration()
+        => new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:DataProtectionContainer"] = "dataprotection",
+                ["Storage:DataProtectionBlob"] = "keys.xml",
+            })
+            .Build();
 }

@@ -55,4 +55,49 @@ public sealed class ArchitectureComplianceTests
         Assert.True(File.Exists(currentTenantAccessorPath));
         Assert.True(File.Exists(tenantMetadataStorePath));
     }
+
+    [Fact]
+    public void MaintainedSource_DoesNotContainRemovedRuntimeModeConcepts()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var sourceFiles = Directory.EnumerateFiles(Path.Combine(rootPath, "src"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => path.Contains("ImportToPlanner.Application", StringComparison.Ordinal)
+                || path.Contains("ImportToPlanner.Domain", StringComparison.Ordinal)
+                || path.Contains("ImportToPlanner.Web", StringComparison.Ordinal))
+            .Where(path => !path.Contains("/bin/", StringComparison.Ordinal)
+                && !path.Contains("/obj/", StringComparison.Ordinal)
+                && !path.EndsWith("StartupConfigurationValidator.cs", StringComparison.Ordinal));
+
+        foreach (var file in sourceFiles)
+        {
+            var content = File.ReadAllText(file);
+            Assert.DoesNotContain("DeploymentModeConfiguration", content, StringComparison.Ordinal);
+            Assert.DoesNotContain("enum DeploymentMode", content, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void WebWorkflowCoordination_DoesNotReferenceMudBlazorTypes()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var workflowPath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Workflows");
+        var workflowFiles = Directory.EnumerateFiles(workflowPath, "*.cs", SearchOption.TopDirectoryOnly);
+
+        foreach (var file in workflowFiles)
+        {
+            var content = File.ReadAllText(file);
+            Assert.DoesNotContain("MudBlazor", content, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public void HomePageGuidanceFlags_DoNotDependOnStatusMessageStringScanning()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages", "Home.razor");
+        var content = File.ReadAllText(homePagePath);
+
+        Assert.DoesNotContain("statusMessage.Contains(\"administrator consent\"", content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("statusMessage.Contains(\"unsupported account\"", content, StringComparison.OrdinalIgnoreCase);
+    }
 }

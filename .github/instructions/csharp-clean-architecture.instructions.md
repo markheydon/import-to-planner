@@ -58,6 +58,8 @@ Use this file as baseline guidance for C# and project-file work that should foll
 - Avoid static coupling to infrastructure concerns such as file systems, clocks, network clients, configuration providers, or ORM APIs inside business logic.
 - When a requested change crosses layers, preserve or improve the dependency direction instead of taking a shortcut through the UI or infrastructure layer.
 - If the existing code violates Clean Architecture, make the smallest change that moves the code toward proper boundaries without expanding scope into a broad rewrite.
+- In Web workflow orchestrators/state classes (for example, coordinators and workflow state), use project-owned neutral enums/types instead of UI framework enums/types; map framework-specific types only at the component boundary.
+- Adapter exceptions should remain diagnostic and neutral (stable codes/metadata), while user-facing wording is assembled in presenter/UI mapping code.
 
 ## What Strict Uncle Bob Means Here
 

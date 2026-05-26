@@ -7,41 +7,40 @@ public sealed class HostedTelemetryTests
     [Fact]
     public void BuildHostedTelemetryDimensions_EmitsExpectedHostedDimensions()
     {
-        var deployment = new DeploymentModeConfiguration(
-            DeploymentMode.HostedSharedMultiTenant,
+        var authority = new TenantAuthorityConfiguration(
             "organizations",
-            true,
-            true,
-            "SingleActiveReplica",
+            TenantAuthorityKind.SharedOrganisations,
             ["Tasks.ReadWrite"],
             new Uri("https://example.test/admin-consent"));
         var tenantContext = new TenantContext(
             "tenant-a",
             "tenant-key-a",
             "user-a",
-            DeploymentMode.HostedSharedMultiTenant,
             SupportedAccountType.WorkOrSchool,
             "Tenant A");
 
         var dimensions = HostedTelemetryHelper.BuildHostedTelemetryDimensions(
-            deployment,
+            authority,
             tenantContext,
             ConsentResolutionStatus.AdminConsentRequired,
             "Authentication");
 
-        Assert.Equal("HostedSharedMultiTenant", dimensions["deployment.mode"]);
+        Assert.Equal("SharedOrganisations", dimensions["authority.kind"]);
         Assert.Equal("tenant-key-a", dimensions["tenant.key"]);
         Assert.Equal("AdminConsentRequired", dimensions["consent.status"]);
-        Assert.Equal("Graph", dimensions["planner.gateway.mode"]);
         Assert.Equal("Authentication", dimensions["failure.category"]);
     }
 
     [Fact]
     public void BuildHostedTelemetryDimensions_DoesNotIncludeSensitiveValues()
     {
-        var deployment = DeploymentModeConfiguration.Default;
+        var authority = new TenantAuthorityConfiguration(
+            "tenant-a",
+            TenantAuthorityKind.SpecificTenant,
+            ["User.Read"],
+            null);
         var dimensions = HostedTelemetryHelper.BuildHostedTelemetryDimensions(
-            deployment,
+            authority,
             null,
             ConsentResolutionStatus.Unknown,
             null);

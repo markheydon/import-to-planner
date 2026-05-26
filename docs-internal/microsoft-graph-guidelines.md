@@ -22,7 +22,7 @@ Where to place Graph code
 
 Testing and safety
 ------------------
-- Use test doubles such as `InMemoryPlannerGateway` for integration-style tests that exercise planner behaviour without contacting real Graph endpoints.
+- Use explicit test doubles at `IPlannerGateway` and `ITenantOperationalMetadataStore` boundaries for integration-style tests that should not contact real Graph endpoints.
 - Unit-test orchestration and business logic by mocking `IPlannerGateway` implementations.
 - Do not commit tenant credentials or secrets; follow the repository's configuration patterns for local dev and CI.
 
@@ -31,9 +31,8 @@ Hosted multi-tenant compatibility
 - Keep Graph operations bound to the active delegated tenant session from the signed-in user.
 - Reject unsupported account types before entering planner workflow operations.
 - Resolve consent outcomes into repository-owned contracts before presenter mapping; do not surface raw provider exception text.
-- Keep hosted telemetry privacy-safe: include deployment mode, tenant-safe key, consent status, and failure category only.
-- Maintain runtime-mode parity checks when planner behaviour changes by validating both
-	`PlannerGateway:UseGraph=false` and `PlannerGateway:UseGraph=true` paths.
+- Keep hosted telemetry privacy-safe: include authority classification, tenant-safe key, consent status, and failure category only.
+- Validate planner behaviour changes through the single supported Graph path plus authority-specific guard scenarios.
 
 Further reading
 ---------------

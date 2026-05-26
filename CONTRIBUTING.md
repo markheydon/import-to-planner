@@ -14,31 +14,31 @@ Thank you for your interest in contributing! This is a solo-maintained project, 
 
 ### Recommended first run
 
-If you are using VS Code, start with the first profile in [.vscode/launch.json](.vscode/launch.json): `Aspire: Run (Single Tenant - In Memory)`. That is the recommended contributor entry point because it starts the app in the simplest supported mode while keeping the hosted and Graph profiles one click away.
+If you are using VS Code, start with the first Aspire profile in [.vscode/launch.json](.vscode/launch.json). That is the recommended contributor entry point because it wires storage and web resources consistently while keeping authority-specific sign-in profiles one click away.
 
-If you prefer the CLI, run the web app with explicit single-tenant in-memory overrides because the Development profile on this branch is hosted-oriented:
+If you prefer the CLI, run the full validation baseline and then start the AppHost:
 
 ```bash
 dotnet restore ImportToPlanner.slnx
 dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 dotnet build ImportToPlanner.slnx
 dotnet test ImportToPlanner.slnx
-DeploymentMode__Mode=SelfHostedSingleTenant HostedStorage__Enabled=false PlannerGateway__UseGraph=false dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
+aspire run
 ```
 
 If you prefer a containerised development environment, GitHub Codespaces is supported through `.devcontainer/devcontainer.json`.
 
 ### Optional local tooling
 
-- Aspire CLI (`aspire`) is recommended for contributor workflows. The AppHost and VS Code launch profiles use it to switch cleanly between single-tenant local work, single-tenant Graph testing, and hosted multi-tenant verification.
+- Aspire CLI (`aspire`) is recommended for contributor workflows. The AppHost and VS Code launch profiles use it to run authority-based sign-in paths with consistent storage wiring.
 - GitHub CLI (`gh`) for issue and pull request workflows.
 - Node.js (LTS) for local JavaScript syntax checks that mirror CI.
 
-For the current AppHost in this repository, a container runtime is only required when you enable hosted storage, such as the multi-tenant launch profile. The default single-tenant in-memory AppHost path does not need Docker or Podman. `aspire doctor` may still report `No container runtime detected` as a generic prerequisite warning, especially in Codespaces.
+For the current AppHost in this repository, a container runtime is required for local Azurite emulation. `aspire doctor` may report `No container runtime detected` as a generic prerequisite warning, especially in Codespaces.
 
 If you plan to use AI tooling that benefits from Aspire agent setup, run `aspire agent init` locally in your environment. This repository does not commit Aspire agent or MCP configuration by default.
 
-For the full developer quick-start, including when to use Aspire versus plain local execution and how the configuration modes map together, see [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md).
+For the full developer quick-start, including when to use Aspire versus plain local execution and how authority configuration affects behaviour, see [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md).
 
 ### Building and running tests
 
@@ -50,13 +50,14 @@ dotnet test ImportToPlanner.slnx
 git ls-files '*.js' | xargs -n1 node --check
 ```
 
-To run the web app locally:
+To run the web app locally with a specific tenant authority:
 
 ```bash
-DeploymentMode__Mode=SelfHostedSingleTenant HostedStorage__Enabled=false PlannerGateway__UseGraph=false dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
+dotnet user-secrets set "AzureAd:TenantId" "<tenant-id-or-domain>" --project src/ImportToPlanner.Web
+dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
 
-If you need to work against a real tenant, see the Graph setup guidance in `README.md` before switching `PlannerGateway:UseGraph` to `true`.
+If you need to work against a real tenant, see the Graph setup guidance in `README.md` and keep the `Storage:*` settings intact.
 
 ---
 

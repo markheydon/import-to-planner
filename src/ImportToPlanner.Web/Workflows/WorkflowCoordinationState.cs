@@ -1,9 +1,19 @@
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Presenters;
-using MudBlazor;
 
 namespace ImportToPlanner.Web.Workflows;
+
+/// <summary>
+/// Represents neutral status levels for workflow state.
+/// </summary>
+public enum WorkflowStatusLevel
+{
+    Info,
+    Success,
+    Warning,
+    Error,
+}
 
 /// <summary>
 /// Represents UI workflow state for the import page.
@@ -28,13 +38,11 @@ public sealed class WorkflowCoordinationState
 
     public string? StatusReferenceId { get; set; }
 
-    public Severity StatusSeverity { get; set; } = Severity.Info;
+    public WorkflowStatusLevel StatusLevel { get; set; } = WorkflowStatusLevel.Info;
 
     public bool IsBusy { get; set; }
 
     public bool IgnoreExtraColumns { get; set; } = true;
-
-    public bool IsUsingGraphGateway { get; set; }
 
     public bool NoGroupsFound { get; set; }
 
@@ -45,6 +53,8 @@ public sealed class WorkflowCoordinationState
     public ConsentResolution? ConsentResolution { get; set; }
 
     public bool IsUnsupportedAccount { get; set; }
+
+    public bool IsAdminConsentRequired { get; set; }
 
     public bool IsTenantContextMismatch { get; set; }
 

@@ -8,9 +8,8 @@ and workflow but are intentionally outside the architecture constitution.
 - Every behaviour change MUST be verified by automated tests at the smallest practical
   level first (unit, then integration where boundaries are crossed).
 - Bug fixes MUST include a regression test that fails before the fix and passes after.
-- Changes affecting planner gateway behaviour MUST verify compatibility for both runtime
-  modes (`PlannerGateway:UseGraph=true` and `PlannerGateway:UseGraph=false`) unless the
-  scope is explicitly limited and documented.
+- Changes affecting planner gateway behaviour MUST verify the single supported Graph
+  runtime path and any authority-specific auth guard behaviour impacted by the change.
 - Graph-facing behaviour changes SHOULD include integration-style verification using the
   established repository test patterns and approved test doubles.
 

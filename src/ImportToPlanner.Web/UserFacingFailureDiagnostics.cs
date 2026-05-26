@@ -5,7 +5,7 @@ namespace ImportToPlanner.Web;
 
 internal sealed class UserFacingFailureDiagnostics(
     IHttpContextAccessor httpContextAccessor,
-    DeploymentModeConfiguration deploymentModeConfiguration)
+    TenantAuthorityConfiguration tenantAuthorityConfiguration)
 {
     private const string HandledFailureEventName = "import_to_planner.handled_failure";
 
@@ -64,7 +64,7 @@ internal sealed class UserFacingFailureDiagnostics(
         string? tenantKeyOverride)
     {
         var state = HostedTelemetryHelper
-            .BuildHostedTelemetryDimensions(deploymentModeConfiguration, tenantContext, consentStatus, failureCategory)
+            .BuildHostedTelemetryDimensions(tenantAuthorityConfiguration, tenantContext, consentStatus, failureCategory)
             .ToDictionary(static pair => pair.Key, static pair => (object?)pair.Value, StringComparer.Ordinal);
 
         if (!string.IsNullOrWhiteSpace(tenantKeyOverride))
@@ -85,7 +85,7 @@ internal sealed class UserFacingFailureDiagnostics(
         return state;
     }
 
-    private static void RecordActivity(
+    private void RecordActivity(
         string? referenceId,
         string operation,
         string failureCategory,
@@ -110,7 +110,7 @@ internal sealed class UserFacingFailureDiagnostics(
             ["failure.reference_id"] = referenceId ?? "none",
             ["failure.user_message"] = userSafeMessage,
             ["consent.status"] = consentStatus.ToString(),
-            ["deployment.mode"] = tenantContext?.Mode.ToString() ?? "Unknown",
+            ["authority.kind"] = tenantAuthorityConfiguration.AuthorityKind.ToString(),
             ["tenant.key"] = tenantKeyOverride ?? tenantContext?.TenantKey ?? "none",
         };
 

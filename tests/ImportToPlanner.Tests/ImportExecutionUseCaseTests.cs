@@ -3,7 +3,7 @@ using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Application.Services;
 using ImportToPlanner.Domain;
-using ImportToPlanner.Infrastructure.Graph;
+using ImportToPlanner.Tests.TestDoubles;
 
 namespace ImportToPlanner.Tests;
 
@@ -12,16 +12,16 @@ public sealed class ImportExecutionUseCaseTests
     [Fact]
     public async Task HandleAsync_WhenPreviewHasValidationErrors_ThrowsInvalidOperationException()
     {
-        var gateway = new InMemoryPlannerGateway();
-        var plan = (await gateway.GetPlansAsync("group-alpha", ContainerType.Group, CancellationToken.None)).Single();
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var useCase = new ImportExecutionUseCase(gateway);
         var output = new CaptureExecutionOutputBoundary();
 
         var planningRequest = new ImportPlanningRequest(
             "group-alpha",
             ContainerType.Group,
-            plan.Id,
-            plan.Title,
+            "plan-alpha",
+            "Alpha Team Plan",
             [new CsvTaskRow(2, "Task A", null, null, "Ops", null)]);
 
         var preview = new ImportPlanPreview
@@ -44,7 +44,7 @@ public sealed class ImportExecutionUseCaseTests
     }
 
     [Fact]
-    public async Task HandleAsync_RuntimeModeParity_InMemoryAndFakeGatewayReturnEquivalentOutcomeCounts()
+    public async Task HandleAsync_WithBoundaryDoubles_ProducesEquivalentOutcomeCounts()
     {
         var request = new ImportPlanningRequest(
             "group-alpha",
@@ -56,34 +56,32 @@ public sealed class ImportExecutionUseCaseTests
                 new CsvTaskRow(3, "New Task", null, 3, "Ops", "Goal B"),
             ]);
 
-        var inMemoryGateway = new InMemoryPlannerGateway();
-        var inMemoryPlan = (await inMemoryGateway.GetPlansAsync("group-alpha", ContainerType.Group, CancellationToken.None)).Single();
-        var inMemoryBucket = await inMemoryGateway.CreateBucketAsync(inMemoryPlan.Id, "Ops", CancellationToken.None);
-        await inMemoryGateway.CreateTaskAsync(inMemoryPlan.Id, inMemoryBucket.Id, "Existing Task", null, null, null, CancellationToken.None);
+        var plannerGatewayStub = new PlannerGatewayStub();
+        plannerGatewayStub.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        var plannerStubBucket = await plannerGatewayStub.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        await plannerGatewayStub.CreateTaskAsync("plan-alpha", plannerStubBucket.Id, "Existing Task", null, null, null, CancellationToken.None);
 
         var fakeGateway = new FakePlannerGateway();
         fakeGateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var fakeBucket = await fakeGateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
         await fakeGateway.CreateTaskAsync("plan-alpha", fakeBucket.Id, "Existing Task", null, null, null, CancellationToken.None);
 
-        var inMemoryPlanning = CreatePlanningUseCase(inMemoryGateway);
+        var inMemoryPlanning = CreatePlanningUseCase(plannerGatewayStub);
         var fakePlanning = CreatePlanningUseCase(fakeGateway);
 
         var inMemoryPlanningOutput = new CapturePlanningOutputBoundary();
         var fakePlanningOutput = new CapturePlanningOutputBoundary();
 
-        var inMemoryRequest = request with { PlanId = inMemoryPlan.Id, PlanName = inMemoryPlan.Title };
-
-        await inMemoryPlanning.HandleAsync(inMemoryRequest, inMemoryPlanningOutput, CancellationToken.None);
+        await inMemoryPlanning.HandleAsync(request, inMemoryPlanningOutput, CancellationToken.None);
         await fakePlanning.HandleAsync(request, fakePlanningOutput, CancellationToken.None);
 
-        var inMemoryExecution = new ImportExecutionUseCase(inMemoryGateway);
+        var inMemoryExecution = new ImportExecutionUseCase(plannerGatewayStub);
         var fakeExecution = new ImportExecutionUseCase(fakeGateway);
         var inMemoryOutput = new CaptureExecutionOutputBoundary();
         var fakeOutput = new CaptureExecutionOutputBoundary();
 
         await inMemoryExecution.HandleAsync(
-            new ImportExecutionRequest(inMemoryRequest, inMemoryPlanningOutput.Response!),
+            new ImportExecutionRequest(request, inMemoryPlanningOutput.Response!),
             inMemoryOutput,
             CancellationToken.None);
         await fakeExecution.HandleAsync(
@@ -149,14 +147,9 @@ public sealed class ImportExecutionUseCaseTests
     {
         return new ImportPlanningUseCase(
             plannerGateway,
-            new StaticTenantContextAccessor(),
-            new InMemoryTenantMetadataStore(),
-            new DeploymentModeConfiguration(
-                DeploymentMode.SelfHostedSingleTenant,
-                "tenant-single",
-                true,
-                false,
-                "SingleActiveReplica",
+            new CurrentTenantContextAccessorStub(),
+            new TenantOperationalMetadataStoreStub(),
+            new ConsentResolutionDefaults(
                 ["Tasks.ReadWrite"],
                 new Uri("https://example.test/admin-consent")));
     }
@@ -257,23 +250,4 @@ public sealed class ImportExecutionUseCaseTests
         }
     }
 
-    private sealed class StaticTenantContextAccessor : ICurrentTenantContextAccessor
-    {
-        public TenantContext GetRequiredContext() => new(
-            "tenant-a",
-            "tenant-key-a",
-            "user-a",
-            DeploymentMode.SelfHostedSingleTenant,
-            SupportedAccountType.WorkOrSchool,
-            "Tenant A");
-    }
-
-    private sealed class InMemoryTenantMetadataStore : ITenantOperationalMetadataStore
-    {
-        public Task<TenantOperationalMetadata?> GetAsync(string tenantId, CancellationToken cancellationToken)
-            => Task.FromResult<TenantOperationalMetadata?>(null);
-
-        public Task UpsertAsync(TenantOperationalMetadata metadata, CancellationToken cancellationToken)
-            => Task.CompletedTask;
-    }
 }

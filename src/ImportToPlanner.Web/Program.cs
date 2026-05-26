@@ -7,33 +7,20 @@ using ImportToPlanner.Web.Components;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
+builder.AddWebStorageClients();
+builder.AddInfrastructureStorageClients();
 
-var deploymentModeConfiguration = ResolveDeploymentModeConfiguration(builder.Configuration);
-builder.Services.AddSingleton(deploymentModeConfiguration);
+ApplyLegacyCertificatePathOverrides(builder.Configuration);
+StartupConfigurationValidator.Validate(builder.Configuration);
 
-builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-{
-    ["DeploymentMode:AuthorityTenant"] = deploymentModeConfiguration.AuthorityTenant,
-    ["AzureAd:TenantId"] = deploymentModeConfiguration.AuthorityTenant,
-});
+var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(builder.Configuration);
+var storageConfiguration = StorageConfiguration.FromConfiguration(builder.Configuration);
 
-var certificatePathOverrides = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
-foreach (var certificateSection in builder.Configuration.GetSection("AzureAd:ClientCertificates").GetChildren())
-{
-    var certificateIndex = certificateSection.Key;
-    var certificateDiskPath = certificateSection["CertificateDiskPath"];
-    var legacyCertificatePath = certificateSection["CertificatePath"];
-
-    if (string.IsNullOrWhiteSpace(certificateDiskPath) && !string.IsNullOrWhiteSpace(legacyCertificatePath))
-    {
-        certificatePathOverrides[$"AzureAd:ClientCertificates:{certificateIndex}:CertificateDiskPath"] = legacyCertificatePath;
-    }
-}
-
-if (certificatePathOverrides.Count > 0)
-{
-    builder.Configuration.AddInMemoryCollection(certificatePathOverrides);
-}
+builder.Services.AddSingleton(tenantAuthorityConfiguration);
+builder.Services.AddSingleton(storageConfiguration);
+builder.Services.AddSingleton(new ConsentResolutionDefaults(
+    tenantAuthorityConfiguration.RequiredScopes,
+    tenantAuthorityConfiguration.AdminConsentUri));
 
 // Add services to the container.
 builder.Services
@@ -42,10 +29,7 @@ builder.Services
     .AddImportWorkflow()
     .AddInfrastructure(builder.Configuration);
 
-HostedDataProtectionConfigurator.Configure(
-    builder.Services,
-    builder.Configuration,
-    deploymentModeConfiguration);
+HostedDataProtectionConfigurator.Configure(builder.Services, storageConfiguration);
 
 var app = builder.Build();
 
@@ -56,6 +40,7 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
+
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
@@ -71,102 +56,30 @@ app.MapDefaultEndpoints();
 
 app.Run();
 
-static DeploymentModeConfiguration ResolveDeploymentModeConfiguration(IConfiguration configuration)
+static void ApplyLegacyCertificatePathOverrides(IConfiguration configuration)
 {
     ArgumentNullException.ThrowIfNull(configuration);
 
-    var mode = configuration.GetValue("DeploymentMode:Mode", string.Empty) switch
+    if (configuration is not IConfigurationManager configurationManager)
     {
-        "HostedSharedMultiTenant" => DeploymentMode.HostedSharedMultiTenant,
-        "SelfHostedSingleTenant" => DeploymentMode.SelfHostedSingleTenant,
-        _ => string.Equals(configuration["AzureAd:TenantId"], "organizations", StringComparison.OrdinalIgnoreCase)
-            ? DeploymentMode.HostedSharedMultiTenant
-            : DeploymentMode.SelfHostedSingleTenant,
-    };
+        return;
+    }
 
-    var configuredAuthorityTenant = configuration["DeploymentMode:AuthorityTenant"];
-    var configuredAzureAdTenant = configuration["AzureAd:TenantId"];
-
-    var authorityTenant = mode switch
+    var certificatePathOverrides = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+    foreach (var certificateSection in configuration.GetSection("AzureAd:ClientCertificates").GetChildren())
     {
-        DeploymentMode.SelfHostedSingleTenant =>
-            IsConcreteTenantIdentifier(configuredAzureAdTenant)
-                ? configuredAzureAdTenant!
-                : IsConcreteTenantIdentifier(configuredAuthorityTenant)
-                    ? configuredAuthorityTenant!
-                    : "common",
-        _ => configuredAuthorityTenant ?? configuredAzureAdTenant ?? "organizations",
-    };
+        var certificateIndex = certificateSection.Key;
+        var certificateDiskPath = certificateSection["CertificateDiskPath"];
+        var legacyCertificatePath = certificateSection["CertificatePath"];
 
-    authorityTenant = NormalizePlaceholderAuthorityTenant(authorityTenant, mode);
-
-    var scopes = configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? [];
-    var adminConsentUri = BuildAdminConsentUri(configuration, authorityTenant);
-
-    return new DeploymentModeConfiguration(
-        mode,
-        authorityTenant,
-        configuration.GetValue<bool>("PlannerGateway:UseGraph"),
-        configuration.GetValue<bool>("HostedStorage:Enabled"),
-        configuration["DeploymentMode:InitialHostedReplicaPolicy"] ?? "SingleActiveReplica",
-        scopes,
-        adminConsentUri);
-
-    bool IsConcreteTenantIdentifier(string? tenantId)
-    {
-        if (string.IsNullOrWhiteSpace(tenantId))
+        if (string.IsNullOrWhiteSpace(certificateDiskPath) && !string.IsNullOrWhiteSpace(legacyCertificatePath))
         {
-            return false;
+            certificatePathOverrides[$"AzureAd:ClientCertificates:{certificateIndex}:CertificateDiskPath"] = legacyCertificatePath;
         }
-
-        if (tenantId.StartsWith("__REPLACE", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return !string.Equals(tenantId, "common", StringComparison.OrdinalIgnoreCase)
-               && !string.Equals(tenantId, "organizations", StringComparison.OrdinalIgnoreCase)
-             && !string.Equals(tenantId, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase);
     }
 
-    string NormalizePlaceholderAuthorityTenant(string authorityTenant, DeploymentMode mode)
+    if (certificatePathOverrides.Count > 0)
     {
-        if (!authorityTenant.StartsWith("__REPLACE", StringComparison.OrdinalIgnoreCase))
-        {
-            return authorityTenant;
-        }
-
-        return mode == DeploymentMode.HostedSharedMultiTenant
-            ? "organizations"
-            : "common";
+        configurationManager.AddInMemoryCollection(certificatePathOverrides);
     }
-}
-
-static Uri? BuildAdminConsentUri(IConfiguration configuration, string authorityTenant)
-{
-    var configured = configuration["AzureAd:AdminConsentUri"];
-    if (Uri.TryCreate(configured, UriKind.Absolute, out var configuredUri))
-    {
-        return configuredUri;
-    }
-
-    var clientId = configuration["AzureAd:ClientId"];
-    if (string.IsNullOrWhiteSpace(clientId))
-    {
-        return null;
-    }
-
-    var instance = configuration["AzureAd:Instance"];
-    if (!Uri.TryCreate(instance, UriKind.Absolute, out var authorityInstance))
-    {
-        return null;
-    }
-
-    var adminConsentBuilder = new UriBuilder(authorityInstance)
-    {
-        Path = $"{authorityTenant.Trim('/')}/v2.0/adminconsent",
-        Query = $"client_id={Uri.EscapeDataString(clientId)}",
-    };
-
-    return adminConsentBuilder.Uri;
 }

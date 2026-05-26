@@ -6,6 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Azure.Data.Tables" />
     <PackageReference Include="Azure.Data.Tables" />
     <PackageReference Include="CsvHelper" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" />

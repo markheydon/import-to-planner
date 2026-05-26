@@ -6,13 +6,13 @@ For public-facing operator and deployment guidance, see `docs/README.md`.
 
 ## Pick the right path
 
-Start with the simplest path first, then move to Graph or hosted scenarios as needed.
+Start with the shared-organisations authority path first, then move to a specific-tenant authority as needed.
 
 | Scenario | Recommended mode | Why |
 | --- | --- | --- |
-| First run, no tenant credentials | Self-hosted single-tenant + in-memory gateway | Fastest way to explore the workflow and UI without authentication or consent setup |
-| Real Planner integration for your own tenant | Self-hosted single-tenant + Graph gateway | Tests delegated Graph behaviour while keeping deployment assumptions simple |
-| Hosted shared-service behaviour | Hosted shared multi-tenant + hosted storage | Exercises tenant-aware sign-in, consent handling, and tenant metadata boundaries |
+| First run with shared authority | `AzureAd:TenantId=organizations` via Aspire AppHost | Exercises supported sign-in and consent guards with the default authority path |
+| Tenant-constrained verification | `AzureAd:TenantId=<tenant-id-or-domain>` via Aspire AppHost | Confirms single-tenant authority behaviour with the same runtime dependencies |
+| Web-only troubleshooting | Run `ImportToPlanner.Web` directly with equivalent storage and AzureAd settings | Useful for focused debugging when AppHost orchestration is not required |
 
 ## VS Code launch profiles
 
@@ -23,24 +23,22 @@ Use `.vscode/launch.json` launch options in this order:
 3. `Aspire: Run (Multi Tenant + Hosted Storage)`
 
 The first option is intentionally the default contributor path.
+Profile names are legacy labels; runtime behaviour now uses the single supported Graph and storage-backed path.
 
-## CLI first run (without Aspire)
+## CLI first run (with Aspire)
 
-If you prefer a plain CLI run, use explicit environment overrides so the app stays in local single-tenant in-memory mode:
+Use Aspire for the default local flow so storage references are wired automatically:
 
 ```bash
-DeploymentMode__Mode=SelfHostedSingleTenant \
-HostedStorage__Enabled=false \
-PlannerGateway__UseGraph=false \
-dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
+aspire run
 ```
 
 ## Why Aspire is recommended for contributors
 
-Aspire is not only for deployment. In this repository it is the easiest way to switch safely between local single-tenant and hosted-oriented scenarios:
+Aspire is not only for deployment. In this repository it is the easiest way to run the supported local topology consistently:
 
-- It keeps launch profiles explicit and repeatable for the three supported development paths.
-- It enables hosted storage only when a profile requires it.
+- It keeps launch profiles explicit and repeatable for authority-focused verification.
+- It wires `storage`, `blobs`, and `tables` references consistently for every run.
 - It reduces hidden setup drift between contributors.
 
 Use these commands when working from the terminal:
@@ -52,29 +50,23 @@ aspire logs web
 aspire stop
 ```
 
-For the default single-tenant in-memory profile, no container runtime is required.
-For hosted-storage scenarios, a container runtime is required so Azurite can run.
-Durable ASP.NET Core Data Protection storage is only part of that hosted-storage path; ordinary local single-tenant runs stay storage-free by default.
+For local development, a container runtime is required so Azurite can run.
+ASP.NET Core Data Protection keys are always persisted to blob storage in this feature branch.
 
-## Configuration matrix
+## Configuration focus
 
-The key runtime switches are:
+The key settings are now authority and storage values owned by the Web project:
 
-- `DeploymentMode:Mode`
-- `PlannerGateway:UseGraph`
-- `HostedStorage:Enabled`
+- `AzureAd:TenantId`
+- `Storage:TenantMetadataTable`
+- `Storage:DataProtectionContainer`
+- `Storage:DataProtectionBlob`
 
-| DeploymentMode:Mode | PlannerGateway:UseGraph | HostedStorage:Enabled | Typical use |
-| --- | --- | --- | --- |
-| `SelfHostedSingleTenant` | `false` | `false` | First-run local exploration and most workflow/UI work |
-| `SelfHostedSingleTenant` | `true` | `false` | Single-tenant Graph integration testing |
-| `HostedSharedMultiTenant` | `true` | `true` | Hosted multi-tenant sign-in, consent, and tenant metadata behaviour |
-
-When `HostedStorage:Enabled=true`, local hosted emulation also uses Blob-backed Data Protection keys so sign-in cookies remain valid across hosted-style restarts. Do not add hosted storage settings for ordinary self-hosted single-tenant work unless you are explicitly testing that hosted path.
+Removed keys such as `DeploymentMode:*`, `PlannerGateway:*`, and `HostedStorage:*` are treated as startup validation errors.
 
 ## Minimum Graph prerequisites
 
-Only needed for Graph-backed scenarios (`PlannerGateway:UseGraph=true`):
+Graph prerequisites are needed for all supported planner scenarios:
 
 - A Microsoft 365 account with Planner access.
 - Entra ID app registration.

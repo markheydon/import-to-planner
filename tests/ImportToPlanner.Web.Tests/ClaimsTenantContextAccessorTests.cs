@@ -15,7 +15,7 @@ public sealed class ClaimsTenantContextAccessorTests
             new Claim(ClaimTypes.NameIdentifier, "user-nameid"));
         var accessor = CreateAccessor(
             user,
-            CreateDeploymentModeConfiguration(DeploymentMode.HostedSharedMultiTenant, "organizations"));
+            CreateAuthorityConfiguration("organizations"));
 
         var context = accessor.GetRequiredContext();
 
@@ -25,13 +25,13 @@ public sealed class ClaimsTenantContextAccessorTests
     }
 
     [Fact]
-    public void GetRequiredContext_WhenSelfHostedAndTenantClaimMissing_UsesConfiguredAuthorityTenant()
+    public void GetRequiredContext_WhenSpecificAuthorityAndTenantClaimMissing_UsesConfiguredAuthorityTenant()
     {
         var user = CreateAuthenticatedPrincipal(
             new Claim("http://schemas.microsoft.com/identity/claims/objectidentifier", "user-object"));
         var accessor = CreateAccessor(
             user,
-            CreateDeploymentModeConfiguration(DeploymentMode.SelfHostedSingleTenant, "tenant-self-hosted"));
+            CreateAuthorityConfiguration("tenant-self-hosted"));
 
         var context = accessor.GetRequiredContext();
 
@@ -41,12 +41,12 @@ public sealed class ClaimsTenantContextAccessorTests
     }
 
     [Fact]
-    public void GetRequiredContext_WhenSelfHostedAndAuthorityTenantIsCommon_ThrowsTenantIdentifierError()
+    public void GetRequiredContext_WhenSpecificAuthorityTenantIsCommon_ThrowsTenantIdentifierError()
     {
         var user = CreateAuthenticatedPrincipal(new Claim("oid", "user-123"));
         var accessor = CreateAccessor(
             user,
-            CreateDeploymentModeConfiguration(DeploymentMode.SelfHostedSingleTenant, "common"));
+            CreateAuthorityConfiguration("common"));
 
         var exception = Assert.Throws<InvalidOperationException>(() => accessor.GetRequiredContext());
 
@@ -61,14 +61,14 @@ public sealed class ClaimsTenantContextAccessorTests
             new Claim("oid", "user-123"));
         var accessor = CreateAccessor(
             user,
-            CreateDeploymentModeConfiguration(DeploymentMode.HostedSharedMultiTenant, "organizations"));
+            CreateAuthorityConfiguration("organizations"));
 
         var exception = Assert.Throws<InvalidOperationException>(() => accessor.GetRequiredContext());
 
         Assert.Contains("Unsupported account type", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static ICurrentTenantContextAccessor CreateAccessor(ClaimsPrincipal user, DeploymentModeConfiguration deploymentModeConfiguration)
+    private static ICurrentTenantContextAccessor CreateAccessor(ClaimsPrincipal user, TenantAuthorityConfiguration authorityConfiguration)
     {
         var httpContextAccessor = new HttpContextAccessor
         {
@@ -80,20 +80,19 @@ public sealed class ClaimsTenantContextAccessorTests
 
         var accessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.ClaimsTenantContextAccessor", throwOnError: true)!;
         var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.UserFacingFailureDiagnostics", throwOnError: true)!;
-        var failureDiagnostics = Activator.CreateInstance(failureDiagnosticsType, httpContextAccessor, deploymentModeConfiguration)!;
+        var failureDiagnostics = Activator.CreateInstance(failureDiagnosticsType, httpContextAccessor, authorityConfiguration)!;
         var nullLoggerType = typeof(Microsoft.Extensions.Logging.Abstractions.NullLogger<>).MakeGenericType(accessorType);
         var logger = Activator.CreateInstance(nullLoggerType)!;
 
-        return (ICurrentTenantContextAccessor)Activator.CreateInstance(accessorType, httpContextAccessor, deploymentModeConfiguration, logger, failureDiagnostics)!;
+        return (ICurrentTenantContextAccessor)Activator.CreateInstance(accessorType, httpContextAccessor, authorityConfiguration, logger, failureDiagnostics)!;
     }
 
-    private static DeploymentModeConfiguration CreateDeploymentModeConfiguration(DeploymentMode mode, string authorityTenant)
+    private static TenantAuthorityConfiguration CreateAuthorityConfiguration(string tenantId)
         => new(
-            mode,
-            authorityTenant,
-            true,
-            false,
-            "SingleActiveReplica",
+            tenantId,
+            string.Equals(tenantId, "organizations", StringComparison.OrdinalIgnoreCase)
+                ? TenantAuthorityKind.SharedOrganisations
+                : TenantAuthorityKind.SpecificTenant,
             ["User.Read"],
             null);
 
