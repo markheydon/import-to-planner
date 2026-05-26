@@ -36,6 +36,8 @@ Primary feature sources:
 - [specs/001-import-planner-csv/contracts/import-workflow-contract.md](specs/001-import-planner-csv/contracts/import-workflow-contract.md)
 - [specs/002-ui-ux-redesign/spec.md](specs/002-ui-ux-redesign/spec.md)
 - [specs/003-align-clean-architecture/spec.md](specs/003-align-clean-architecture/spec.md)
+- [specs/004-add-multitenant-hosting/spec.md](specs/004-add-multitenant-hosting/spec.md)
+- [specs/005-simplify-graph-path/spec.md](specs/005-simplify-graph-path/spec.md)
 
 ## Technology Stack
 
@@ -49,10 +51,10 @@ Primary feature sources:
   - CsvHelper 33.1.0
   - Microsoft.Graph 6.1.0
   - Microsoft.Kiota.Abstractions 2.0.0
-  - Microsoft.Identity.Web 4.9.0
-  - Microsoft.Identity.Web.UI 4.9.0
+  - Microsoft.Identity.Web 4.10.0
+  - Microsoft.Identity.Web.UI 4.10.0
 - Hosting and observability:
-  - Aspire AppHost SDK 9.5.0
+  - Aspire AppHost SDK 13.3.5
   - OpenTelemetry 1.15.x packages
   - Shared service defaults for resilience and telemetry
 - Testing:
@@ -65,7 +67,7 @@ Primary version sources:
 - [global.json](global.json)
 - [Directory.Packages.props](Directory.Packages.props)
 - [ImportToPlanner.slnx](ImportToPlanner.slnx)
-- [ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj](ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj)
+- [src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj](src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj)
 
 ## Project Architecture
 
@@ -200,7 +202,7 @@ tests/
 docs/
 docs-internal/
 specs/
-ImportToPlanner.AppHost/
+src/ImportToPlanner.AppHost/
 ImportToPlanner.slnx
 ```
 
