@@ -30,7 +30,7 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.AddAzureBlobServiceClient(connectionName: "blobs");
+        builder.AddAzureBlobServiceClient(connectionName: "dataprotection");
 
         return builder;
     }

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace ImportToPlanner.Web.Tests;
@@ -33,7 +32,6 @@ public sealed class HostedDataProtectionConfiguratorTests
         Assert.Equal(HostedDataProtectionConfigurator.HostedKeyLifetime, keyManagementOptions.NewKeyLifetime);
         Assert.NotNull(blobServiceClient);
         Assert.NotNull(serviceProvider.GetRequiredService<IDataProtectionProvider>());
-        Assert.Contains(serviceProvider.GetServices<IHostedService>(), service => service is HostedDataProtectionContainerBootstrapper);
     }
 
     [Fact]

@@ -75,4 +75,29 @@ public sealed class ArchitectureComplianceTests
             Assert.DoesNotContain("enum DeploymentMode", content, StringComparison.Ordinal);
         }
     }
+
+    [Fact]
+    public void WebWorkflowCoordination_DoesNotReferenceMudBlazorTypes()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var workflowPath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Workflows");
+        var workflowFiles = Directory.EnumerateFiles(workflowPath, "*.cs", SearchOption.TopDirectoryOnly);
+
+        foreach (var file in workflowFiles)
+        {
+            var content = File.ReadAllText(file);
+            Assert.DoesNotContain("MudBlazor", content, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public void HomePageGuidanceFlags_DoNotDependOnStatusMessageStringScanning()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages", "Home.razor");
+        var content = File.ReadAllText(homePagePath);
+
+        Assert.DoesNotContain("statusMessage.Contains(\"administrator consent\"", content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("statusMessage.Contains(\"unsupported account\"", content, StringComparison.OrdinalIgnoreCase);
+    }
 }

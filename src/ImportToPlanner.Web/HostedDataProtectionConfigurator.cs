@@ -34,7 +34,6 @@ internal static class HostedDataProtectionConfigurator
         });
 
         services.AddSingleton(storageSettings);
-        services.AddHostedService<HostedDataProtectionContainerBootstrapper>();
     }
 }
 
@@ -51,32 +50,11 @@ internal sealed record HostedDataProtectionStorageSettings(
             storageConfiguration.DataProtectionBlob);
     }
 
-    public BlobContainerClient CreateContainerClient(BlobServiceClient blobServiceClient)
-    {
-        ArgumentNullException.ThrowIfNull(blobServiceClient);
-        return blobServiceClient.GetBlobContainerClient(ContainerName);
-    }
-
     public BlobClient CreateBlobClient(BlobServiceClient blobServiceClient)
     {
         ArgumentNullException.ThrowIfNull(blobServiceClient);
-        return CreateContainerClient(blobServiceClient).GetBlobClient(BlobName);
+        return blobServiceClient
+            .GetBlobContainerClient(ContainerName)
+            .GetBlobClient(BlobName);
     }
-}
-
-internal sealed class HostedDataProtectionContainerBootstrapper(
-    HostedDataProtectionStorageSettings storageSettings,
-    BlobServiceClient blobServiceClient) : IHostedService
-{
-    public async Task StartAsync(CancellationToken cancellationToken)
-    {
-        // The Azure blob Data Protection provider expects the target container to exist already.
-        await storageSettings
-            .CreateContainerClient(blobServiceClient)
-            .CreateIfNotExistsAsync(cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken)
-        => Task.CompletedTask;
 }

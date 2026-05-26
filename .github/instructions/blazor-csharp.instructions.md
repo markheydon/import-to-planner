@@ -48,6 +48,8 @@ Use this file as baseline guidance for Blazor projects that include Razor UI and
 - Use `EventCallback` or `EventCallback<T>` for child-to-parent communication.
 - Prefer explicit parameters over hidden coupling.
 - Use lifecycle methods intentionally (`OnInitializedAsync`, `OnParametersSetAsync`) and avoid fire-and-forget tasks.
+- Component conditional rendering must rely on structured state (for example, booleans and enums), not string-scanning rendered status text.
+- Exception-to-user-message mapping belongs in dedicated mapper/presenter services, not page/component-local inspection logic.
 
 ## MudBlazor Usage (When MudBlazor Is Present)
 

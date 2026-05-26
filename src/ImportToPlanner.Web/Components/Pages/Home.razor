@@ -375,10 +375,10 @@
         set => WorkflowState.StatusMessage = value;
     }
 
-    private Severity statusMessageSeverity
+    private WorkflowStatusLevel statusMessageLevel
     {
-        get => WorkflowState.StatusSeverity;
-        set => WorkflowState.StatusSeverity = value;
+        get => WorkflowState.StatusLevel;
+        set => WorkflowState.StatusLevel = value;
     }
 
     private string? statusReferenceId
@@ -417,13 +417,9 @@
         set => WorkflowState.IsTenantContextMismatch = value;
     }
 
-    private bool showAdminConsentGuidance =>
-        !string.IsNullOrWhiteSpace(statusMessage)
-        && statusMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase);
+    private bool showAdminConsentGuidance => WorkflowState.IsAdminConsentRequired;
 
-    private bool showUnsupportedAccountGuidance =>
-        !string.IsNullOrWhiteSpace(statusMessage)
-        && statusMessage.Contains("unsupported account", StringComparison.OrdinalIgnoreCase);
+    private bool showUnsupportedAccountGuidance => WorkflowState.IsUnsupportedAccount;
 
     private ImportPlanningViewModel? preview => WorkflowState.PlanningViewModel;
 
@@ -459,7 +455,7 @@
         => parseErrors.Count > 0
            ? Severity.Error
            : executionResult is null
-               ? statusMessageSeverity
+               ? ToMudSeverity(statusMessageLevel)
                : executionResult.Errors.Count > 0
                    ? Severity.Warning
                    : Severity.Success;
@@ -496,7 +492,17 @@
                 && !string.IsNullOrWhiteSpace(authErrorValues))
             {
                 hasAuthErrorFromQuery = true;
-                SetStatus(authErrorValues.ToString(), Severity.Warning, authReferenceId);
+                var authFailure = PlannerFailureMessageMapper.FromDiagnosticSignal(
+                    PlannerFailureMessageMapper.ResolveDiagnosticCode(authErrorValues.ToString()),
+                    authErrorValues.ToString(),
+                    WorkflowState.ConsentResolution?.Status ?? ConsentResolutionStatus.Unknown,
+                    allowRawMessage: true);
+                SetStatus(
+                    authFailure.UserMessage,
+                    WorkflowStatusLevel.Warning,
+                    authReferenceId,
+                    preserveGuidanceFlags: true,
+                    failureSignals: authFailure);
             }
 
             if (parsedQuery.TryGetValue(TokenReauthenticationQueryKey, out var tokenReauthenticationValues)
@@ -536,7 +542,7 @@
                 return;
             }
 
-            HandleUserSafeFailure(ex, "workflow.initialise.load_containers", Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.initialise.load_containers", WorkflowStatusLevel.Error);
         }
     }
 
@@ -599,7 +605,7 @@
         {
             await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
 
-            SetStatus("Container list refreshed.", Severity.Success);
+            SetStatus("Container list refreshed.", WorkflowStatusLevel.Success);
         }
         catch (Exception ex)
         {
@@ -608,7 +614,7 @@
                 return;
             }
 
-            HandleUserSafeFailure(ex, "workflow.refresh_containers", Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.refresh_containers", WorkflowStatusLevel.Error);
         }
         finally
         {
@@ -627,7 +633,7 @@
         try
         {
             await WorkflowCoordinator.LoadPlansAsync(WorkflowState, CancellationToken.None);
-            SetStatus("Plan list refreshed.", Severity.Success);
+            SetStatus("Plan list refreshed.", WorkflowStatusLevel.Success);
         }
         catch (Exception ex)
         {
@@ -636,7 +642,7 @@
                 return;
             }
 
-            HandleUserSafeFailure(ex, "workflow.refresh_plans", Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.refresh_plans", WorkflowStatusLevel.Error);
         }
         finally
         {
@@ -659,7 +665,7 @@
         using var reader = new StreamReader(stream);
         csvContent = await reader.ReadToEndAsync();
 
-        SetStatus("CSV file loaded. Click Validate and preview.", Severity.Info);
+        SetStatus("CSV file loaded. Click Validate and preview.", WorkflowStatusLevel.Info);
     }
 
     private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
@@ -681,7 +687,7 @@
         {
             if (!hadPreview)
             {
-                SetStatus("Select a container to continue.", Severity.Info);
+                SetStatus("Select a container to continue.", WorkflowStatusLevel.Info);
             }
 
             return;
@@ -699,7 +705,7 @@
                 return;
             }
 
-            HandleUserSafeFailure(ex, "workflow.select_container.load_plans", Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.select_container.load_plans", WorkflowStatusLevel.Error);
         }
         finally
         {
@@ -721,7 +727,7 @@
         MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before execution.");
         if (!hadPreview)
         {
-            SetStatus(selectedPlan is null ? "Select a plan to continue." : null, Severity.Info);
+            SetStatus(selectedPlan is null ? "Select a plan to continue." : null, WorkflowStatusLevel.Info);
         }
 
         return Task.CompletedTask;
@@ -746,7 +752,7 @@
         parseErrors.Clear();
         ResetPreviewState();
         ResetExecutionState();
-        SetStatus(null, Severity.Info);
+        SetStatus(null, WorkflowStatusLevel.Info);
     }
 
     private void ResetPreviewState()
@@ -766,7 +772,7 @@
         parseErrors.Clear();
         ResetPreviewState();
         ResetExecutionState();
-        SetStatus(message, Severity.Warning);
+        SetStatus(message, WorkflowStatusLevel.Warning);
     }
 
     private void MarkPreviewAsStale(string message)
@@ -777,7 +783,7 @@
         }
 
         isPreviewStale = true;
-        SetStatus(message, Severity.Warning);
+        SetStatus(message, WorkflowStatusLevel.Warning);
     }
 
     private async Task BuildPreviewAsync()
@@ -790,7 +796,7 @@
         parseErrors.Clear();
         ResetPreviewState();
         ResetExecutionState();
-        SetStatus(null, Severity.Info);
+        SetStatus(null, WorkflowStatusLevel.Info);
 
         isBusy = true;
         try
@@ -804,7 +810,7 @@
                 return;
             }
 
-            var failurePresentation = HandleUserSafeFailure(ex, "workflow.build_preview", Severity.Error);
+            var failurePresentation = HandleUserSafeFailure(ex, "workflow.build_preview", WorkflowStatusLevel.Error);
             parseErrors.Add(new ImportValidationError(0, "System", failurePresentation.UserMessage));
         }
         finally
@@ -821,7 +827,7 @@
         }
 
         isBusy = true;
-        SetStatus(null, Severity.Info);
+        SetStatus(null, WorkflowStatusLevel.Info);
         try
         {
             await WorkflowCoordinator.ExecuteAsync(WorkflowState, CancellationToken.None);
@@ -829,7 +835,7 @@
         catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
         {
             isPreviewStale = true;
-            HandleUserSafeFailure(ex, "workflow.execute.stale_preview", Severity.Warning);
+            HandleUserSafeFailure(ex, "workflow.execute.stale_preview", WorkflowStatusLevel.Warning);
         }
         catch (InvalidOperationException ex)
         {
@@ -839,7 +845,7 @@
             }
 
             isPreviewStale = false;
-            HandleUserSafeFailure(ex, "workflow.execute.invalid_operation", Severity.Warning);
+            HandleUserSafeFailure(ex, "workflow.execute.invalid_operation", WorkflowStatusLevel.Warning);
         }
         catch (Exception ex)
         {
@@ -848,7 +854,7 @@
                 return;
             }
 
-            HandleUserSafeFailure(ex, "workflow.execute", Severity.Error);
+            HandleUserSafeFailure(ex, "workflow.execute", WorkflowStatusLevel.Error);
         }
         finally
         {
@@ -856,11 +862,28 @@
         }
     }
 
-    private void SetStatus(string? message, Severity severity, string? referenceId = null)
+    private void SetStatus(
+        string? message,
+        WorkflowStatusLevel level,
+        string? referenceId = null,
+        bool preserveGuidanceFlags = false,
+        PlannerFailureMapping? failureSignals = null)
     {
         statusMessage = message;
-        statusMessageSeverity = severity;
+        statusMessageLevel = level;
         statusReferenceId = string.IsNullOrWhiteSpace(message) ? null : referenceId;
+
+        if (!preserveGuidanceFlags)
+        {
+            WorkflowState.IsUnsupportedAccount = false;
+            WorkflowState.IsAdminConsentRequired = false;
+            return;
+        }
+
+        if (failureSignals is { } mappedFailure)
+        {
+            ApplyWorkflowFailureSignals(mappedFailure);
+        }
     }
 
     private async Task<bool> TryHandleAuthenticationChallengeAsync(Exception exception)
@@ -894,30 +917,33 @@
             return true;
         }
 
-        SetStatus(InteractiveTokenAcquisitionRequiredMessage, Severity.Warning, failurePresentation.ReferenceId);
+        SetStatus(InteractiveTokenAcquisitionRequiredMessage, WorkflowStatusLevel.Warning, failurePresentation.ReferenceId);
         return true;
     }
 
-    private FailurePresentation HandleUserSafeFailure(Exception exception, string operation, Severity severity)
+    private FailurePresentation HandleUserSafeFailure(Exception exception, string operation, WorkflowStatusLevel severity)
     {
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentException.ThrowIfNullOrWhiteSpace(operation);
 
-        var userSafeMessage = exception is ImportToPlanner.Application.Exceptions.StaleImportPreviewException
-            ? exception.Message
-            : ToUserSafePlannerMessage(exception);
+        var mappedFailure = PlannerFailureMessageMapper.FromException(exception, WorkflowState.ConsentResolution);
         var failurePresentation = FailureDiagnostics.RecordHandledFailure(
             Logger,
             exception,
             operation,
-            ResolveFailureCategory(exception),
-            userSafeMessage,
-            severity == Severity.Error ? LogLevel.Error : LogLevel.Warning,
+            mappedFailure.Category.ToString(),
+            mappedFailure.UserMessage,
+            severity == WorkflowStatusLevel.Error ? LogLevel.Error : LogLevel.Warning,
             tenantContext: WorkflowState.ActiveTenantContext,
-            consentStatus: ResolveConsentStatus(exception),
-            failureCode: ResolveFailureCode(exception));
+            consentStatus: mappedFailure.ConsentStatus,
+            failureCode: mappedFailure.DiagnosticCode);
 
-        SetStatus(failurePresentation.UserMessage, severity, failurePresentation.ReferenceId);
+        SetStatus(
+            failurePresentation.UserMessage,
+            severity,
+            failurePresentation.ReferenceId,
+            preserveGuidanceFlags: true,
+            failureSignals: mappedFailure);
         return failurePresentation;
     }
 
@@ -977,92 +1003,21 @@
         return $"MicrosoftIdentity/Account/Challenge?redirectUri={encodedRedirectUri}&scope={encodedScope}&loginHint={encodedLoginHint}";
     }
 
-    private static string ToUserSafePlannerMessage(Exception exception)
+    private void ApplyWorkflowFailureSignals(PlannerFailureMapping mappedFailure)
     {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        if (exception is InvalidOperationException invalidOperationException)
-        {
-            if (invalidOperationException.Message.Contains("Unsupported account", StringComparison.OrdinalIgnoreCase))
-            {
-                return "Unsupported account type. Sign in with a supported work or school account.";
-            }
-
-            if (invalidOperationException.Message.Contains("administrator consent", StringComparison.OrdinalIgnoreCase))
-            {
-                return invalidOperationException.Message;
-            }
-
-            if (invalidOperationException.Message.Contains("tenant context", StringComparison.OrdinalIgnoreCase))
-            {
-                return "Tenant context could not be resolved for this hosted session. Sign in again and retry.";
-            }
-        }
-
-        if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
-        {
-            return PlannerFailureMessageMapper.ToUserSafeMessage(failure);
-        }
-
-        return "An unexpected planner error occurred. Retry and check logs if the issue continues.";
+        WorkflowState.IsUnsupportedAccount = mappedFailure.IsUnsupportedAccount;
+        WorkflowState.IsAdminConsentRequired = mappedFailure.IsAdminConsentRequired;
     }
 
-    private ConsentResolutionStatus ResolveConsentStatus(Exception exception)
+    private static Severity ToMudSeverity(WorkflowStatusLevel level)
     {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        if (WorkflowState.ConsentResolution is not null)
+        return level switch
         {
-            return WorkflowState.ConsentResolution.Status;
-        }
-
-        var userSafeMessage = exception is ImportToPlanner.Application.Exceptions.StaleImportPreviewException
-            ? exception.Message
-            : ToUserSafePlannerMessage(exception);
-
-        return userSafeMessage.Contains("administrator consent", StringComparison.OrdinalIgnoreCase)
-            ? ConsentResolutionStatus.AdminConsentRequired
-            : ConsentResolutionStatus.Unknown;
-    }
-
-    private static string ResolveFailureCategory(Exception exception)
-    {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
-        {
-            return failure.Category.ToString();
-        }
-
-        if (exception is ImportToPlanner.Application.Exceptions.StaleImportPreviewException)
-        {
-            return PlannerFailureCategory.Conflict.ToString();
-        }
-
-        if (exception is InvalidOperationException invalidOperationException
-            && invalidOperationException.Message.Contains("tenant context", StringComparison.OrdinalIgnoreCase))
-        {
-            return PlannerFailureCategory.Authentication.ToString();
-        }
-
-        return PlannerFailureCategory.Unknown.ToString();
-    }
-
-    private static string? ResolveFailureCode(Exception exception)
-    {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        if (ImportWorkflowCoordinator.TryGetFailure(exception, out var failure))
-        {
-            return failure.DiagnosticCode;
-        }
-
-        return exception switch
-        {
-            ImportToPlanner.Application.Exceptions.StaleImportPreviewException => "preview.stale",
-            InvalidOperationException invalidOperationException when invalidOperationException.Message.Contains("tenant context", StringComparison.OrdinalIgnoreCase) => "tenant_context.unresolved",
-            InvalidOperationException invalidOperationException when invalidOperationException.Message.Contains("Unsupported account", StringComparison.OrdinalIgnoreCase) => "auth.unsupported_account",
-            _ => null,
+            WorkflowStatusLevel.Info => Severity.Info,
+            WorkflowStatusLevel.Success => Severity.Success,
+            WorkflowStatusLevel.Warning => Severity.Warning,
+            WorkflowStatusLevel.Error => Severity.Error,
+            _ => Severity.Info,
         };
     }
 
