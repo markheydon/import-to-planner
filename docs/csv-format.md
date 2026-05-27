@@ -56,7 +56,7 @@ Publish update,Post the final update to users,3,Delivery,Launch readiness
 - Wrong heading names: use the accepted headings exactly.
 - Invalid priority value: use 0-10 or one of Urgent/Important/Medium/Low.
 - Wrong delimiter: use commas unless your export tool is configured differently and your app instance supports it.
-- Extra columns: unexpected columns are ignored for import, but keeping only supported columns reduces confusion.
+- Extra columns: unexpected columns can be ignored for import, but keeping only supported columns reduces confusion.
 - Empty task names: each row must include a task name.
 
 Next step: see [Import workflow](./import-workflow) for the full in-app process.

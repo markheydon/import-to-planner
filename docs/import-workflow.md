@@ -33,8 +33,7 @@ When you confirm, the app starts the import and then shows an execution report.
 ## Understanding report outcomes
 
 - Created: a new task was created in Planner.
-- Reused: an existing matching task was detected and reused.
-- Skipped: a row could not be processed or was intentionally not created.
+- Reused or skipped: this combined outcome covers rows where an existing match was reused, and rows that were not created.
 
 ## Plan reuse behaviour
 

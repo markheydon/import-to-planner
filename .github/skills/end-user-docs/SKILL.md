@@ -24,12 +24,14 @@ Do not use this skill for internal engineering material under `docs-internal/`.
 
 Use repository sources in this order:
 
-1. Applicable docs contract(s) under `specs/*/contracts/` for the active docs feature
-2. Active docs feature specification artefacts under `specs/*/` (`spec.md`, `research.md`, `data-model.md`, `plan.md`)
-3. Verified product behaviour from code and tests (for example CSV headers, priorities, outcomes, and consent wording)
+1. Verified product behaviour from code and tests for user-visible states, labels, and outcomes (for example report wording, CSV headers, priorities, and consent wording)
+2. Applicable docs contract(s) under `specs/*/contracts/` for the active docs feature
+3. Active docs feature specification artefacts under `specs/*/` (`spec.md`, `research.md`, `data-model.md`, `plan.md`)
 4. Existing published docs content under `docs/` to preserve terminology and navigation consistency
 
 If sources conflict, follow the highest item in this list.
+
+For user-facing wording, current app behaviour always wins over stale spec or contract text; then update the stale planning artefact in the same change.
 
 ---
 
@@ -70,7 +72,7 @@ When creating or reviewing public docs pages, validate the obligations defined i
 - `/`: purpose, audience, links to core guides.
 - `/getting-started`: hosted prerequisites, hosted app access, sign-in and consent expectations.
 - `/csv-format`: required `Task Name`, accepted fields, allowed priority values, safe examples, common mistakes.
-- `/import-workflow`: ordered workflow steps, preview versus execution, created/reused/skipped outcomes, manual goal follow-up note.
+- `/import-workflow`: ordered workflow steps, preview versus execution, `Created` and `Reused or skipped` outcomes, manual goal follow-up note.
 - `/troubleshooting`: sign-in/consent, no groups found, CSV validation, duplicates, temporary API/throttling issues.
 - `/faq`: duplicates, existing plan import, goal handling, supported audience, data storage.
 - `/privacy-and-security`: Graph read/write scope at high level, no imported Planner/task data persistence, limited operational logs/telemetry, credential handling statement, delegated permissions summary.

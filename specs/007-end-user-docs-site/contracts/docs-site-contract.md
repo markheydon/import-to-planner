@@ -91,7 +91,7 @@ The import workflow page MUST:
 
 - Describe the five-step flow in order.
 - Explain preview versus confirmation/execution.
-- Explain created, reused, and skipped outcomes in plain English.
+- Explain `Created` and `Reused or skipped` outcomes in plain English, including that the latter is a combined bucket.
 - Explain that goal-related follow-up may still be required manually.
 - Not require screenshots in the initial release.
 

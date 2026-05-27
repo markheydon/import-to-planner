@@ -47,7 +47,7 @@ Fix the file using the [CSV format](./csv-format) guide, then upload again.
 
 The app can detect existing matching tasks and report them as reused rather than creating a duplicate.
 
-Check the execution report for created, reused, and skipped outcomes.
+Check the execution report for Created and Reused or skipped outcomes.
 
 ## Temporary API or throttling issues
 

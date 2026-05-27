@@ -6,7 +6,7 @@ permalink: /faq
 
 ## Will this create duplicate tasks?
 
-Not always. The import report identifies tasks that were created, reused, or skipped.
+Not always. The import report identifies tasks as Created or Reused or skipped.
 
 ## Can I import into an existing plan?
 

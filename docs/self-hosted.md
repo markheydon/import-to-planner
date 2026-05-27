@@ -18,7 +18,7 @@ Self-hosted setup involves environment configuration, identity setup, and operat
 
 ## Where to continue
 
-- Start with the repository root README for environment prerequisites and run options.
-- Use the internal engineering documentation that your team has access to for deployment and operations.
+- Start with the public repository README for prerequisites and run options: [import-to-planner README](https://github.com/markheydon/import-to-planner/blob/main/README.md).
+- If your team is self-hosting, use your own deployment runbook for environment-specific operations and ownership.
 
 This self-hosted route is intentionally separate so the main docs path stays focused on hosted end users.
