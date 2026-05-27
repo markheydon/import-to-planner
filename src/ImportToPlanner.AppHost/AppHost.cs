@@ -76,9 +76,9 @@ builder.AddProject<Projects.ImportToPlanner_Web>("web")
 
         if (hasCustomDomainConfigured && customDomain is not null && customDomainCertificateName is not null)
         {
-            #pragma warning disable ASPIREACADOMAINS001
+#pragma warning disable ASPIREACADOMAINS001
             app.ConfigureCustomDomain(customDomain, customDomainCertificateName);
-            #pragma warning restore ASPIREACADOMAINS001
+#pragma warning restore ASPIREACADOMAINS001
         }
     });
 
