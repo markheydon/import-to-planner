@@ -11,7 +11,7 @@
     <!-- Test and coverage tooling -->
     <PackageVersion Include="bunit" Version="2.7.2" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
 
@@ -19,7 +19,7 @@
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
 
     <!-- Blazor UI (MudBlazor) -->
-    <PackageVersion Include="MudBlazor" Version="9.4.0" />
+    <PackageVersion Include="MudBlazor" Version="9.5.0" />
 
     <!-- Microsoft Graph & Kiota -->
     <PackageVersion Include="Microsoft.Graph" Version="6.1.0" />

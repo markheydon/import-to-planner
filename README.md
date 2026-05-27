@@ -36,6 +36,7 @@ The app now has one supported runtime path:
 - Partial-success execution handling with a single retry for transient row failures.
 - Execution reporting for created items, skipped or reused items, manual actions, and errors.
 - Searchable container and plan selectors for larger tenants.
+- Clearer step-state guidance, CSV field expectations, and concise manual follow-up messaging.
 - Regression coverage for startup validation, authority handling, and single-path planner registration.
 
 Primary feature sources:
@@ -46,6 +47,7 @@ Primary feature sources:
 - [specs/003-align-clean-architecture/spec.md](specs/003-align-clean-architecture/spec.md)
 - [specs/004-add-multitenant-hosting/spec.md](specs/004-add-multitenant-hosting/spec.md)
 - [specs/005-simplify-graph-path/spec.md](specs/005-simplify-graph-path/spec.md)
+- [specs/006-refine-import-guidance/spec.md](specs/006-refine-import-guidance/spec.md)
 
 ## Technology Stack
 
@@ -54,7 +56,7 @@ Primary feature sources:
   - C# 14
   - ASP.NET Core Blazor Web App
 - UI:
-  - MudBlazor 9.4.0
+  - MudBlazor 9.5.0
 - Core libraries:
   - CsvHelper 33.1.0
   - Microsoft.Graph 6.1.0
@@ -68,7 +70,7 @@ Primary feature sources:
 - Testing:
   - xUnit 2.9.3
   - bUnit 2.7.2
-  - Microsoft.NET.Test.Sdk 18.5.1
+  - Microsoft.NET.Test.Sdk 18.6.0
 
 Primary version sources:
 
