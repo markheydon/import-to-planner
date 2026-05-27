@@ -350,7 +350,7 @@ Expected minimum for this repo's current Aspire deploy path at RG scope:
 - `Contributor`
 - `User Access Administrator`
 
-## 5) First-deploy smoke checks
+## 6) First-deploy smoke checks
 
 After the first successful staging deployment, run and record these checks:
 
@@ -373,7 +373,7 @@ After the first successful staging deployment, run and record these checks:
 - If configured, telemetry export is visible at the expected endpoint.
 - Failures produce actionable diagnostics without leaking sensitive values.
 
-## 6) Rollback and safety notes
+## 7) Rollback and safety notes
 
 - Prefer stopping new staging deployments over forcing production promotion.
 - If deployment state appears stale, rerun deployment after reviewing cached state and deployment inputs.
