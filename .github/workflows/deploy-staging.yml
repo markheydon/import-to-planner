@@ -59,4 +59,6 @@ jobs:
           Parameters__azureAdClientId: ${{ secrets.AZURE_CLIENT_ID }}
           Parameters__graphClientCertificatePassword: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_PASSWORD }}
           Parameters__graphClientCertificateBase64: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_BASE64 }}
+          Parameters__customDomain: ${{ vars.CUSTOM_DOMAIN }}
+          Parameters__customDomainCertificateName: ${{ vars.CUSTOM_DOMAIN_CERTIFICATE_NAME }}
         run: aspire deploy --environment Staging

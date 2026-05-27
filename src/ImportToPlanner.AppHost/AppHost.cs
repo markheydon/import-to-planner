@@ -22,6 +22,18 @@ var azureAdClientId = builder.AddParameter("azureAdClientId");
 var graphClientCertificatePassword = builder.AddParameter("graphClientCertificatePassword", secret: true);
 var graphClientCertificateBase64 = builder.AddParameter("graphClientCertificateBase64", secret: true);
 
+// Optional custom-domain settings for hosted deployments.
+// Leave customDomainCertificateName empty on first deployment; set it after the managed certificate exists.
+var hasCustomDomainConfigured = !string.IsNullOrWhiteSpace(builder.Configuration["Parameters:customDomain"]);
+IResourceBuilder<ParameterResource>? customDomain = null;
+IResourceBuilder<ParameterResource>? customDomainCertificateName = null;
+
+if (hasCustomDomainConfigured)
+{
+    customDomain = builder.AddParameter("customDomain", secret: false);
+    customDomainCertificateName = builder.AddParameter("customDomainCertificateName", secret: false);
+}
+
 // Azure Container Apps environment that will host published services.
 // The Aspire dashboard is enabled outside production for diagnostics.
 builder.AddAzureContainerAppEnvironment("aca-env")
@@ -61,6 +73,13 @@ builder.AddProject<Projects.ImportToPlanner_Web>("web")
     {
         app.Template.Scale.MinReplicas = minWebReplicas;
         app.Template.Scale.MaxReplicas = 1;
+
+        if (hasCustomDomainConfigured && customDomain is not null && customDomainCertificateName is not null)
+        {
+            #pragma warning disable ASPIREACADOMAINS001
+            app.ConfigureCustomDomain(customDomain, customDomainCertificateName);
+            #pragma warning restore ASPIREACADOMAINS001
+        }
     });
 
 builder.Build().Run();
