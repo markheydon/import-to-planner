@@ -118,8 +118,8 @@
                                          ValueChanged="OnSelectedContainerChangedAsync"
                                          SearchFunc="SearchContainers"
                                          ToStringFunc="FormatContainer"
-                                         Label="Container"
-                                         Placeholder="Search or select a container"
+                                         Label="Location"
+                                         Placeholder="Search or select a location"
                                          Variant="Variant.Outlined"
                                          Clearable="true"
                                          Dense="true"
@@ -127,7 +127,7 @@
                                          ResetValueOnEmptyText="true"
                                          Disabled="@isBusy" />
                         <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
-                            Refresh containers
+                            Refresh locations
                         </MudButton>
                     </MudStack>
 
@@ -176,7 +176,7 @@
             @if (selectedContainer is not null && plans.Count == 0)
             {
                 <MudAlert Severity="Severity.Warning" Dense="true">
-                    No plans were found for this container. Create a plan in Planner, then click Refresh plans.
+                    No plans were found for this location. Create a plan in Planner, then click Refresh plans.
                 </MudAlert>
             }
         </MudStack>
@@ -624,7 +624,7 @@
         {
             await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
 
-            SetStatus("Container list refreshed.", WorkflowStatusLevel.Success);
+            SetStatus("Location list refreshed.", WorkflowStatusLevel.Success);
         }
         catch (Exception ex)
         {
@@ -718,13 +718,13 @@
         plans.Clear();
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because your selected container changed. Generate a fresh preview before execution.");
+        MarkPreviewAsStale("Preview is stale because your selected location changed. Generate a fresh preview before execution.");
 
         if (selectedContainer is null)
         {
             if (!hadPreview)
             {
-                SetStatus("Select a container to continue.", WorkflowStatusLevel.Info);
+                SetStatus("Select a location to continue.", WorkflowStatusLevel.Info);
             }
 
             return;
@@ -1209,7 +1209,7 @@
     private string GetStepSummary(int step)
         => step switch
         {
-            1 => $"Container: {FormatContainer(selectedContainer)}",
+            1 => $"Location: {FormatContainer(selectedContainer)}",
             2 => $"Plan: {FormatPlan(selectedPlan)}",
             3 => $"CSV: {selectedFileName}",
             4 => "Preview generated and ready to execute.",

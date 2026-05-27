@@ -117,6 +117,24 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task Coordinator_BuildPreviewWithoutSelectedLocation_UsesLocationValidationMessage()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = new WorkflowCoordinationState
+        {
+            SelectedPlan = ctx.Gateway.Plans[0],
+            CsvContent = "Task Name\nTask A",
+        };
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+
+        var validationError = Assert.Single(state.ParseErrors);
+        Assert.Equal("Location", validationError.Field);
+        Assert.Equal("A location must be selected.", validationError.Message);
+    }
+
+    [Fact]
     public async Task Coordinator_WhenSelectedPlanDisappearsOnRefresh_InvalidatesPreviewAndExecutionState()
     {
         await using var ctx = new HomePageTestContext();
