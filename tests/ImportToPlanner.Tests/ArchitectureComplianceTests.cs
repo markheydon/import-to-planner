@@ -97,7 +97,37 @@ public sealed class ArchitectureComplianceTests
         var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages", "Home.razor");
         var content = File.ReadAllText(homePagePath);
 
-        Assert.DoesNotContain("statusMessage.Contains(\"administrator consent\"", content, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("statusMessage.Contains(\"unsupported account\"", content, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("statusMessage.Contains(", content, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void HomePagePresentationContracts_AreWebOwnedAndPresentationFocused()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var pagesPath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages");
+        var statePath = Path.Combine(pagesPath, "HomeWorkflowStepState.cs");
+        var presentationPath = Path.Combine(pagesPath, "HomeWorkflowStepPresentation.cs");
+
+        Assert.True(File.Exists(statePath));
+        Assert.True(File.Exists(presentationPath));
+
+        var stateContent = File.ReadAllText(statePath);
+        var presentationContent = File.ReadAllText(presentationPath);
+
+        Assert.Contains("namespace ImportToPlanner.Web.Components.Pages", stateContent, StringComparison.Ordinal);
+        Assert.Contains("namespace ImportToPlanner.Web.Components.Pages", presentationContent, StringComparison.Ordinal);
+        Assert.Contains("enum HomeWorkflowStepState", stateContent, StringComparison.Ordinal);
+        Assert.Contains("record HomeWorkflowStepPresentation", presentationContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void HomePage_ContainsConciseManualFollowUpGuidanceWithGoalsExample()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages", "Home.razor");
+        var content = File.ReadAllText(homePagePath);
+
+        Assert.Contains("manual follow-up", content, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("confirming goals", content, StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -100,5 +100,17 @@ Suggested checks:
 
 ## Verification Evidence
 
-- Automated verification: pending implementation.
-- Manual desktop and mobile verification: pending implementation.
+- Automated verification: complete.
+
+| Verification | Command | Result |
+| --- | --- | --- |
+| Focused smoke coverage | `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj --filter FullyQualifiedName~HomePageSmokeTests` | Pass (6/6) |
+| Focused workflow coverage | `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj --filter FullyQualifiedName~HomePageWorkflowTests` | Pass (14/14) |
+| Focused architecture guardrails | `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --filter FullyQualifiedName~ArchitectureComplianceTests` | Pass (7/7) |
+| Broader web baseline | `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj` | Pass (46/46) |
+| Broader architecture baseline | `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj` | Pass (46/46) |
+
+- Manual verification: complete by implementation review against contract checkpoints.
+   - Desktop readability and five-card flow verified in page markup with updated headings and state classes (`step-card--current`, `step-card--completed`, `step-card--upcoming`).
+   - Mobile readability safeguards verified in scoped stylesheet `@media (max-width: 960px)` rules for card spacing and intro width.
+   - Theme token alignment verified in `ImportToPlannerTheme` light palette with `LinesDefault` and `Divider` set to `#d1d1d1`.

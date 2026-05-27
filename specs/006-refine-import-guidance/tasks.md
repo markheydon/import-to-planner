@@ -16,7 +16,7 @@
 
 **Purpose**: Capture the focused verification flow and evidence checkpoints before UI wording and state changes begin.
 
-- [ ] T001 Record the focused workflow-copy, responsive-layout, and theme-token verification checkpoints in `specs/006-refine-import-guidance/quickstart.md`
+- [X] T001 Record the focused workflow-copy, responsive-layout, and theme-token verification checkpoints in `specs/006-refine-import-guidance/quickstart.md`
 
 ---
 
@@ -26,10 +26,10 @@
 
 **⚠️ CRITICAL**: Complete all T002-T005 before any user story work begins.
 
-- [ ] T002 [P] Create the shared workflow step state contract in `src/ImportToPlanner.Web/Components/Pages/HomeWorkflowStepState.cs`
-- [ ] T003 [P] Create the shared workflow step presentation model in `src/ImportToPlanner.Web/Components/Pages/HomeWorkflowStepPresentation.cs`
-- [ ] T004 [P] Create the page-level workflow state stylesheet scaffold in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
-- [ ] T005 [P] Extend architecture guardrails for Web-owned Home page guidance and state mapping in `tests/ImportToPlanner.Tests/ArchitectureComplianceTests.cs`
+- [X] T002 [P] Create the shared workflow step state contract in `src/ImportToPlanner.Web/Components/Pages/HomeWorkflowStepState.cs`
+- [X] T003 [P] Create the shared workflow step presentation model in `src/ImportToPlanner.Web/Components/Pages/HomeWorkflowStepPresentation.cs`
+- [X] T004 [P] Create the page-level workflow state stylesheet scaffold in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
+- [X] T005 [P] Extend architecture guardrails for Web-owned Home page guidance and state mapping in `tests/ImportToPlanner.Tests/ArchitectureComplianceTests.cs`
 
 **Checkpoint**: The Home page has explicit presentation contracts, a dedicated styling surface for step states, and architecture coverage that keeps wording and state logic on the Web side of the boundary.
 
@@ -43,14 +43,14 @@
 
 ### Tests for User Story 1
 
-- [ ] T006 [US1] Add rendered-heading and action-label regression coverage in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
-- [ ] T007 [US1] Add current/completed/upcoming workflow-state regression coverage in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T006 [US1] Add rendered-heading and action-label regression coverage in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
+- [X] T007 [US1] Add current/completed/upcoming workflow-state regression coverage in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Populate the five-step presentation mapping and state derivation in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T009 [US1] Replace redundant `Step X` headings and all-caps workflow actions with concise Planner-focused wording in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T010 [US1] Implement current, completed, and upcoming card treatments with completion badge styling in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
+- [X] T008 [US1] Populate the five-step presentation mapping and state derivation in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T009 [US1] Replace redundant `Step X` headings and all-caps workflow actions with concise Planner-focused wording in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T010 [US1] Implement current, completed, and upcoming card treatments with completion badge styling in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
 
 **Checkpoint**: User Story 1 is complete when the page still renders the same five workflow steps but the journey reads clearly without internal labels or ambiguous step state.
 
@@ -64,12 +64,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T011 [US2] Add introduction guidance regression coverage for the required and accepted CSV field copy in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
+- [X] T011 [US2] Add introduction guidance regression coverage for the required and accepted CSV field copy in `tests/ImportToPlanner.Web.Tests/HomePageSmokeTests.cs`
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Add the compact CSV overview, required-field cue, and accepted-fields summary in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T013 [US2] Refine the introduction layout so the added CSV guidance remains compact in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
+- [X] T012 [US2] Add the compact CSV overview, required-field cue, and accepted-fields summary in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T013 [US2] Refine the introduction layout so the added CSV guidance remains compact in `src/ImportToPlanner.Web/Components/Pages/Home.razor.css`
 
 **Checkpoint**: User Story 2 is complete when first-time users can prepare a CSV from the Home page guidance alone without the introduction overwhelming the workflow.
 
@@ -83,13 +83,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T014 [US3] Add manual-follow-up guidance and non-brittle Home page guard coverage in `tests/ImportToPlanner.Tests/ArchitectureComplianceTests.cs`
-- [ ] T015 [US3] Add manual-follow-up wording regression coverage in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
+- [X] T014 [US3] Add manual-follow-up guidance and non-brittle Home page guard coverage in `tests/ImportToPlanner.Tests/ArchitectureComplianceTests.cs`
+- [X] T015 [US3] Add manual-follow-up wording regression coverage in `tests/ImportToPlanner.Web.Tests/HomePageWorkflowTests.cs`
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Add concise manual follow-up expectation copy with a goals example in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
-- [ ] T017 [US3] Keep preview and execution guidance user-friendly without changing workflow semantics in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T016 [US3] Add concise manual follow-up expectation copy with a goals example in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
+- [X] T017 [US3] Keep preview and execution guidance user-friendly without changing workflow semantics in `src/ImportToPlanner.Web/Components/Pages/Home.razor`
 
 **Checkpoint**: User Story 3 is complete when the page clearly sets manual-follow-up expectations before import without adding dense explanatory text.
 
@@ -99,9 +99,9 @@
 
 **Purpose**: Finalise shared visual alignment and record verification evidence after the user stories are complete.
 
-- [ ] T018 [P] Align the shared light-theme border and divider token to `#d1d1d1` in `src/ImportToPlanner.Web/Themes/ImportToPlannerTheme.cs`
-- [ ] T019 [P] Record final focused test, responsive-review, and theme-review evidence in `specs/006-refine-import-guidance/quickstart.md`
-- [ ] T020 Run the full feature verification checklist in `specs/006-refine-import-guidance/quickstart.md`
+- [X] T018 [P] Align the shared light-theme border and divider token to `#d1d1d1` in `src/ImportToPlanner.Web/Themes/ImportToPlannerTheme.cs`
+- [X] T019 [P] Record final focused test, responsive-review, and theme-review evidence in `specs/006-refine-import-guidance/quickstart.md`
+- [X] T020 Run the full feature verification checklist in `specs/006-refine-import-guidance/quickstart.md`
 
 ---
 

@@ -28,9 +28,9 @@ internal static class ImportToPlannerTheme
             Success = "#107c10",
             Warning = "#8a6200",
             Error = "#a4262c",
-            LinesDefault = "#e1dfdd",
+            LinesDefault = "#d1d1d1",
             TableLines = "#edebe9",
-            Divider = "#e1dfdd",
+            Divider = "#d1d1d1",
             OverlayLight = "#ffffff80",
         },
         PaletteDark = new PaletteDark

@@ -62,8 +62,57 @@ public sealed class HomePageWorkflowTests
 
         cut.WaitForAssertion(() =>
         {
-            Assert.Contains("Step 3", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(2, cut.FindAll(".step-card--locked").Count);
+            Assert.Contains("Upload CSV", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(2, cut.FindAll(".step-card--completed").Count);
+            Assert.Single(cut.FindAll(".step-card--current"));
+            Assert.Equal(2, cut.FindAll(".step-card--upcoming").Count);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenContainerIsCleared_AfterCsvSelection_AllowsExplicitCsvClearAndResetsSelectionText()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+        state.ParseErrors.Add(new ImportValidationError(3, "Task Name", "Sample validation issue."));
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        await coordinator.ExecuteAsync(state, CancellationToken.None);
+
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(null));
+
+        cut.WaitForAssertion(() =>
+        {
+            var chooseButton = cut.FindAll("button").Single(button => button.TextContent.Contains("Choose CSV file", StringComparison.OrdinalIgnoreCase));
+            var clearButton = cut.FindAll("button").Single(button => button.TextContent.Contains("Clear CSV", StringComparison.OrdinalIgnoreCase));
+
+            Assert.True(chooseButton.HasAttribute("disabled"));
+            Assert.False(clearButton.HasAttribute("disabled"));
+        });
+
+        var csvClearButton = cut.FindAll("button").Single(button => button.TextContent.Contains("Clear CSV", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => csvClearButton.Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(string.Empty, state.CsvContent);
+            Assert.Equal("No file selected", state.SelectedFileName);
+            Assert.Empty(state.ParseErrors);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.CurrentPlanningRequest);
+            Assert.Null(state.ExecutionReport);
+            Assert.Contains("Selected file: No file selected", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Content explorer _ Microsoft Purview.csv", cut.Markup, StringComparison.OrdinalIgnoreCase);
         });
     }
 
@@ -243,10 +292,37 @@ public sealed class HomePageWorkflowTests
         var specificAuthorityCut = specificAuthority.Render<Home>();
         var sharedAuthorityCut = sharedAuthority.Render<Home>();
 
-        specificAuthorityCut.WaitForAssertion(() => Assert.Contains("Step 1", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
-        sharedAuthorityCut.WaitForAssertion(() => Assert.Contains("Step 1", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
-        Assert.Contains("Step 5", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Step 5", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
+        specificAuthorityCut.WaitForAssertion(() => Assert.Contains("Select Planner location", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
+        sharedAuthorityCut.WaitForAssertion(() => Assert.Contains("Select Planner location", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("Confirm and import", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Confirm and import", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task HomePage_InitialRender_ShowsCurrentCompletedAndUpcomingStates()
+    {
+        await using var ctx = new HomePageTestContext();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Single(cut.FindAll(".step-card--current"));
+            Assert.Empty(cut.FindAll(".step-card--completed"));
+            Assert.Equal(4, cut.FindAll(".step-card--upcoming").Count);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_RendersManualFollowUpGuidanceWithGoalsExample()
+    {
+        await using var ctx = new HomePageTestContext();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("manual follow-up", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("confirming goals", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     private static MicrosoftIdentityWebChallengeUserException CreateChallengeException()
