@@ -1,0 +1,14 @@
+title: Import To Planner Docs
+description: End-user guides for importing CSV tasks into Microsoft Planner.
+url: https://docs.importplanner.app
+baseurl: ""
+markdown: kramdown
+theme: minima
+show_excerpts: false
+header_pages:
+  - getting-started.md
+  - csv-format.md
+  - import-workflow.md
+  - troubleshooting.md
+  - faq.md
+  - privacy-and-security.md

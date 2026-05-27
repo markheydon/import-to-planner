@@ -41,6 +41,7 @@ The following skills are expected to be used by agents handling related tasks. E
 - `csharp-docs`
 - `csharp-xunit`
 - `dotnet-best-practices-repo`
+- `end-user-docs`
 - `github-issues`
 - `microsoft-docs`
 - `mudblazor`
@@ -53,12 +54,15 @@ Expected delegation:
 - .NET Aspire projects and distributed application architecture → C# Expert agent (uses `aspire`) when tasks involve AppHost/resource orchestration, Aspire CLI operations (`aspire start`, `aspire describe`, `aspire logs`, `aspire otel`, `aspire add`, `aspire doctor`, `aspire resource rebuild`), integrations, or distributed diagnostics; do not use for non-Aspire .NET apps (use `dotnet`), container-only workflows (use Docker/Podman), or Azure deployment execution after local validation
 - Issue / GitHub workflow tasks → `github-issues` skill for issue creation/updates, labelling, dependencies, and workflow metadata; do not use it as the default for PR code-review implementation or general repository coding tasks
 - Microsoft/.NET/Azure documentation research and code-sample lookup → `microsoft-docs` skill for authoritative references, API guidance, and official examples; do not use it as a replacement for repository-specific policy files or local codebase analysis
+- Public end-user documentation authoring under `docs/` → `end-user-docs` skill for structure, tone, UK English, and contract-aligned coverage; do not use it for internal engineering content under `docs-internal/` or for C# implementation work
 - Repository (root only) README generation or significant README restructuring → `repo-readme-generator` skill for documentation synthesis from repository artefacts; do not use it for small targeted content edits where direct manual updates are clearer
 
 Implementation workflow expectation:
 
 - During `/speckit.implement`, any coding, architecture, and test implementation tasks
 	MUST be delegated to the registered C# Expert agent when available.
+- During `/speckit.implement`, public docs authoring or refinement tasks under `docs/`
+	MUST apply the `end-user-docs` skill as the default writing guidance.
 - If a task is not suitable for C# Expert, the exception and rationale MUST be recorded
 	in the plan/PR notes.
 - When the AppHost is running: After the C# Expert agent completes coding, testing, and validation,
