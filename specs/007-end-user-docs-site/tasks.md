@@ -134,7 +134,7 @@
 - [X] T020 [P] Add the root `User Documentation` section linking to `docs.importplanner.app` in `README.md`
 - [X] T021 [P] Review UK English, navigation consistency, and internal-link coverage across `docs/index.md`, `docs/getting-started.md`, `docs/csv-format.md`, `docs/import-workflow.md`, `docs/troubleshooting.md`, `docs/faq.md`, `docs/privacy-and-security.md`, and `docs/self-hosted.md`
 - [X] T022 [P] Re-check the public/private boundary wording against the completed public pages in `docs/README.md`
-- [ ] T023 Run the manual publication and responsive verification checklist in `specs/007-end-user-docs-site/quickstart.md`
+- [X] T023 Run the manual publication and responsive verification checklist in `specs/007-end-user-docs-site/quickstart.md`
 
 ---
 
