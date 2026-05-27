@@ -16,6 +16,7 @@ This document tracks deployment preparation only. It does **not** change current
 - The AppHost defines one Azure Container Apps environment (`aca-env`) for deployment.
 - The AppHost keeps one compute resource (`web`) and publishes it as an Azure Container App.
 - The web resource exposes external HTTP endpoints through ACA ingress.
+- Optional custom-domain binding is deployment-configured via AppHost parameters (`customDomain`, `customDomainCertificateName`) and only applies when `customDomain` is supplied.
 - The AppHost applies environment variables for the web runtime explicitly (`ASPNETCORE_ENVIRONMENT` and `DOTNET_ENVIRONMENT`) because Aspire environments do not automatically flow to child resources.
 - Replica defaults are staging-first: non-production uses `minReplicas = 0`; production uses `minReplicas = 1`.
 - The current hosted cap is `maxReplicas = 1` so only 0 or 1 web replica runs at a time.
@@ -39,9 +40,10 @@ This document tracks deployment preparation only. It does **not** change current
 
 1. Confirm `src/ImportToPlanner.AppHost/AppHost.cs` still defines only the `web` app and the `aca-env` environment.
 2. Hand off hosted configuration values (`AzureAd:*`, `Storage:*`, certificate source, and OTLP endpoint) to the deployment owner as secret-backed settings, including AppHost parameter mapping in CI.
-3. Verify redirect URI and delegated Graph permissions remain aligned with the target hosted URL.
-4. Run CI-equivalent validation before rollout: solution build and tests plus AppHost build.
-5. Capture post-deployment smoke checks, including sign-in, preview, execute, and telemetry flow, before enabling wider access.
+3. For custom-domain deployments, use a two-stage rollout: deploy once without binding, provision DNS + ACA managed certificate, then redeploy with `customDomain` and `customDomainCertificateName` mapped.
+4. Verify redirect URI and delegated Graph permissions remain aligned with the target hosted URL.
+5. Run CI-equivalent validation before rollout: solution build and tests plus AppHost build.
+6. Capture post-deployment smoke checks, including sign-in, preview, execute, and telemetry flow, before enabling wider access.
 
 ## Hosted Reference Deployment
 

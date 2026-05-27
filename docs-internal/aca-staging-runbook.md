@@ -128,6 +128,8 @@ Use this mapping when creating values under GitHub Settings > Environments > `st
 | `AZURE_RESOURCE_GROUP` | Variable | Aspire deployment target settings | `aspire secret get "Azure:ResourceGroup"` |
 | `GRAPH_CLIENT_CERTIFICATE_PASSWORD` | Secret | Password protecting the Graph client certificate `.pfx` | Certificate export/process owner |
 | `GRAPH_CLIENT_CERTIFICATE_BASE64` | Secret | Base64-encoded `.pfx` bytes for hosted runtime materialisation | `base64 -w 0 <path-to-pfx>` on Linux/macOS or equivalent on Windows |
+| `CUSTOM_DOMAIN` | Variable | Public hostname to bind to the `web` ACA app (for example `app-staging.importplanner.app`) | Deployment owner / DNS owner |
+| `CUSTOM_DOMAIN_CERTIFICATE_NAME` | Variable | Existing ACA managed-certificate resource name for `CUSTOM_DOMAIN` | Azure Portal or `az containerapp managed-certificate list` |
 
 Why this split exists:
 
@@ -180,6 +182,8 @@ Add these environment variables to the same `staging` environment:
 
 - `AZURE_LOCATION`
 - `AZURE_RESOURCE_GROUP`
+- `CUSTOM_DOMAIN` (optional; leave unset until custom domain validation is ready)
+- `CUSTOM_DOMAIN_CERTIFICATE_NAME` (optional; leave unset for first deploy)
 
 Add these additional environment secrets:
 
@@ -236,8 +240,16 @@ The staging workflow also passes Aspire parameters for hosted web runtime settin
 - `Parameters__azureAdClientId` from `AZURE_CLIENT_ID`
 - `Parameters__graphClientCertificatePassword` from `GRAPH_CLIENT_CERTIFICATE_PASSWORD`
 - `Parameters__graphClientCertificateBase64` from `GRAPH_CLIENT_CERTIFICATE_BASE64`
+- `Parameters__customDomain` from `CUSTOM_DOMAIN` (optional)
+- `Parameters__customDomainCertificateName` from `CUSTOM_DOMAIN_CERTIFICATE_NAME` (optional)
 
-If these are missing, revisions may provision but fail at runtime with startup configuration errors.
+If required runtime values are missing, revisions may provision but fail at runtime with startup configuration errors.
+
+Custom-domain behaviour:
+
+- If `Parameters__customDomain` is unset or blank, the AppHost skips custom-domain binding.
+- If `Parameters__customDomain` is set, Aspire attempts to bind that hostname.
+- `Parameters__customDomainCertificateName` must match the existing ACA managed-certificate resource name exactly on subsequent deployments.
 
 ## 3) Certificate handling for staging
 
@@ -258,7 +270,29 @@ Production hardening (later):
 
 - Move from startup file materialisation to a managed certificate source (for example, Key Vault integration) when ready.
 
-## 4) First deployment procedure (GitHub Actions)
+## 4) ACA custom domain and managed certificate flow
+
+Use this sequence for custom domains with Aspire + Azure Container Apps:
+
+1. Run an initial hosted deploy without certificate binding values:
+   - Keep `CUSTOM_DOMAIN` and `CUSTOM_DOMAIN_CERTIFICATE_NAME` unset.
+   - Deploy with `aspire deploy --environment Staging`.
+2. Create and validate DNS records for your chosen hostname:
+   - For subdomains, create a direct CNAME to the container app generated hostname.
+   - Add the matching `asuid.<subdomain>` TXT record.
+   - Ensure no CAA policy blocks DigiCert issuance.
+3. Create the managed certificate in ACA for that hostname (portal or CLI).
+4. Set GitHub environment variables:
+   - `CUSTOM_DOMAIN=<hostname>`
+   - `CUSTOM_DOMAIN_CERTIFICATE_NAME=<managed-certificate-resource-name>`
+5. Redeploy with GitHub Actions or `aspire deploy --environment Staging`.
+
+Important:
+
+- `CUSTOM_DOMAIN_CERTIFICATE_NAME` is the ACA managed-certificate resource name, not a certificate thumbprint.
+- On first-time setup, binding with a certificate name before the managed certificate exists causes the deployment to fail.
+
+## 5) First deployment procedure (GitHub Actions)
 
 1. Confirm CI is passing on `main`.
 2. Run the `Deploy Staging` workflow using `workflow_dispatch`.
@@ -316,7 +350,7 @@ Expected minimum for this repo's current Aspire deploy path at RG scope:
 - `Contributor`
 - `User Access Administrator`
 
-## 5) First-deploy smoke checks
+## 6) First-deploy smoke checks
 
 After the first successful staging deployment, run and record these checks:
 
@@ -339,7 +373,7 @@ After the first successful staging deployment, run and record these checks:
 - If configured, telemetry export is visible at the expected endpoint.
 - Failures produce actionable diagnostics without leaking sensitive values.
 
-## 6) Rollback and safety notes
+## 7) Rollback and safety notes
 
 - Prefer stopping new staging deployments over forcing production promotion.
 - If deployment state appears stale, rerun deployment after reviewing cached state and deployment inputs.
