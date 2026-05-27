@@ -27,6 +27,12 @@ The app now has one supported runtime path:
 - Microsoft Graph planner operations with table-backed tenant metadata and blob-backed Data Protection persistence.
 - Authentication remains authority-driven through `AzureAd:TenantId` (`organizations` or a specific tenant value).
 
+## User Documentation
+
+Public end-user documentation is available at https://docs.importplanner.app.
+
+This site covers onboarding, CSV format, import workflow, troubleshooting, FAQ, privacy and security, plus secondary self-hosted guidance.
+
 ## Key Features
 
 - Row-level and file-level CSV validation before write actions.

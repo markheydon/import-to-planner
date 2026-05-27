@@ -1,5 +1,22 @@
 # docs/ — Public-facing documentation (GitHub Pages)
 
+## Start Here
+
+For end-user guidance, start at the public docs landing page:
+
+- https://docs.importplanner.app/
+
+The main user routes live in this folder as page files, including:
+
+- `index.md`
+- `getting-started.md`
+- `csv-format.md`
+- `import-workflow.md`
+- `troubleshooting.md`
+- `faq.md`
+- `privacy-and-security.md`
+- `self-hosted.md` (secondary guidance)
+
 This directory is reserved for public-facing end-user documentation that will be served
 via GitHub Pages. Do not add internal developer-only guidance, implementation notes,
 or operational runbooks to this folder — such content will be published publicly.

@@ -16,9 +16,9 @@
 
 **Purpose**: Create the shared publication artefacts the public docs site needs before content work begins.
 
-- [ ] T001 [P] Create the GitHub Pages site configuration and navigation defaults in `docs/_config.yml`
-- [ ] T002 [P] Add the custom domain declaration for `docs.importplanner.app` in `docs/CNAME`
-- [ ] T003 [P] Create the GitHub Pages deployment workflow for docs changes in `.github/workflows/docs-pages.yml`
+- [X] T001 [P] Create the GitHub Pages site configuration and navigation defaults in `docs/_config.yml`
+- [X] T002 [P] Add the custom domain declaration for `docs.importplanner.app` in `docs/CNAME`
+- [X] T003 [P] Create the GitHub Pages deployment workflow for docs changes in `.github/workflows/docs-pages.yml`
 
 ---
 
@@ -28,8 +28,8 @@
 
 **⚠️ CRITICAL**: Complete T004-T005 before any user story work begins.
 
-- [ ] T004 [P] Update the public-folder boundary note and landing-page handoff in `docs/README.md`
-- [ ] T005 Create the shared public page shells and navigation/front matter in `docs/index.md`, `docs/getting-started.md`, `docs/csv-format.md`, `docs/import-workflow.md`, `docs/troubleshooting.md`, `docs/faq.md`, `docs/privacy-and-security.md`, and `docs/self-hosted.md`
+- [X] T004 [P] Update the public-folder boundary note and landing-page handoff in `docs/README.md`
+- [X] T005 Create the shared public page shells and navigation/front matter in `docs/index.md`, `docs/getting-started.md`, `docs/csv-format.md`, `docs/import-workflow.md`, `docs/troubleshooting.md`, `docs/faq.md`, `docs/privacy-and-security.md`, and `docs/self-hosted.md`
 
 **Checkpoint**: GitHub Pages configuration exists, the custom domain is declared, and every public route has a repository-owned page shell ready for story-specific content.
 
@@ -43,9 +43,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T006 [P] [US1] Write the landing page overview, audience explanation, and guide links in `docs/index.md`
-- [ ] T007 [P] [US1] Write the hosted-user prerequisites, app access steps, and sign-in expectations in `docs/getting-started.md`
-- [ ] T008 [US1] Add the final hosted-user cross-links and onboarding flow between `docs/index.md` and `docs/getting-started.md`
+- [X] T006 [P] [US1] Write the landing page overview, audience explanation, and guide links in `docs/index.md`
+- [X] T007 [P] [US1] Write the hosted-user prerequisites, app access steps, and sign-in expectations in `docs/getting-started.md`
+- [X] T008 [US1] Add the final hosted-user cross-links and onboarding flow between `docs/index.md` and `docs/getting-started.md`
 
 **Checkpoint**: User Story 1 is complete when a hosted user can start from the docs home page and reach the app sign-in step without reading any other page.
 
@@ -59,8 +59,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Write the required and accepted columns, safe CSV examples, and priority guidance in `docs/csv-format.md`
-- [ ] T010 [US2] Add common formatting mistakes, extra-column behaviour, and invalid-priority guidance in `docs/csv-format.md`
+- [X] T009 [US2] Write the required and accepted columns, safe CSV examples, and priority guidance in `docs/csv-format.md`
+- [X] T010 [US2] Add common formatting mistakes, extra-column behaviour, and invalid-priority guidance in `docs/csv-format.md`
 
 **Checkpoint**: User Story 2 is complete when the CSV page alone is enough for a user to prepare a valid file with safe example data.
 
@@ -74,8 +74,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Write the five-step import walkthrough aligned to the current UI in `docs/import-workflow.md`
-- [ ] T012 [US3] Add plan reuse, created/reused/skipped outcome explanations, and manual follow-up guidance in `docs/import-workflow.md`
+- [X] T011 [US3] Write the five-step import walkthrough aligned to the current UI in `docs/import-workflow.md`
+- [X] T012 [US3] Add plan reuse, created/reused/skipped outcome explanations, and manual follow-up guidance in `docs/import-workflow.md`
 
 **Checkpoint**: User Story 3 is complete when the workflow guide stands on its own as an accurate text-first walkthrough without screenshots.
 
@@ -89,9 +89,9 @@
 
 ### Implementation for User Story 4
 
-- [ ] T013 [P] [US4] Write troubleshooting guidance for sign-in, permissions, `No groups found`, validation, duplicate handling, and throttling in `docs/troubleshooting.md`
-- [ ] T014 [P] [US4] Write concise end-user FAQ answers in `docs/faq.md`
-- [ ] T015 [US4] Cross-link the support journeys between `docs/troubleshooting.md` and `docs/faq.md`
+- [X] T013 [P] [US4] Write troubleshooting guidance for sign-in, permissions, `No groups found`, validation, duplicate handling, and throttling in `docs/troubleshooting.md`
+- [X] T014 [P] [US4] Write concise end-user FAQ answers in `docs/faq.md`
+- [X] T015 [US4] Cross-link the support journeys between `docs/troubleshooting.md` and `docs/faq.md`
 
 **Checkpoint**: User Story 4 is complete when the support pages together cover all known issue #11 failure and question scenarios in plain language.
 
@@ -105,8 +105,8 @@
 
 ### Implementation for User Story 5
 
-- [ ] T016 [US5] Write the privacy and security guidance for Graph data handling, limited telemetry, credentials, and retention boundaries in `docs/privacy-and-security.md`
-- [ ] T017 [US5] Add the delegated-permission and administrator-consent explanation in `docs/privacy-and-security.md`
+- [X] T016 [US5] Write the privacy and security guidance for Graph data handling, limited telemetry, credentials, and retention boundaries in `docs/privacy-and-security.md`
+- [X] T017 [US5] Add the delegated-permission and administrator-consent explanation in `docs/privacy-and-security.md`
 
 **Checkpoint**: User Story 5 is complete when the privacy page can stand alone as an accurate approval-readiness summary for end users and tenant administrators.
 
@@ -120,8 +120,8 @@
 
 ### Implementation for User Story 6
 
-- [ ] T018 [US6] Write the clearly secondary self-hosted guidance page in `docs/self-hosted.md`
-- [ ] T019 [US6] Add self-hosted signposting from `docs/index.md` and `docs/getting-started.md`
+- [X] T018 [US6] Write the clearly secondary self-hosted guidance page in `docs/self-hosted.md`
+- [X] T019 [US6] Add self-hosted signposting from `docs/index.md` and `docs/getting-started.md`
 
 **Checkpoint**: User Story 6 is complete when self-hosted information is available but clearly secondary to the hosted-user journey.
 
@@ -131,9 +131,9 @@
 
 **Purpose**: Finalise discoverability, consistency, and verification across the whole docs site.
 
-- [ ] T020 [P] Add the root `User Documentation` section linking to `docs.importplanner.app` in `README.md`
-- [ ] T021 [P] Review UK English, navigation consistency, and internal-link coverage across `docs/index.md`, `docs/getting-started.md`, `docs/csv-format.md`, `docs/import-workflow.md`, `docs/troubleshooting.md`, `docs/faq.md`, `docs/privacy-and-security.md`, and `docs/self-hosted.md`
-- [ ] T022 [P] Re-check the public/private boundary wording against the completed public pages in `docs/README.md`
+- [X] T020 [P] Add the root `User Documentation` section linking to `docs.importplanner.app` in `README.md`
+- [X] T021 [P] Review UK English, navigation consistency, and internal-link coverage across `docs/index.md`, `docs/getting-started.md`, `docs/csv-format.md`, `docs/import-workflow.md`, `docs/troubleshooting.md`, `docs/faq.md`, `docs/privacy-and-security.md`, and `docs/self-hosted.md`
+- [X] T022 [P] Re-check the public/private boundary wording against the completed public pages in `docs/README.md`
 - [ ] T023 Run the manual publication and responsive verification checklist in `specs/007-end-user-docs-site/quickstart.md`
 
 ---
