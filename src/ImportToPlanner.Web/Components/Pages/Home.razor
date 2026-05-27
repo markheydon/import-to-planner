@@ -227,7 +227,7 @@
                            Color="Color.Inherit"
                            StartIcon="@Icons.Material.Filled.Clear"
                            OnClick="ClearSelectedCsv"
-                           Disabled="@(isBusy || string.IsNullOrWhiteSpace(csvContent))">
+                           Disabled="@(isBusy || !hasSelectedCsv)">
                     Clear CSV
                 </MudButton>
             </MudStack>
@@ -262,7 +262,7 @@
             @if (isPreviewStale)
             {
                 <MudAlert Severity="Severity.Warning" Dense="true">
-                    Preview is stale because Planner state changed. Generate a fresh preview before execution.
+                    Preview is stale because Planner state changed. Generate a fresh preview before import.
                 </MudAlert>
             }
 
@@ -353,7 +353,6 @@
     private const string InteractiveTokenAcquisitionRequiredMessage = "Sign-in completed, but Microsoft Graph access still needs confirmation. Sign out and sign in again if access does not continue.";
     private const string AuthenticationReferenceQueryKey = "authRef";
     private const string TokenReauthenticationQueryKey = "tokenReauth";
-    private const string NoFileSelectedText = "No file selected";
 
     [CascadingParameter]
     private ThemeState? ThemeState { get; set; }
@@ -429,6 +428,9 @@
         get => WorkflowState.IsPreviewStale;
         set => WorkflowState.IsPreviewStale = value;
     }
+
+    private bool hasSelectedCsv
+        => !string.Equals(selectedFileName, WorkflowCoordinationState.NoFileSelectedText, StringComparison.Ordinal);
 
     private bool isTenantContextMismatch
     {
@@ -684,12 +686,12 @@
         using var reader = new StreamReader(stream);
         csvContent = await reader.ReadToEndAsync();
 
-        SetStatus("CSV file loaded. Click Validate and preview.", WorkflowStatusLevel.Info);
+        SetStatus("CSV file loaded. Click Preview import.", WorkflowStatusLevel.Info);
     }
 
     private async Task ClearSelectedCsv()
     {
-        if (isBusy || string.IsNullOrWhiteSpace(csvContent))
+        if (isBusy || !hasSelectedCsv)
         {
             return;
         }
@@ -700,7 +702,7 @@
         }
 
         csvContent = string.Empty;
-        selectedFileName = NoFileSelectedText;
+        selectedFileName = WorkflowCoordinationState.NoFileSelectedText;
         ResetFlowState();
         SetStatus("CSV selection cleared.", WorkflowStatusLevel.Info);
     }
@@ -718,7 +720,7 @@
         plans.Clear();
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because your selected location changed. Generate a fresh preview before execution.");
+        MarkPreviewAsStale("Preview is stale because your selected location changed. Generate a fresh preview before import.");
 
         if (selectedContainer is null)
         {
@@ -761,7 +763,7 @@
         selectedPlan = plan;
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before execution.");
+        MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before import.");
         if (!hadPreview)
         {
             SetStatus(selectedPlan is null ? "Select a plan to continue." : null, WorkflowStatusLevel.Info);
@@ -780,7 +782,7 @@
         ignoreExtraColumns = value;
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because CSV options changed. Generate a fresh preview before execution.");
+        MarkPreviewAsStale("Preview is stale because CSV options changed. Generate a fresh preview before import.");
         return Task.CompletedTask;
     }
 
