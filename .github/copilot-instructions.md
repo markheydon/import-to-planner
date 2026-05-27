@@ -58,8 +58,9 @@ See `CONTRIBUTING.md` for PR review reply policy and guidance on handling review
 ## C# Agent Support
 
 See `AGENTS.md` for agent delegation. By default, coding, architecture, and test tasks should be delegated to `.github/agents/CSharpExpert.agent.md` unless AGENTS.md indicates otherwise.
+For public end-user documentation work under `docs/`, follow AGENTS.md delegation and apply the `.github/skills/end-user-docs/SKILL.md` guidance.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read specs/006-refine-import-guidance/plan.md
+shell commands, and other important information, read specs/007-end-user-docs-site/plan.md
 <!-- SPECKIT END -->
