@@ -125,7 +125,7 @@ public sealed class ImportWorkflowCoordinator(
 
             if (state.SelectedContainer is null)
             {
-                state.ParseErrors.Add(new ImportValidationError(0, "Container", "A container must be selected."));
+                state.ParseErrors.Add(new ImportValidationError(0, "Location", "A location must be selected."));
                 return;
             }
 

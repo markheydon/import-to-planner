@@ -20,6 +20,8 @@ public enum WorkflowStatusLevel
 /// </summary>
 public sealed class WorkflowCoordinationState
 {
+    public const string NoFileSelectedText = "No file selected";
+
     public List<PlannerContainer> Containers { get; } = [];
 
     public List<PlannerPlan> Plans { get; } = [];
@@ -32,7 +34,7 @@ public sealed class WorkflowCoordinationState
 
     public string CsvContent { get; set; } = string.Empty;
 
-    public string SelectedFileName { get; set; } = "No file selected";
+    public string SelectedFileName { get; set; } = NoFileSelectedText;
 
     public string? StatusMessage { get; set; }
 

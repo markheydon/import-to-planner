@@ -16,10 +16,13 @@
         <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
             <MudGrid Spacing="3">
                 <MudItem xs="12" md="7">
-                    <MudStack Spacing="1">
+                    <MudStack Spacing="1" Class="step-intro">
                         <MudText Typo="Typo.h3">CSV to Planner Import</MudText>
                         <MudText Typo="Typo.body1">
                             Import a CSV into one Planner plan, then review each step before execution.
+                        </MudText>
+                        <MudText Typo="Typo.body2" Class="step-intro__guidance">
+                            Required field: <strong>Task Name</strong>. Accepted fields: <strong>Task Name</strong>, <strong>Description</strong>, <strong>Priority</strong>, <strong>Bucket</strong>, and <strong>Goal</strong>. Some details still need manual follow-up in Planner after import, for example confirming goals.
                         </MudText>
                     </MudStack>
                 </MudItem>
@@ -93,14 +96,15 @@
             }
 
             <MudPaper Elevation="@GetStepElevation(1)" Outlined="true" Class="@GetStepClass(1)">
+                @{ var step1Presentation = GetWorkflowStepPresentation(1); }
                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudAvatar Color="@GetStepAvatarColour(1)">@GetStepAvatarContent(1)</MudAvatar>
-                    <MudText Typo="Typo.h6">Step 1 · Select Container</MudText>
+                    <MudAvatar Color="@GetStepAvatarColour(1)">@step1Presentation.BadgeContent</MudAvatar>
+                    <MudText Typo="Typo.h6">@step1Presentation.Title</MudText>
                 </MudStack>
                 @if (IsStepComplete(1))
                 {
-                    <MudChip T="string" Color="@GetStepSummaryColour(1)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
-                        @GetStepSummary(1)
+                    <MudChip T="string" Color="@GetStepSummaryColour(1)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                        @step1Presentation.Summary
                     </MudChip>
                 }
 
@@ -114,8 +118,8 @@
                                          ValueChanged="OnSelectedContainerChangedAsync"
                                          SearchFunc="SearchContainers"
                                          ToStringFunc="FormatContainer"
-                                         Label="Container"
-                                         Placeholder="Search or select a container"
+                                         Label="Location"
+                                         Placeholder="Search or select a location"
                                          Variant="Variant.Outlined"
                                          Clearable="true"
                                          Dense="true"
@@ -123,7 +127,7 @@
                                          ResetValueOnEmptyText="true"
                                          Disabled="@isBusy" />
                         <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
-                            Refresh containers
+                            Refresh locations
                         </MudButton>
                     </MudStack>
 
@@ -137,14 +141,15 @@
             </MudPaper>
 
             <MudPaper Elevation="@GetStepElevation(2)" Outlined="true" Class="@GetStepClass(2)">
+        @{ var step2Presentation = GetWorkflowStepPresentation(2); }
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(2)">@GetStepAvatarContent(2)</MudAvatar>
-            <MudText Typo="Typo.h6">Step 2 · Select Plan</MudText>
+            <MudAvatar Color="@GetStepAvatarColour(2)">@step2Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step2Presentation.Title</MudText>
         </MudStack>
         @if (IsStepComplete(2))
         {
-            <MudChip T="string" Color="@GetStepSummaryColour(2)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
-                @GetStepSummary(2)
+            <MudChip T="string" Color="@GetStepSummaryColour(2)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step2Presentation.Summary
             </MudChip>
         }
 
@@ -171,50 +176,61 @@
             @if (selectedContainer is not null && plans.Count == 0)
             {
                 <MudAlert Severity="Severity.Warning" Dense="true">
-                    No plans were found for this container. Create a plan in Planner, then click Refresh plans.
+                    No plans were found for this location. Create a plan in Planner, then click Refresh plans.
                 </MudAlert>
             }
         </MudStack>
     </MudPaper>
 
             <MudPaper Elevation="@GetStepElevation(3)" Outlined="true" Class="@GetStepClass(3)">
+        @{ var step3Presentation = GetWorkflowStepPresentation(3); }
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(3)">@GetStepAvatarContent(3)</MudAvatar>
-            <MudText Typo="Typo.h6">Step 3 · Upload CSV and Options</MudText>
+            <MudAvatar Color="@GetStepAvatarColour(3)">@step3Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step3Presentation.Title</MudText>
         </MudStack>
         @if (IsStepComplete(3))
         {
-            <MudChip T="string" Color="@GetStepSummaryColour(3)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
-                @GetStepSummary(3)
+            <MudChip T="string" Color="@GetStepSummaryColour(3)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step3Presentation.Summary
             </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
-            <MudFileUpload T="IBrowserFile"
-                           @ref="csvFileUpload"
-                           FilesChanged="OnFileChangedAsync"
-                           Accept=".csv,text/csv"
-                           MaximumFileCount="1"
-                           Hidden="true"
-                           Disabled="@(isBusy || IsStepLocked(3))">
-                <CustomContent>
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.UploadFile"
-                               OnClick="OpenCsvFilePickerAsync"
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                <MudFileUpload T="IBrowserFile"
+                               @ref="csvFileUpload"
+                               FilesChanged="OnFileChangedAsync"
+                               Accept=".csv,text/csv"
+                               MaximumFileCount="1"
+                               Hidden="true"
                                Disabled="@(isBusy || IsStepLocked(3))">
-                        Choose CSV file
-                    </MudButton>
-                </CustomContent>
-                <SelectedTemplate>
-                    @if (context is not null)
-                    {
-                        <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
-                            @context.Name
-                        </MudChip>
-                    }
-                </SelectedTemplate>
-            </MudFileUpload>
+                    <CustomContent>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.UploadFile"
+                                   OnClick="OpenCsvFilePickerAsync"
+                                   Disabled="@(isBusy || IsStepLocked(3))">
+                            Choose CSV file
+                        </MudButton>
+                    </CustomContent>
+                    <SelectedTemplate>
+                        @if (context is not null)
+                        {
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
+                                @context.Name
+                            </MudChip>
+                        }
+                    </SelectedTemplate>
+                </MudFileUpload>
+
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Clear"
+                           OnClick="ClearSelectedCsv"
+                           Disabled="@(isBusy || !hasSelectedCsv)">
+                    Clear CSV
+                </MudButton>
+            </MudStack>
             <MudText Typo="Typo.body2">Selected file: @selectedFileName</MudText>
             <MudSwitch T="bool"
                        Value="@ignoreExtraColumns"
@@ -226,26 +242,27 @@
     </MudPaper>
 
             <MudPaper Elevation="@GetStepElevation(4)" Outlined="true" Class="@GetStepClass(4)">
+        @{ var step4Presentation = GetWorkflowStepPresentation(4); }
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(4)">@GetStepAvatarContent(4)</MudAvatar>
-            <MudText Typo="Typo.h6">Step 4 · Validate and Preview</MudText>
+            <MudAvatar Color="@GetStepAvatarColour(4)">@step4Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step4Presentation.Title</MudText>
         </MudStack>
         @if (IsStepComplete(4))
         {
-            <MudChip T="string" Color="@GetStepSummaryColour(4)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
-                @GetStepSummary(4)
+            <MudChip T="string" Color="@GetStepSummaryColour(4)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step4Presentation.Summary
             </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
-                Validate and preview
+                @step4Presentation.PrimaryActionLabel
             </MudButton>
 
             @if (isPreviewStale)
             {
                 <MudAlert Severity="Severity.Warning" Dense="true">
-                    Preview is stale because Planner state changed. Generate a fresh preview before execution.
+                    Preview is stale because Planner state changed. Generate a fresh preview before import.
                 </MudAlert>
             }
 
@@ -309,20 +326,21 @@
     </MudPaper>
 
             <MudPaper Elevation="@GetStepElevation(5)" Outlined="true" Class="@GetStepClass(5)">
+        @{ var step5Presentation = GetWorkflowStepPresentation(5); }
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(5)">@GetStepAvatarContent(5)</MudAvatar>
-            <MudText Typo="Typo.h6">Step 5 · Confirm and Execute</MudText>
+            <MudAvatar Color="@GetStepAvatarColour(5)">@step5Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step5Presentation.Title</MudText>
         </MudStack>
         @if (IsStepComplete(5))
         {
-            <MudChip T="string" Color="@GetStepSummaryColour(5)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1">
-                @GetStepSummary(5)
+            <MudChip T="string" Color="@GetStepSummaryColour(5)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step5Presentation.Summary
             </MudChip>
         }
 
         <MudStack Spacing="2" Class="mt-3">
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
-                Confirm and execute
+                @step5Presentation.PrimaryActionLabel
             </MudButton>
             <HomeExecutionReport ExecutionResult="@executionResult" />
         </MudStack>
@@ -410,6 +428,9 @@
         get => WorkflowState.IsPreviewStale;
         set => WorkflowState.IsPreviewStale = value;
     }
+
+    private bool hasSelectedCsv
+        => !string.Equals(selectedFileName, WorkflowCoordinationState.NoFileSelectedText, StringComparison.Ordinal);
 
     private bool isTenantContextMismatch
     {
@@ -605,7 +626,7 @@
         {
             await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
 
-            SetStatus("Container list refreshed.", WorkflowStatusLevel.Success);
+            SetStatus("Location list refreshed.", WorkflowStatusLevel.Success);
         }
         catch (Exception ex)
         {
@@ -665,7 +686,25 @@
         using var reader = new StreamReader(stream);
         csvContent = await reader.ReadToEndAsync();
 
-        SetStatus("CSV file loaded. Click Validate and preview.", WorkflowStatusLevel.Info);
+        SetStatus("CSV file loaded. Click Preview import.", WorkflowStatusLevel.Info);
+    }
+
+    private async Task ClearSelectedCsv()
+    {
+        if (isBusy || !hasSelectedCsv)
+        {
+            return;
+        }
+
+        if (csvFileUpload is not null)
+        {
+            await csvFileUpload.ClearAsync();
+        }
+
+        csvContent = string.Empty;
+        selectedFileName = WorkflowCoordinationState.NoFileSelectedText;
+        ResetFlowState();
+        SetStatus("CSV selection cleared.", WorkflowStatusLevel.Info);
     }
 
     private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
@@ -681,13 +720,13 @@
         plans.Clear();
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because your selected container changed. Generate a fresh preview before execution.");
+        MarkPreviewAsStale("Preview is stale because your selected location changed. Generate a fresh preview before import.");
 
         if (selectedContainer is null)
         {
             if (!hadPreview)
             {
-                SetStatus("Select a container to continue.", WorkflowStatusLevel.Info);
+                SetStatus("Select a location to continue.", WorkflowStatusLevel.Info);
             }
 
             return;
@@ -724,7 +763,7 @@
         selectedPlan = plan;
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before execution.");
+        MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before import.");
         if (!hadPreview)
         {
             SetStatus(selectedPlan is null ? "Select a plan to continue." : null, WorkflowStatusLevel.Info);
@@ -743,7 +782,7 @@
         ignoreExtraColumns = value;
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because CSV options changed. Generate a fresh preview before execution.");
+        MarkPreviewAsStale("Preview is stale because CSV options changed. Generate a fresh preview before import.");
         return Task.CompletedTask;
     }
 
@@ -1081,22 +1120,67 @@
 
     private bool IsStepActive(int step) => ActiveStep.HasValue && ActiveStep.Value == step;
 
-    private int GetStepElevation(int step)
-        => IsStepLocked(step) ? 0 : IsStepActive(step) ? 2 : 1;
-
-    private string GetStepClass(int step)
+    private HomeWorkflowStepPresentation GetWorkflowStepPresentation(int step)
     {
-        if (IsStepLocked(step))
+        var state = GetWorkflowStepState(step);
+        var template = GetWorkflowStepTemplate(step);
+        var badgeContent = state == HomeWorkflowStepState.Completed
+            ? "✓"
+            : step.ToString();
+        var summary = IsStepComplete(step) ? GetStepSummary(step) : null;
+
+        return template with
         {
-            return "step-card step-card--locked pa-4";
+            State = state,
+            BadgeContent = badgeContent,
+            Summary = summary,
+        };
+    }
+
+    private HomeWorkflowStepState GetWorkflowStepState(int step)
+    {
+        if (IsStepComplete(step))
+        {
+            return HomeWorkflowStepState.Completed;
         }
 
         if (IsStepActive(step))
         {
-            return "step-card step-card--active pa-4";
+            return HomeWorkflowStepState.Current;
         }
 
-        return "step-card step-card--complete pa-4";
+        return HomeWorkflowStepState.Upcoming;
+    }
+
+    private static HomeWorkflowStepPresentation GetWorkflowStepTemplate(int step)
+        => step switch
+        {
+            1 => new HomeWorkflowStepPresentation(1, "Select Planner location", HomeWorkflowStepState.Upcoming, "1", null, null),
+            2 => new HomeWorkflowStepPresentation(2, "Select plan", HomeWorkflowStepState.Upcoming, "2", null, null),
+            3 => new HomeWorkflowStepPresentation(3, "Upload CSV", HomeWorkflowStepState.Upcoming, "3", null, null),
+            4 => new HomeWorkflowStepPresentation(4, "Preview import", HomeWorkflowStepState.Upcoming, "4", null, "Preview import"),
+            5 => new HomeWorkflowStepPresentation(5, "Confirm and import", HomeWorkflowStepState.Upcoming, "5", null, "Confirm and import"),
+            _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown step."),
+        };
+
+    private int GetStepElevation(int step)
+        => GetWorkflowStepState(step) switch
+        {
+            HomeWorkflowStepState.Current => 2,
+            HomeWorkflowStepState.Completed => 1,
+            HomeWorkflowStepState.Upcoming => 0,
+            _ => 0,
+        };
+
+    private string GetStepClass(int step)
+    {
+        return GetWorkflowStepState(step) switch
+        {
+            HomeWorkflowStepState.Current => "step-card step-card--current pa-4",
+            HomeWorkflowStepState.Completed => "step-card step-card--completed pa-4",
+            HomeWorkflowStepState.Upcoming => "step-card step-card--upcoming pa-4",
+            _ => "step-card step-card--upcoming pa-4",
+        };
     }
 
     private Color GetStepAvatarColour(int step)
@@ -1124,15 +1208,10 @@
         }
     }
 
-    private string GetStepAvatarContent(int step)
-        => IsStepComplete(step)
-            ? "✓"
-            : step.ToString();
-
     private string GetStepSummary(int step)
         => step switch
         {
-            1 => $"Container: {FormatContainer(selectedContainer)}",
+            1 => $"Location: {FormatContainer(selectedContainer)}",
             2 => $"Plan: {FormatPlan(selectedPlan)}",
             3 => $"CSV: {selectedFileName}",
             4 => "Preview generated and ready to execute.",

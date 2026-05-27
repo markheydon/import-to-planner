@@ -1,0 +1,42 @@
+.step-card {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 12px;
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.step-card--current {
+    border-color: var(--mud-palette-primary);
+    background: color-mix(in srgb, var(--mud-palette-primary) 7%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--mud-palette-primary) 22%, transparent);
+}
+
+.step-card--completed {
+    border-color: color-mix(in srgb, var(--mud-palette-success) 50%, var(--mud-palette-lines-default));
+    background: color-mix(in srgb, var(--mud-palette-success) 5%, transparent);
+}
+
+.step-card--upcoming {
+    opacity: 0.92;
+}
+
+.step-card__summary {
+    max-width: 100%;
+}
+
+.step-intro {
+    max-width: 70ch;
+}
+
+.step-intro__guidance {
+    line-height: 1.45;
+}
+
+@media (max-width: 960px) {
+    .step-card {
+        padding: 1rem;
+    }
+
+    .step-intro {
+        max-width: none;
+    }
+}
