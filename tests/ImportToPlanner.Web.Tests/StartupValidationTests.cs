@@ -20,6 +20,26 @@ public sealed class StartupValidationTests
     }
 
     [Theory]
+    [InlineData("__REPLACE_WITH_HOME_TENANT_ID__")]
+    [InlineData("common")]
+    [InlineData("9188040d-6c67-4c5b-b112-36a304b66dad")]
+    public void Validate_WhenAzureAdHomeTenantIdIsInvalid_ThrowsFriendlyError(string homeTenantId)
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AzureAd:TenantId"] = "home-tenant",
+            ["AzureAd:HomeTenantId"] = homeTenantId,
+            ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+            ["Storage:DataProtectionContainer"] = "dataprotection",
+            ["Storage:DataProtectionBlob"] = "keys.xml",
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(() => StartupConfigurationValidator.Validate(configuration));
+
+        Assert.Contains("AzureAd:HomeTenantId", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
     [InlineData("PlannerGateway:UseGraph", "PlannerGateway")]
     [InlineData("HostedStorage:Enabled", "HostedStorage")]
     [InlineData("DeploymentMode:Mode", "DeploymentMode")]

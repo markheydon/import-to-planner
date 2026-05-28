@@ -11,7 +11,9 @@ public sealed class HostedTelemetryTests
             "organizations",
             TenantAuthorityKind.SharedOrganisations,
             ["Tasks.ReadWrite"],
-            new Uri("https://example.test/admin-consent"));
+            new Uri("https://example.test/admin-consent"),
+            "tenant-home",
+            "multiple");
         var tenantContext = new TenantContext(
             "tenant-a",
             "tenant-key-a",
@@ -38,7 +40,9 @@ public sealed class HostedTelemetryTests
             "tenant-a",
             TenantAuthorityKind.SpecificTenant,
             ["User.Read"],
-            null);
+            null,
+            "tenant-a",
+            "tenant-a");
         var dimensions = HostedTelemetryHelper.BuildHostedTelemetryDimensions(
             authority,
             null,

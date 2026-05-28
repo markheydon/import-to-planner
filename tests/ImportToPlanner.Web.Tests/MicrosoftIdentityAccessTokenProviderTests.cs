@@ -15,7 +15,9 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         "tenant-self-hosted",
         TenantAuthorityKind.SpecificTenant,
         ["User.Read"],
-        null);
+        null,
+        "tenant-self-hosted",
+        "tenant-self-hosted");
 
     [Fact]
     public async Task GetAuthorizationTokenAsync_WhenUserIsUnauthenticated_ThrowsGraphUnauthenticatedContextException()

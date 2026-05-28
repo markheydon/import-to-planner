@@ -93,6 +93,7 @@ PowerShell (Windows):
 
 ```bash
 export Parameters__azureAdTenantId="<tenant-id>"
+export Parameters__azureAdHomeTenantId="multiple"
 export Parameters__azureAdClientId="<client-id>"
 export Parameters__graphClientCertificatePassword="<certificate-password>"
 export Parameters__graphClientCertificateBase64="<single-line-base64-pfx>"
@@ -122,10 +123,11 @@ Use this mapping when creating values under GitHub Settings > Environments > `st
 | GitHub key | Type in GitHub | Source | How to get it |
 | --- | --- | --- | --- |
 | `AZURE_CLIENT_ID` | Secret | Microsoft Entra app registration used by GitHub OIDC | Entra app Overview page -> Application (client) ID |
-| `AZURE_TENANT_ID` | Secret | Microsoft Entra tenant that owns the OIDC app registration | Entra tenant Overview -> Tenant ID (or `az account show --query tenantId -o tsv`) |
+| `AZURE_TENANT_ID` | Secret | Microsoft Entra tenant that owns the OIDC deployment app registration | Entra tenant Overview -> Tenant ID (or `az account show --query tenantId -o tsv`) |
 | `AZURE_SUBSCRIPTION_ID` | Secret | Aspire deployment target settings | `aspire secret get "Azure:SubscriptionId"` |
 | `AZURE_LOCATION` | Variable | Aspire deployment target settings | `aspire secret get "Azure:Location"` |
 | `AZURE_RESOURCE_GROUP` | Variable | Aspire deployment target settings | `aspire secret get "Azure:ResourceGroup"` |
+| `HOME_TENANT_ID` | Variable | Hosted runtime authority mode | Set `multiple` for shared hosted mode, or a specific tenant ID/domain for tenant-constrained mode |
 | `GRAPH_CLIENT_CERTIFICATE_PASSWORD` | Secret | Password protecting the Graph client certificate `.pfx` | Certificate export/process owner |
 | `GRAPH_CLIENT_CERTIFICATE_BASE64` | Secret | Base64-encoded `.pfx` bytes for hosted runtime materialisation | `base64 -w 0 <path-to-pfx>` on Linux/macOS or equivalent on Windows |
 | `CUSTOM_DOMAIN` | Variable | Public hostname to bind to the `web` ACA app (for example `app-staging.importplanner.app`) | Deployment owner / DNS owner |
@@ -135,7 +137,20 @@ Why this split exists:
 
 - OIDC identity values (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`) come from identity setup.
 - Deployment target values (`subscription`, `location`, `resource group`) come from Aspire deploy prompts and local Aspire secret storage.
-- Hosted web runtime values reuse `AZURE_CLIENT_ID` and `AZURE_TENANT_ID` for the app runtime parameters in this single-tenant baseline, plus `GRAPH_CLIENT_CERTIFICATE_*` for certificate handoff.
+- Hosted web runtime values use `AZURE_TENANT_ID` for the app-registration tenant, reuse `AZURE_CLIENT_ID` for the app registration client ID, use `HOME_TENANT_ID` (`multiple` for shared hosted authority), and use `GRAPH_CLIENT_CERTIFICATE_*` for certificate handoff.
+
+## Hosted app-registration prerequisites
+
+Before you deploy staging, confirm the hosted app registration matches the shared hosted mode described in [Microsoft Entra app-registration setup](entra-app-registration-setup.md).
+
+Minimum staging requirements:
+
+- Supported account types: `Accounts in any organisational directory`.
+- Redirect URI: the staging web origin with the fixed callback path `/signin-oidc`.
+- Delegated Microsoft Graph permissions: `User.Read`, `Group.Read.All`, `GroupMember.Read.All`, and `Tasks.ReadWrite`.
+- Runtime authority: `Parameters__azureAdHomeTenantId=multiple`.
+
+`AZURE_TENANT_ID` identifies the tenant used by GitHub OIDC and, in this staging workflow, also maps to `Parameters__azureAdTenantId` for the hosted app registration tenant. Runtime authority mode is controlled separately by `HOME_TENANT_ID`.
 
 ## 1) One-time Azure and GitHub setup
 
@@ -236,14 +251,15 @@ If these are missing, GitHub deployment can authenticate to Azure successfully a
 
 The staging workflow also passes Aspire parameters for hosted web runtime settings:
 
-- `Parameters__azureAdTenantId` from `AZURE_TENANT_ID`
+- `Parameters__azureAdTenantId` from `AZURE_TENANT_ID` (app-registration tenant)
+- `Parameters__azureAdHomeTenantId` from `HOME_TENANT_ID` (`multiple` for shared hosted authority)
 - `Parameters__azureAdClientId` from `AZURE_CLIENT_ID`
 - `Parameters__graphClientCertificatePassword` from `GRAPH_CLIENT_CERTIFICATE_PASSWORD`
 - `Parameters__graphClientCertificateBase64` from `GRAPH_CLIENT_CERTIFICATE_BASE64`
 - `Parameters__customDomain` from `CUSTOM_DOMAIN` (optional)
 - `Parameters__customDomainCertificateName` from `CUSTOM_DOMAIN_CERTIFICATE_NAME` (optional)
 
-If required runtime values are missing, revisions may provision but fail at runtime with startup configuration errors.
+If required runtime values are missing, or if `Parameters__azureAdHomeTenantId` is set to an unexpected value, revisions may provision but fail at runtime with startup configuration errors or tenant-specific sign-in failures.
 
 Custom-domain behaviour:
 
@@ -356,7 +372,7 @@ After the first successful staging deployment, run and record these checks:
 
 1. Authentication and authority path
 - Unauthenticated access redirects to sign-in.
-- `AzureAd:TenantId=organizations` behaviour works as expected.
+- `AzureAd:HomeTenantId=multiple` behaviour works as expected.
 - Tenant-specific authority behaviour still works when configured.
 
 2. Planner workflow path

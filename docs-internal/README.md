@@ -6,6 +6,7 @@ Keep public-facing material in `docs/` and use this folder for implementation no
 
 ## Topic Index
 
+- [Microsoft Entra app-registration setup](entra-app-registration-setup.md)
 - [Developer quick-start](developer-quickstart.md)
 - [Engineering policies (non-constitutional)](engineering-policies.md)
 - [Microsoft Graph guidelines](microsoft-graph-guidelines.md)

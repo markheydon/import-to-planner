@@ -34,6 +34,19 @@ Hosted multi-tenant compatibility
 - Keep hosted telemetry privacy-safe: include authority classification, tenant-safe key, consent status, and failure category only.
 - Validate planner behaviour changes through the single supported Graph path plus authority-specific guard scenarios.
 
+Authority and consent matrix
+----------------------------
+
+| Operating mode | Authority configuration | Supported account types in Entra | Consent expectation |
+| --- | --- | --- | --- |
+| Self-hosted single-tenant | `AzureAd:TenantId=<tenant>` and `AzureAd:HomeTenantId=<tenant>` | Accounts in this organisational directory only | Tenant owner grants or delegates consent inside the same tenant before use |
+| Hosted shared multi-tenant | `AzureAd:TenantId=<app-registration-tenant>` and `AzureAd:HomeTenantId=multiple` | Accounts in any organisational directory | Users can complete delegated consent when tenant policy allows it; otherwise the app must present an administrator-consent path |
+
+Operational notes:
+- Keep the hosted app registration and the self-hosted app registration separate by default so a tenant-owned self-hosted deployment does not inherit shared hosted consent and redirect-URI requirements.
+- The hosted deployment must keep `AzureAd:TenantId` aligned to the app-registration tenant and set `AzureAd:HomeTenantId=multiple` for shared hosted sign-in.
+- Keep the delegated Graph scope set aligned with `src/ImportToPlanner.Web/appsettings.json`: `User.Read`, `Group.Read.All`, `GroupMember.Read.All`, and `Tasks.ReadWrite`.
+
 Further reading
 ---------------
 - See `.specify/memory/constitution.md` for governance-level requirements about Graph integration and observability.

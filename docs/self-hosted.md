@@ -16,9 +16,20 @@ Use this page if your organisation plans to deploy and operate its own instance.
 
 Self-hosted setup involves environment configuration, identity setup, and operational ownership by your team.
 
+For self-hosted deployments, keep authentication tenant-specific:
+
+- Create or use an Entra app registration owned by your tenant.
+- Keep the supported account type single-tenant for that registration.
+- Set `AzureAd:TenantId` to your tenant ID or verified domain.
+- Add the exact redirect URI for your deployed app, always ending with `/signin-oidc`.
+- Grant the delegated Microsoft Graph permissions required by the app before your users start importing.
+
+This route is intentionally different from the hosted shared service. Do not point a self-hosted deployment at the hosted multitenant app registration.
+
 ## Where to continue
 
 - Start with the public repository README for prerequisites and run options: [import-to-planner README](https://github.com/markheydon/import-to-planner/blob/main/README.md).
+- Use your own tenant-owned app registration rather than the hosted shared registration.
 - If your team is self-hosting, use your own deployment runbook for environment-specific operations and ownership.
 
 This self-hosted route is intentionally separate so the main docs path stays focused on hosted end users.
