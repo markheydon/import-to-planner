@@ -126,6 +126,17 @@ public sealed class HostedAuthenticationEventTests
         Assert.True(string.IsNullOrWhiteSpace(httpContext.Response.Headers.Location.ToString()));
     }
 
+    [Fact]
+    public void BuildHostedServiceProvider_WhenConfiguredForSpecificTenant_KeepsSelfHostedAuthorityKind()
+    {
+        var serviceProvider = BuildHostedServiceProvider("tenant-specific", "tenant-specific");
+
+        var authority = serviceProvider.GetRequiredService<TenantAuthorityConfiguration>();
+
+        Assert.Equal(TenantAuthorityKind.SpecificTenant, authority.AuthorityKind);
+        Assert.False(authority.IsSharedOrganisations);
+    }
+
     private static ServiceProvider BuildHostedServiceProvider(string tenantId, string? homeTenantId)
     {
         var services = new ServiceCollection();

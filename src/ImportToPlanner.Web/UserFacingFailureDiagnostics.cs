@@ -74,7 +74,7 @@ internal sealed class UserFacingFailureDiagnostics(
 
         state["failure.handled"] = true;
         state["failure.operation"] = operation;
-        state["failure.user_message"] = userSafeMessage;
+        state["failure.user_message_present"] = true;
         state["failure.reference_id"] = referenceId ?? "none";
 
         if (!string.IsNullOrWhiteSpace(failureCode))
@@ -108,7 +108,7 @@ internal sealed class UserFacingFailureDiagnostics(
             ["failure.operation"] = operation,
             ["failure.category"] = failureCategory,
             ["failure.reference_id"] = referenceId ?? "none",
-            ["failure.user_message"] = userSafeMessage,
+            ["failure.user_message_present"] = true,
             ["consent.status"] = consentStatus.ToString(),
             ["authority.kind"] = tenantAuthorityConfiguration.AuthorityKind.ToString(),
             ["tenant.key"] = tenantKeyOverride ?? tenantContext?.TenantKey ?? "none",

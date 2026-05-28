@@ -57,6 +57,68 @@ public sealed class ArchitectureComplianceTests
     }
 
     [Fact]
+    public void Application_ContainsCommercialAccountBoundaryContracts()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var applicationRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Application");
+
+        var requiredPaths = new[]
+        {
+            Path.Combine(applicationRoot, "Models", "SessionIdentityContext.cs"),
+            Path.Combine(applicationRoot, "Models", "CommercialAccount.cs"),
+            Path.Combine(applicationRoot, "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(applicationRoot, "Models", "AccountAuditEvent.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccountStore.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialAuditStore.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccessUseCase.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
+        };
+
+        foreach (var requiredPath in requiredPaths)
+        {
+            Assert.True(File.Exists(requiredPath));
+        }
+    }
+
+    [Fact]
+    public void CommercialAccountContracts_AreProviderNeutral()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var applicationRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Application");
+        var commercialFiles = new[]
+        {
+            Path.Combine(applicationRoot, "Models", "SessionIdentityContext.cs"),
+            Path.Combine(applicationRoot, "Models", "CommercialAccount.cs"),
+            Path.Combine(applicationRoot, "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(applicationRoot, "Models", "AccountAuditEvent.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccountStore.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialAuditStore.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccessUseCase.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
+        };
+
+        var forbiddenTokens = new[]
+        {
+            "Azure.Data.Tables",
+            "Microsoft.Graph",
+            "Microsoft.AspNetCore",
+            "System.Security.Claims",
+            "ImportToPlanner.Web",
+            "ImportToPlanner.Infrastructure",
+            "Features:CommercialMode",
+        };
+
+        foreach (var commercialFile in commercialFiles)
+        {
+            var content = File.ReadAllText(commercialFile);
+            foreach (var forbiddenToken in forbiddenTokens)
+            {
+                Assert.DoesNotContain(forbiddenToken, content, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
+
+    [Fact]
     public void MaintainedSource_DoesNotContainRemovedRuntimeModeConcepts()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));

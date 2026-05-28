@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<UserFacingFailureDiagnostics>();
         services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
+        services.AddScoped<ISessionIdentityContextAccessor, ClaimsSessionIdentityContextAccessor>();
 
         var tenantAuthorityConfiguration = services
             .Where(descriptor => descriptor.ServiceType == typeof(TenantAuthorityConfiguration))
@@ -197,6 +198,7 @@ public static class DependencyInjection
 
         services.AddScoped<ImportPlanningPresenter>();
         services.AddScoped<ImportExecutionPresenter>();
+        services.AddScoped<SessionIdentityPresenter>();
         services.AddScoped<WorkflowCoordinationState>();
         services.AddScoped<ImportWorkflowCoordinator>();
 

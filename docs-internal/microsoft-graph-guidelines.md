@@ -34,6 +34,13 @@ Hosted multi-tenant compatibility
 - Keep hosted telemetry privacy-safe: include authority classification, tenant-safe key, consent status, and failure category only.
 - Validate planner behaviour changes through the single supported Graph path plus authority-specific guard scenarios.
 
+Commercial account storage boundary
+----------------------------------
+- Session-only identity context can include display email and tenant name for UI reassurance.
+- Persisted commercial account records must remain minimal (`TenantId`, `UserId`, `CreatedUtc`, lifecycle state).
+- Do not persist display email, tenant display name, or other profile text in commercial account storage for this release.
+- Audit records should store stable outcome codes and timestamps, not user-facing message prose.
+
 Authority and consent matrix
 ----------------------------
 

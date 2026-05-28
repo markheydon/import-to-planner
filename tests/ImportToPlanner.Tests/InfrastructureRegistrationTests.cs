@@ -17,7 +17,10 @@ public sealed class InfrastructureRegistrationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["Features:CommercialMode:Enabled"] = "true",
                 ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
+                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             })
             .Build();
 
@@ -29,7 +32,35 @@ public sealed class InfrastructureRegistrationTests
 
         using var serviceProvider = services.BuildServiceProvider();
         var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+        var commercialAccountsTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAccountsTableClientKey);
+        var commercialAuditTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAuditTableClientKey);
 
         Assert.Equal("TableTenantOperationalMetadataStore", metadataStore.GetType().Name);
+        Assert.Equal("CommercialAccounts", commercialAccountsTableClient.Name);
+        Assert.Equal("CommercialAccountAuditEvents", commercialAuditTableClient.Name);
+    }
+
+    [Fact]
+    public void AddInfrastructure_WhenCommercialModeDisabled_RegistersNoOpCommercialStores()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Features:CommercialMode:Enabled"] = "false",
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+            })
+            .Build();
+
+        services.AddInfrastructure(configuration);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var accountStore = serviceProvider.GetRequiredService<ICommercialAccountStore>();
+        var auditStore = serviceProvider.GetRequiredService<ICommercialAuditStore>();
+
+        Assert.Equal("NoOpCommercialAccountStore", accountStore.GetType().Name);
+        Assert.Equal("NoOpCommercialAuditStore", auditStore.GetType().Name);
     }
 }

@@ -1,4 +1,5 @@
 @page "/"
+@using ImportToPlanner.Application.Abstractions
 @using ImportToPlanner.Application.Exceptions
 @using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
@@ -8,6 +9,11 @@
 @inject ILogger<Home> Logger
 @inject IConfiguration Configuration
 @inject UserFacingFailureDiagnostics FailureDiagnostics
+@inject ICommercialAccessUseCase CommercialAccessUseCase
+@inject ICommercialProfileUseCase CommercialProfileUseCase
+@inject ISessionIdentityContextAccessor SessionIdentityContextAccessor
+@inject SessionIdentityPresenter SessionIdentityPresenter
+@inject CommercialModeOptions CommercialModeOptions
 
 <PageTitle>Import To Planner</PageTitle>
 
@@ -17,13 +23,33 @@
             <MudGrid Spacing="3">
                 <MudItem xs="12" md="7">
                     <MudStack Spacing="1" Class="step-intro">
-                        <MudText Typo="Typo.h3">CSV to Planner Import</MudText>
-                        <MudText Typo="Typo.body1">
-                            Import a CSV into one Planner plan, then review each step before execution.
-                        </MudText>
-                        <MudText Typo="Typo.body2" Class="step-intro__guidance">
-                            Required field: <strong>Task Name</strong>. Accepted fields: <strong>Task Name</strong>, <strong>Description</strong>, <strong>Priority</strong>, <strong>Bucket</strong>, and <strong>Goal</strong>. Some details still need manual follow-up in Planner after import, for example confirming goals.
-                        </MudText>
+                        @if (showCommercialLoginGate)
+                        {
+                            <MudText Typo="Typo.h3">Sign in to Import To Planner</MudText>
+                            <MudText Typo="Typo.body1">
+                                If this is your first sign-in, we create an account in Import To Planner using your Microsoft 365 details. If you have signed in before, you can continue with your existing account.
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="step-intro__guidance">
+                                We only store the minimum details required to recognise your account for future sign-ins.
+                            </MudText>
+                        }
+                        else if (showCommercialDeletedAccountGate)
+                        {
+                            <MudText Typo="Typo.h3">Access is paused</MudText>
+                            <MudText Typo="Typo.body1">
+                                Your account is in the retention period. Restore it to continue to the import workflow.
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.h3">CSV to Planner Import</MudText>
+                            <MudText Typo="Typo.body1">
+                                Import a CSV into one Planner plan, then review each step before execution.
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="step-intro__guidance">
+                                Required field: <strong>Task Name</strong>. Accepted fields: <strong>Task Name</strong>, <strong>Description</strong>, <strong>Priority</strong>, <strong>Bucket</strong>, and <strong>Goal</strong>. Some details still need manual follow-up in Planner after import, for example confirming goals.
+                            </MudText>
+                        }
                     </MudStack>
                 </MudItem>
                 <MudItem xs="12" md="5">
@@ -36,7 +62,17 @@
                         <AuthorizeView>
                             <Authorized Context="authState">
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
-                                    <MudText Typo="Typo.body2">@authState.User.Identity?.Name</MudText>
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body2">@IdentityPresentation.EmailAddress</MudText>
+                                        @if (!string.IsNullOrWhiteSpace(IdentityPresentation.TenantName))
+                                        {
+                                            <MudText Typo="Typo.caption">@IdentityPresentation.TenantName</MudText>
+                                        }
+                                    </MudStack>
+                                    @if (CommercialModeOptions.Enabled)
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Inherit" Size="Size.Small" Href="/profile">Profile</MudButton>
+                                    }
                                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small" OnClick="OnSignOutClicked">Sign out</MudButton>
                                 </MudStack>
                             </Authorized>
@@ -50,9 +86,52 @@
         </MudPaper>
 
         <MudStack Spacing="3">
+            @if (showCommercialLoginGate)
+            {
+                @* Login content is presented in the header panel for this state. *@
+            }
+            else if (showCommercialDeletedAccountGate)
+            {
+                <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h5">Your account is in the retention period</MudText>
+                        <MudText Typo="Typo.body1">
+                            Your account is currently marked as deleted, so normal access is paused.
+                        </MudText>
+                        @if (!string.IsNullOrWhiteSpace(restoreAccountStatusMessage))
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                @restoreAccountStatusMessage
+                            </MudAlert>
+                        }
+                        @if (deletedAccountRetentionExpiresUtc is not null)
+                        {
+                            <MudText Typo="Typo.body2">
+                                You can restore access until @deletedAccountRetentionExpiresUtc.Value.UtcDateTime.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture).
+                            </MudText>
+                        }
+                        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@isRestoringCommercialAccount" OnClick="RestoreCommercialAccountAsync">
+                                Restore account
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/profile">Open profile</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Inherit" OnClick="OnSignOutClicked">Sign out</MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            }
+            else
+            {
             @if (isBusy)
             {
                 <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+
+            @if (showFirstCommercialSignInGuidance)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">
+                    <MudText Typo="Typo.body2">Your account has been created. You can now continue with your import.</MudText>
+                </MudAlert>
             }
 
             @if (!string.IsNullOrWhiteSpace(statusMessage) && !showUnsupportedAccountGuidance && !showAdminConsentGuidance)
@@ -345,6 +424,7 @@
             <HomeExecutionReport ExecutionResult="@executionResult" />
         </MudStack>
     </MudPaper>
+            }
         </MudStack>
     </MudStack>
 </MudContainer>
@@ -353,6 +433,10 @@
     private const string InteractiveTokenAcquisitionRequiredMessage = "Sign-in completed, but Microsoft Graph access still needs confirmation. Sign out and sign in again if access does not continue.";
     private const string AuthenticationReferenceQueryKey = "authRef";
     private const string TokenReauthenticationQueryKey = "tokenReauth";
+    private const string CommercialDeletedAccountMessage = "Your account is currently deleted. Restore it from your profile to continue.";
+    private const string RestoreAccountNotFoundMessage = "Your account could not be restored because it no longer exists.";
+    private const string RestoreAccountNotDeletedMessage = "Your account is already active, so no restore was needed.";
+    private const string RestoreAccountRetentionExpiredMessage = "Your account could not be restored because the retention window has expired.";
 
     [CascadingParameter]
     private ThemeState? ThemeState { get; set; }
@@ -442,6 +526,20 @@
 
     private bool showUnsupportedAccountGuidance => WorkflowState.IsUnsupportedAccount;
 
+    private bool showCommercialLoginGate;
+
+    private bool showCommercialDeletedAccountGate;
+
+    private bool showFirstCommercialSignInGuidance;
+
+    private DateTimeOffset? deletedAccountRetentionExpiresUtc;
+
+    private bool isRestoringCommercialAccount;
+
+    private string? restoreAccountStatusMessage;
+
+    private SessionIdentityPresentation IdentityPresentation { get; set; } = new("Signed in", null);
+
     private ImportPlanningViewModel? preview => WorkflowState.PlanningViewModel;
 
     private ImportExecutionReportViewModel? executionResult => WorkflowState.ExecutionReport;
@@ -499,6 +597,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        showCommercialLoginGate = false;
+        showFirstCommercialSignInGuidance = false;
+
         var hasAuthErrorFromQuery = false;
         var hasTokenReauthenticationQuery = false;
         var query = new Uri(NavigationManager.Uri).Query;
@@ -535,6 +636,23 @@
 
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         var isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+        IdentityPresentation = SessionIdentityPresenter.Present(SessionIdentityContextAccessor.TryGetCurrent());
+
+        if (CommercialModeOptions.Enabled)
+        {
+            if (!isAuthenticated)
+            {
+                showCommercialLoginGate = true;
+                return;
+            }
+
+            var decision = await ResolveCommercialAccessDecisionAsync();
+            if (decision is null)
+            {
+                return;
+            }
+        }
+
         if (!isAuthenticated)
         {
             if (hasAuthErrorFromQuery)
@@ -564,6 +682,92 @@
             }
 
             HandleUserSafeFailure(ex, "workflow.initialise.load_containers", WorkflowStatusLevel.Error);
+        }
+    }
+
+    private async Task<CommercialAccessDecision?> ResolveCommercialAccessDecisionAsync()
+    {
+        var sessionIdentity = SessionIdentityContextAccessor.TryGetCurrent();
+        if (sessionIdentity is null)
+        {
+            SetStatus(
+                "Unable to resolve your signed-in identity. Sign out and sign in again.",
+                WorkflowStatusLevel.Warning);
+            return null;
+        }
+
+        var accessDecision = await CommercialAccessUseCase.ResolveAccessAsync(
+            sessionIdentity,
+            CommercialModeOptions.Enabled,
+            DateTimeOffset.UtcNow,
+            CancellationToken.None);
+
+        showFirstCommercialSignInGuidance = accessDecision.Decision == CommercialAccessDecisionType.CreateAccount;
+        showCommercialDeletedAccountGate = false;
+        deletedAccountRetentionExpiresUtc = null;
+        restoreAccountStatusMessage = null;
+
+        if (accessDecision.Decision is CommercialAccessDecisionType.BlockedDeleted or CommercialAccessDecisionType.OfferRestore)
+        {
+            showCommercialDeletedAccountGate = true;
+            deletedAccountRetentionExpiresUtc = accessDecision.RetentionExpiresUtc;
+            SetStatus(CommercialDeletedAccountMessage, WorkflowStatusLevel.Warning);
+            if (accessDecision.ShouldSignOut)
+            {
+                OnSignOutClicked();
+                return null;
+            }
+        }
+
+        return accessDecision;
+    }
+
+    private async Task RestoreCommercialAccountAsync()
+    {
+        if (isRestoringCommercialAccount)
+        {
+            return;
+        }
+
+        var sessionIdentity = SessionIdentityContextAccessor.TryGetCurrent();
+        if (sessionIdentity is null)
+        {
+            SetStatus(
+                "Unable to resolve your signed-in identity. Sign out and sign in again.",
+                WorkflowStatusLevel.Warning);
+            return;
+        }
+
+        isRestoringCommercialAccount = true;
+        try
+        {
+            var restoreResult = await CommercialProfileUseCase.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+            switch (restoreResult)
+            {
+                case CommercialAccountRestoreResult.Restored:
+                    NavigationManager.NavigateTo("/", forceLoad: true);
+                    return;
+                case CommercialAccountRestoreResult.AccountNotFound:
+                    restoreAccountStatusMessage = RestoreAccountNotFoundMessage;
+                    break;
+                case CommercialAccountRestoreResult.AccountNotDeleted:
+                    restoreAccountStatusMessage = RestoreAccountNotDeletedMessage;
+                    break;
+                case CommercialAccountRestoreResult.RetentionExpired:
+                    restoreAccountStatusMessage = RestoreAccountRetentionExpiredMessage;
+                    break;
+                default:
+                    restoreAccountStatusMessage = "Your account could not be restored. Please sign out and sign in again.";
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            HandleUserSafeFailure(ex, "workflow.commercial.restore_account", WorkflowStatusLevel.Error);
+        }
+        finally
+        {
+            isRestoringCommercialAccount = false;
         }
     }
 

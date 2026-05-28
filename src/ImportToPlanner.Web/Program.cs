@@ -3,6 +3,8 @@ using ImportToPlanner.Application.Models;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web;
 using ImportToPlanner.Web.Components;
+using ImportToPlanner.Web.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +25,12 @@ builder.Services.AddSingleton(storageConfiguration);
 builder.Services.AddSingleton(new ConsentResolutionDefaults(
     tenantAuthorityConfiguration.RequiredScopes,
     tenantAuthorityConfiguration.AdminConsentUri));
+builder.Services
+    .AddOptions<CommercialModeOptions>()
+    .Bind(builder.Configuration.GetSection(CommercialModeOptions.ConfigurationSectionName))
+    .ValidateOnStart();
+builder.Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
+builder.Services.AddHostedService<CommercialAccountRetentionHostedService>();
 
 // Add services to the container.
 builder.Services

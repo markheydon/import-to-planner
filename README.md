@@ -63,6 +63,7 @@ Documentation split:
 - Searchable container and plan selectors for larger tenants.
 - Clearer step-state guidance, CSV field expectations, and concise manual follow-up messaging.
 - Regression coverage for startup validation, authority handling, and single-path planner registration.
+- Optional commercial account mode with first sign-in account creation, profile page, delete-and-restore lifecycle, and retention sweep support.
 
 Primary feature sources:
 
@@ -140,6 +141,13 @@ Architecture and governance references:
 - Hosted shared multi-tenant mode: supported for shared-service deployments across approved work or school tenants.
 
 Self-hosting remains a permanent supported delivery path for this repository.
+
+### Commercial mode notes
+
+- Commercial mode is controlled by `Features:CommercialMode:Enabled`.
+- When enabled, the app shows a commercial sign-in gate for signed-out visitors and creates an account keyed by `TenantId` + `UserId` on first sign-in.
+- Profile management is available at `/profile`, including delete and restore behaviour during the retention period.
+- When commercial mode is disabled, self-hosted sign-in behaviour remains unchanged and commercial persistence is bypassed.
 
 ### Choose your path
 

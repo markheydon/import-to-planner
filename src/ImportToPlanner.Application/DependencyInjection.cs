@@ -20,6 +20,12 @@ public static class DependencyInjection
 
         services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
         services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
+        services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
+        services.AddScoped<GetCommercialProfileUseCase>();
+        services.AddScoped<DeleteCommercialAccountUseCase>();
+        services.AddScoped<RestoreCommercialAccountUseCase>();
+        services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
+        services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
 
         return services;
     }
