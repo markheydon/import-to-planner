@@ -5,14 +5,24 @@
 ![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![Licence MIT](https://img.shields.io/badge/Licence-MIT-green)
 
+Import To Planner is a single-purpose Blazor application for importing CSV task lists into Microsoft Planner through a safe, operator-led workflow.
+
+Quick links:
+
+- Public docs: https://docs.importplanner.app
+- Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Developer quick-start: [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md)
+- Architecture and governance: [.specify/memory/constitution.md](.specify/memory/constitution.md)
+
 ## Project Name and Description
 
-Import To Planner is a single-purpose Blazor application that imports CSV task lists into Microsoft Planner using a safe, operator-led flow.
+Import To Planner converts CSV task lists into Planner tasks using a controlled workflow that separates validation, preview, and execution.
 
 Primary purpose:
 
 - Provide a controlled CSV-to-Planner import workflow with validation, preview, and explicit execution confirmation.
 - Support hosted and self-hosted authority configurations through `AzureAd:HomeTenantId` while keeping one Graph-backed runtime path.
+- Preserve self-hosting as a permanent supported delivery mode even when hosted or commercial capabilities are added.
 
 The workflow preserves operational safeguards:
 
@@ -27,11 +37,20 @@ The app now has one supported runtime path:
 - Microsoft Graph planner operations with table-backed tenant metadata and blob-backed Data Protection persistence.
 - Authentication remains authority-driven through `AzureAd:HomeTenantId` (`multiple` or a specific tenant value).
 
-## User Documentation
+## Documentation
 
 Public end-user documentation is available at https://docs.importplanner.app.
 
 This site covers onboarding, CSV format, import workflow, troubleshooting, FAQ, privacy and security, plus secondary self-hosted guidance.
+
+Repository policy keeps self-hosting as a first-class supported path. Hosted or commercial
+features are expected to be additive rather than prerequisites for running the software
+from your own tenant and infrastructure.
+
+Documentation split:
+
+- `docs/`: public end-user and operator guidance published via GitHub Pages
+- `docs-internal/`: internal contributor, engineering, and operational guidance
 
 ## Key Features
 
@@ -115,6 +134,13 @@ Architecture and governance references:
 
 ## Getting Started
 
+### Deployment modes
+
+- Self-hosted single-tenant mode: recommended when you want to run the app for your own organisation.
+- Hosted shared multi-tenant mode: supported for shared-service deployments across approved work or school tenants.
+
+Self-hosting remains a permanent supported delivery path for this repository.
+
 ### Choose your path
 
 - Run with `AzureAd:HomeTenantId=multiple` when you need shared-organisations authority behaviour.
@@ -135,10 +161,13 @@ For the full internal setup guide, including the recommended separate-registrati
 - Microsoft 365 account with Planner access.
 - Entra ID app registration with required delegated permissions.
 - Local configuration for `AzureAd` and Graph settings.
+- Container runtime for local Azurite emulation when using Aspire.
 - Optional local tooling:
   - Aspire CLI for developer workflows and local orchestration.
   - Node.js (LTS) for local JavaScript syntax checks used in CI.
   - GitHub CLI for issue and pull request workflows.
+
+If you prefer a containerised setup, GitHub Codespaces is supported through `.devcontainer/devcontainer.json`.
 
 ### Restore, format, build, test
 
@@ -160,6 +189,8 @@ The repository includes ready-made Aspire launch profiles in [.vscode/launch.jso
 
 The first profile is deliberately ordered first so a new VS Code user lands on the simplest path.
 Profile names are historical labels; all supported paths now use Graph plus storage-backed services.
+
+If you prefer the CLI, run the baseline validation commands above and then start the AppHost with `aspire run`.
 
 ### Run locally without Aspire
 
@@ -312,6 +343,14 @@ Contributions are welcome, but scope remains intentionally focused.
 - Ensure CI checks pass before requesting review.
 - Reply to review comments in-thread.
 - Update contributor setup docs when development behaviour changes.
+
+Recommended contributor flow:
+
+1. Create a branch from `main`.
+2. Run restore, format, build, test, and JavaScript syntax checks locally.
+3. Make the smallest change that satisfies the requirement.
+4. Update tests and documentation alongside behaviour changes.
+5. Open a PR targeting `main` with a clear explanation of what changed and why.
 
 ## Further Reading
 

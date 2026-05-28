@@ -1,24 +1,19 @@
 <!--
 Sync Impact Report
-- Version change: 1.3.0 -> 2.0.0
+- Version change: 2.0.1 -> 2.1.0
 - Modified principles:
-	- I. Clean Architecture Code Quality -> I. Dependency Rule Is Absolute
-	- II. Mandatory Testing Standards -> II. Core Policy Must Be Technology-Neutral
-	- III. User Experience Consistency -> III. Boundaries Must Be Explicit and Enforced
-	- IV. Performance and Responsiveness Budgets -> IV. Frameworks and Delivery Mechanisms Are Replaceable
-	- V. Observability and Safe Operations -> V. Architectural Compliance Must Be Measurable
-	- VI. Agent Delegation Discipline and Process Continuity -> Removed (substantive governance moved to docs-internal/engineering-policies.md; AGENTS.md now contains a pointer)
-- Added sections:
-	- Architectural Guardrails
-- Removed sections:
-	- Engineering Guardrails
-- Templates requiring updates:
-	- ✅ updated: .specify/templates/plan-template.md
-	- ✅ updated: .specify/templates/spec-template.md
-	- ✅ updated: .specify/templates/tasks-template.md
-	- ⚠ pending: .specify/templates/commands/*.md (directory not present in repository)
-- Follow-up TODOs:
 	- None
+- Added sections:
+	- Core Principles: VI. Self-Hosted Viability Is Non-Negotiable
+- Removed sections:
+	- None
+- Templates requiring updates:
+	- ⚠ deferred by repository choice: .specify/templates/plan-template.md
+	- ⚠ deferred by repository choice: .specify/templates/spec-template.md
+	- ⚠ deferred by repository choice: .specify/templates/tasks-template.md
+	- ⚠ not present: .specify/templates/commands/*.md
+- Follow-up TODOs:
+	- Reconfirm upstream-safe template customisation approach before changing .specify/templates/*.
 -->
 
 # Import To Planner Constitution
@@ -66,6 +61,16 @@ boundary leakage checks for use-case outputs and domain models.
 Rationale: Testable architecture gates prevent drift and make compliance review consistent
 across contributors.
 
+### VI. Self-Hosted Viability Is Non-Negotiable
+Self-hosting is a permanent supported delivery mode of this repository. New capabilities
+MUST preserve a supported self-hosted deployment path. Hosted-only or commercial
+capabilities MUST be additive and MUST NOT make self-hosted use depend on SaaS-specific
+login, billing, tenancy, or service availability unless an equivalent self-host-compatible
+path exists.
+
+Rationale: Commercial evolution is allowed, but it MUST not turn repository users into
+hosted-service dependants when the codebase is explicitly intended to remain self-hostable.
+
 ## Architectural Guardrails
 
 - Domain and Application projects MUST NOT take direct package or framework dependencies
@@ -81,6 +86,9 @@ across contributors.
 - External provider details (for example Microsoft Graph API shapes, Kiota models, and UI
   component behaviours) MUST be translated at adapter boundaries before reaching
   Application or Domain.
+- Commercial or hosted-service UX flows (for example subscription gating, hosted account
+	login, billing capture, or SaaS tenant administration) MUST be isolated so they do not
+	block or degrade legitimate self-hosted operation.
 - Architecture-impacting exceptions MUST be documented in a pull request with explicit
   rationale, alternatives considered, and a retirement plan if temporary.
 
@@ -88,6 +96,8 @@ across contributors.
 
 - Planning artefacts MUST include an architecture impact statement covering dependency
   direction, boundary changes, and adapter responsibilities.
+- Planning and review for product or workflow changes MUST state how self-hosted users
+	continue to complete the supported import journey when hosted-only features are added.
 - Pull requests MUST provide evidence for all affected constitutional architecture gates.
 - Reviewers MUST block merges when architectural compliance evidence is absent or when
   policy leakage is identified in Domain/Application layers.
@@ -115,4 +125,4 @@ Compliance review expectations:
 - Constitution compliance MUST be checked in planning and pull request review.
 - Non-compliance MUST be tracked as explicit follow-up work or resolved before release.
 
-**Version**: 2.0.1 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-20
+**Version**: 2.1.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-28
