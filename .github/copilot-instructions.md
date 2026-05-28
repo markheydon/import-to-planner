@@ -62,5 +62,5 @@ For public end-user documentation work under `docs/`, follow AGENTS.md delegatio
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read specs/007-end-user-docs-site/plan.md
+shell commands, and other important information, read specs/008-commercial-user-accounts/plan.md
 <!-- SPECKIT END -->
