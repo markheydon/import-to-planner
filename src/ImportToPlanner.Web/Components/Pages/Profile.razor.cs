@@ -28,6 +28,7 @@ public partial class Profile
 
     private CommercialAccount? account;
     private bool isBusy;
+    private bool isDeletingAccount;
     private bool showSignInPrompt;
     private bool showDeleteConfirmation;
     private string? statusMessage;
@@ -84,6 +85,11 @@ public partial class Profile
 
     protected async Task OnDeleteConfirmedAsync()
     {
+        if (isDeletingAccount)
+        {
+            return;
+        }
+
         var sessionIdentity = SessionIdentityContextAccessor.TryGetCurrent();
         if (sessionIdentity is null)
         {
@@ -93,7 +99,15 @@ public partial class Profile
             return;
         }
 
-        await CommercialProfileUseCase.DeleteAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+        isDeletingAccount = true;
+        try
+        {
+            await CommercialProfileUseCase.DeleteAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+        }
+        finally
+        {
+            isDeletingAccount = false;
+        }
 
         showDeleteConfirmation = false;
         statusMessage = "Your account has been marked for deletion. Sign in again if you need to restore it during retention.";

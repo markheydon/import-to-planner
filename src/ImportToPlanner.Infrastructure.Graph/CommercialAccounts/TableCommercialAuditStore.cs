@@ -39,14 +39,11 @@ internal sealed class TableCommercialAuditStore(TableClient tableClient) : IComm
         }
 
         var results = new List<AccountAuditEvent>(effectiveBatchSize);
-        await foreach (var entity in tableClient.QueryAsync<TableEntity>(cancellationToken: cancellationToken).ConfigureAwait(false))
+        var queryFilter = TableClient.CreateQueryFilter($"{nameof(AccountAuditEvent.RetentionExpiresUtc)} le {asOfUtc}");
+
+        await foreach (var entity in tableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             var model = ToModel(entity);
-            if (model.RetentionExpiresUtc > asOfUtc)
-            {
-                continue;
-            }
-
             results.Add(model);
             if (results.Count >= effectiveBatchSize)
             {

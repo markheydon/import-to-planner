@@ -32,7 +32,8 @@ public interface ICommercialProfileUseCase
     /// <param name="sessionIdentity">The signed-in session identity context.</param>
     /// <param name="occurredUtc">The UTC timestamp when restoration was requested.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    Task RestoreAccountAsync(
+    /// <returns>The restore outcome.</returns>
+    Task<CommercialAccountRestoreResult> RestoreAccountAsync(
         SessionIdentityContext sessionIdentity,
         DateTimeOffset occurredUtc,
         CancellationToken cancellationToken);

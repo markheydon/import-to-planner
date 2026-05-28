@@ -64,32 +64,53 @@
             </MudPaper>
 
             <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
-                <MudStack Spacing="2">
-                    <MudText Typo="Typo.h6">Delete account</MudText>
-                    <MudText Typo="Typo.body2">
-                        Deleting your account blocks access immediately and starts a 6-month retention period before permanent removal.
-                    </MudText>
-                    @if (!showDeleteConfirmation)
-                    {
-                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="OnDeleteRequested">
-                            Delete account
-                        </MudButton>
-                    }
-                    else
-                    {
-                        <MudAlert Severity="Severity.Warning" Dense="true">
-                            Confirm account deletion to continue.
-                        </MudAlert>
-                        <MudStack Row="true" Spacing="2">
-                            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="OnDeleteConfirmedAsync">
-                                Confirm delete account
+                @if (account.Status == CommercialAccountStatus.Deleted)
+                {
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">Account deletion status</MudText>
+                        @if (account.RetentionExpiresUtc is not null)
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                This account is scheduled for deletion on @account.RetentionExpiresUtc.Value.UtcDateTime.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture).
+                            </MudAlert>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                This account is scheduled for deletion after the retention period.
+                            </MudAlert>
+                        }
+                    </MudStack>
+                }
+                else
+                {
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">Delete account</MudText>
+                        <MudText Typo="Typo.body2">
+                            Deleting your account blocks access immediately and starts a 6-month retention period before permanent removal.
+                        </MudText>
+                        @if (!showDeleteConfirmation)
+                        {
+                            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="OnDeleteRequested">
+                                Delete account
                             </MudButton>
-                            <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="OnDeleteCancelled">
-                                Cancel
-                            </MudButton>
-                        </MudStack>
-                    }
-                </MudStack>
+                        }
+                        else
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                Confirm account deletion to continue.
+                            </MudAlert>
+                            <MudStack Row="true" Spacing="2">
+                                <MudButton Variant="Variant.Filled" Color="Color.Error" Disabled="@isDeletingAccount" OnClick="OnDeleteConfirmedAsync">
+                                    Confirm delete account
+                                </MudButton>
+                                <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@isDeletingAccount" OnClick="OnDeleteCancelled">
+                                    Cancel
+                                </MudButton>
+                            </MudStack>
+                        }
+                    </MudStack>
+                }
             </MudPaper>
         }
     </MudStack>

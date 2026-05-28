@@ -30,7 +30,7 @@ public sealed class GetCommercialProfileUseCase(
         => deleteCommercialAccountUseCase.ExecuteAsync(sessionIdentity, occurredUtc, cancellationToken);
 
     /// <inheritdoc/>
-    public Task RestoreAccountAsync(
+    public Task<CommercialAccountRestoreResult> RestoreAccountAsync(
         SessionIdentityContext sessionIdentity,
         DateTimeOffset occurredUtc,
         CancellationToken cancellationToken)

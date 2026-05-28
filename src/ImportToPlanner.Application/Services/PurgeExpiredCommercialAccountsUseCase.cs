@@ -18,7 +18,12 @@ public sealed class PurgeExpiredCommercialAccountsUseCase(
     /// <returns>The number of purged account records.</returns>
     public async Task<int> ExecuteAsync(DateTimeOffset asOfUtc, int batchSize, CancellationToken cancellationToken)
     {
-        var effectiveBatchSize = Math.Max(1, batchSize);
+        var effectiveBatchSize = Math.Max(0, batchSize);
+        if (effectiveBatchSize == 0)
+        {
+            return 0;
+        }
+
         var expiredAccounts = await commercialAccountStore
             .ListExpiredDeletedAsync(asOfUtc, effectiveBatchSize, cancellationToken)
             .ConfigureAwait(false);

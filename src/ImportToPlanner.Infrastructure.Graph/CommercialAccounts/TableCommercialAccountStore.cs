@@ -114,12 +114,13 @@ internal sealed class TableCommercialAccountStore(TableClient tableClient) : ICo
         }
 
         var results = new List<CommercialAccount>(effectiveBatchSize);
-        await foreach (var entity in tableClient.QueryAsync<TableEntity>(cancellationToken: cancellationToken).ConfigureAwait(false))
+        var queryFilter = TableClient.CreateQueryFilter(
+            $"{nameof(CommercialAccount.Status)} eq {CommercialAccountStatus.Deleted.ToString()} and {nameof(CommercialAccount.RetentionExpiresUtc)} le {asOfUtc}");
+
+        await foreach (var entity in tableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             var model = ToModel(entity);
-            if (model.Status != CommercialAccountStatus.Deleted
-                || model.RetentionExpiresUtc is null
-                || model.RetentionExpiresUtc > asOfUtc)
+            if (model.RetentionExpiresUtc is null)
             {
                 continue;
             }

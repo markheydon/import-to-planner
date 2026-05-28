@@ -18,7 +18,8 @@ public sealed class RestoreCommercialAccountUseCase(
     /// <param name="sessionIdentity">The signed-in session identity context.</param>
     /// <param name="occurredUtc">The UTC timestamp when restoration was requested.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    public async Task ExecuteAsync(
+    /// <returns>The restore outcome.</returns>
+    public async Task<CommercialAccountRestoreResult> ExecuteAsync(
         SessionIdentityContext sessionIdentity,
         DateTimeOffset occurredUtc,
         CancellationToken cancellationToken)
@@ -30,12 +31,19 @@ public sealed class RestoreCommercialAccountUseCase(
         var account = await commercialAccountStore
             .GetAsync(sessionIdentity.TenantId, sessionIdentity.UserId, cancellationToken)
             .ConfigureAwait(false);
-        if (account is null
-            || account.Status != CommercialAccountStatus.Deleted
-            || account.RetentionExpiresUtc is null
-            || account.RetentionExpiresUtc < occurredUtc)
+        if (account is null)
         {
-            return;
+            return CommercialAccountRestoreResult.AccountNotFound;
+        }
+
+        if (account.Status != CommercialAccountStatus.Deleted)
+        {
+            return CommercialAccountRestoreResult.AccountNotDeleted;
+        }
+
+        if (account.RetentionExpiresUtc is null || account.RetentionExpiresUtc < occurredUtc)
+        {
+            return CommercialAccountRestoreResult.RetentionExpired;
         }
 
         await commercialAccountStore
@@ -53,5 +61,7 @@ public sealed class RestoreCommercialAccountUseCase(
                     occurredUtc.AddMonths(12)),
                 cancellationToken)
             .ConfigureAwait(false);
+
+        return CommercialAccountRestoreResult.Restored;
     }
 }

@@ -98,6 +98,12 @@
                         <MudText Typo="Typo.body1">
                             Your account is currently marked as deleted, so normal access is paused.
                         </MudText>
+                        @if (!string.IsNullOrWhiteSpace(restoreAccountStatusMessage))
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                @restoreAccountStatusMessage
+                            </MudAlert>
+                        }
                         @if (deletedAccountRetentionExpiresUtc is not null)
                         {
                             <MudText Typo="Typo.body2">
@@ -428,6 +434,9 @@
     private const string AuthenticationReferenceQueryKey = "authRef";
     private const string TokenReauthenticationQueryKey = "tokenReauth";
     private const string CommercialDeletedAccountMessage = "Your account is currently deleted. Restore it from your profile to continue.";
+    private const string RestoreAccountNotFoundMessage = "Your account could not be restored because it no longer exists.";
+    private const string RestoreAccountNotDeletedMessage = "Your account is already active, so no restore was needed.";
+    private const string RestoreAccountRetentionExpiredMessage = "Your account could not be restored because the retention window has expired.";
 
     [CascadingParameter]
     private ThemeState? ThemeState { get; set; }
@@ -526,6 +535,8 @@
     private DateTimeOffset? deletedAccountRetentionExpiresUtc;
 
     private bool isRestoringCommercialAccount;
+
+    private string? restoreAccountStatusMessage;
 
     private SessionIdentityPresentation IdentityPresentation { get; set; } = new("Signed in", null);
 
@@ -694,6 +705,7 @@
         showFirstCommercialSignInGuidance = accessDecision.Decision == CommercialAccessDecisionType.CreateAccount;
         showCommercialDeletedAccountGate = false;
         deletedAccountRetentionExpiresUtc = null;
+        restoreAccountStatusMessage = null;
 
         if (accessDecision.Decision is CommercialAccessDecisionType.BlockedDeleted or CommercialAccessDecisionType.OfferRestore)
         {
@@ -729,8 +741,25 @@
         isRestoringCommercialAccount = true;
         try
         {
-            await CommercialProfileUseCase.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
-            NavigationManager.NavigateTo("/", forceLoad: true);
+            var restoreResult = await CommercialProfileUseCase.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+            switch (restoreResult)
+            {
+                case CommercialAccountRestoreResult.Restored:
+                    NavigationManager.NavigateTo("/", forceLoad: true);
+                    return;
+                case CommercialAccountRestoreResult.AccountNotFound:
+                    restoreAccountStatusMessage = RestoreAccountNotFoundMessage;
+                    break;
+                case CommercialAccountRestoreResult.AccountNotDeleted:
+                    restoreAccountStatusMessage = RestoreAccountNotDeletedMessage;
+                    break;
+                case CommercialAccountRestoreResult.RetentionExpired:
+                    restoreAccountStatusMessage = RestoreAccountRetentionExpiredMessage;
+                    break;
+                default:
+                    restoreAccountStatusMessage = "Your account could not be restored. Please sign out and sign in again.";
+                    break;
+            }
         }
         catch (Exception ex)
         {

@@ -67,7 +67,9 @@ public sealed class CommercialAccountLifecycleUseCaseTests
         using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
         var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
 
-        await useCase.RestoreAccountAsync(identity, restoredUtc, CancellationToken.None);
+        var result = await useCase.RestoreAccountAsync(identity, restoredUtc, CancellationToken.None);
+
+        Assert.Equal(CommercialAccountRestoreResult.Restored, result);
 
         var restoredAccount = Assert.Single(accountStore.Accounts);
         Assert.Equal(CommercialAccountStatus.Active, restoredAccount.Status);
@@ -77,6 +79,36 @@ public sealed class CommercialAccountLifecycleUseCaseTests
 
         var restoredAuditEvent = Assert.Single(auditStore.Events, evt => evt.EventType == AccountAuditEventType.AccountRestored);
         Assert.Equal("account_restored", restoredAuditEvent.Outcome);
+    }
+
+    [Fact]
+    public async Task RestoreAccountAsync_WhenRetentionExpired_ReturnsRetentionExpired()
+    {
+        var accountStore = new CommercialAccountStoreStub();
+        var auditStore = new CommercialAuditStoreStub();
+        var identity = new SessionIdentityContext("tenant-001", "user-001", "user@contoso.com", "Contoso");
+        var deletedUtc = new DateTimeOffset(2025, 5, 20, 9, 0, 0, TimeSpan.Zero);
+        var restoreAttemptUtc = new DateTimeOffset(2026, 5, 28, 10, 0, 0, TimeSpan.Zero);
+
+        await accountStore.CreateAsync(
+            new CommercialAccount(
+                identity.TenantId,
+                identity.UserId,
+                CreatedUtc: deletedUtc.AddMonths(-2),
+                CommercialAccountStatus.Deleted,
+                DeletedUtc: deletedUtc,
+                RetentionExpiresUtc: deletedUtc.AddMonths(6),
+                RestoredUtc: null,
+                LastSignInOutcomeUtc: deletedUtc),
+            CancellationToken.None);
+
+        using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
+        var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+
+        var result = await useCase.RestoreAccountAsync(identity, restoreAttemptUtc, CancellationToken.None);
+
+        Assert.Equal(CommercialAccountRestoreResult.RetentionExpired, result);
+        Assert.DoesNotContain(auditStore.Events, evt => evt.EventType == AccountAuditEventType.AccountRestored);
     }
 
     [Fact]

@@ -71,6 +71,45 @@ public sealed class CommercialRetentionSweepTests
         Assert.Contains(auditStore.Events, audit => audit.UserId == "user-active");
     }
 
+    [Fact]
+    public async Task PurgeExpiredAsync_WhenBatchSizeIsZero_PerformsNoWork()
+    {
+        var accountStore = new CommercialAccountStoreStub();
+        var auditStore = new CommercialAuditStoreStub();
+        var cutoffUtc = new DateTimeOffset(2026, 5, 28, 10, 0, 0, TimeSpan.Zero);
+
+        await accountStore.CreateAsync(
+            new CommercialAccount(
+                "tenant-001",
+                "user-expired",
+                cutoffUtc.AddMonths(-8),
+                CommercialAccountStatus.Deleted,
+                DeletedUtc: cutoffUtc.AddMonths(-7),
+                RetentionExpiresUtc: cutoffUtc.AddDays(-1),
+                RestoredUtc: null,
+                LastSignInOutcomeUtc: cutoffUtc.AddMonths(-7)),
+            CancellationToken.None);
+
+        await auditStore.AppendAsync(
+            new AccountAuditEvent(
+                "tenant-001",
+                "user-expired",
+                cutoffUtc.AddMonths(-13),
+                AccountAuditEventType.AccountDeleted,
+                "account_deleted",
+                cutoffUtc.AddDays(-1)),
+            CancellationToken.None);
+
+        using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
+        var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+
+        var purgedAccountCount = await useCase.PurgeExpiredAsync(cutoffUtc, batchSize: 0, CancellationToken.None);
+
+        Assert.Equal(0, purgedAccountCount);
+        Assert.Single(accountStore.Accounts);
+        Assert.Single(auditStore.Events);
+    }
+
     private static ServiceProvider BuildServiceProvider(CommercialAccountStoreStub accountStore, CommercialAuditStoreStub auditStore)
     {
         ArgumentNullException.ThrowIfNull(accountStore);
