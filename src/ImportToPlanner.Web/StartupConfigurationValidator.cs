@@ -40,7 +40,8 @@ internal static class StartupConfigurationValidator
             {
                 validationErrors.Add("Replace the placeholder value for 'AzureAd:HomeTenantId'.");
             }
-            else if (string.Equals(homeTenantId, TenantAuthorityConfiguration.OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+            else if (string.Equals(homeTenantId, TenantAuthorityConfiguration.CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(homeTenantId, TenantAuthorityConfiguration.OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
                 || string.Equals(homeTenantId, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase))
             {
                 validationErrors.Add($"Set 'AzureAd:HomeTenantId' to '{TenantAuthorityConfiguration.MultipleHomeTenantAlias}' or a specific tenant identifier.");

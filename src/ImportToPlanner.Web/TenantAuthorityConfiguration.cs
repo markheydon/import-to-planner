@@ -14,8 +14,9 @@ internal sealed record TenantAuthorityConfiguration(
     string AppRegistrationTenantId,
     string? HomeTenantId)
 {
+    internal const string CommonAuthorityTenant = "common";
     internal const string MultipleHomeTenantAlias = "multiple";
-    private const string OrganizationsAuthorityTenant = "organizations";
+    internal const string OrganizationsAuthorityTenant = "organizations";
 
     public bool IsSharedOrganisations => AuthorityKind == TenantAuthorityKind.SharedOrganisations;
 
