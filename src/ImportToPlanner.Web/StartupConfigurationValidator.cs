@@ -49,6 +49,14 @@ internal static class StartupConfigurationValidator
         }
 
         ValidateRequiredSetting("Storage:TenantMetadataTable");
+
+        var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
+        if (commercialModeEnabled)
+        {
+            ValidateRequiredSetting("Storage:CommercialAccountsTable");
+            ValidateRequiredSetting("Storage:CommercialAuditTable");
+        }
+
         ValidateRequiredSetting("Storage:DataProtectionContainer");
         ValidateRequiredSetting("Storage:DataProtectionBlob");
 

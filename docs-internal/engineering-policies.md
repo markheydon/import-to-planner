@@ -48,6 +48,10 @@ and workflow but are intentionally outside the architecture constitution.
 - Commercial or hosted-service capabilities MUST be designed so self-hosters retain a
   supported path without depending on SaaS-specific login, billing, subscription state, or
   hosted control-plane availability.
+- When commercial mode is disabled, startup and runtime behaviour MUST avoid requiring
+  commercial account persistence infrastructure.
+- Commercial account lifecycle changes MUST preserve delete, retention, and restore semantics:
+  immediate block after delete, retention-window restore, and purge only after expiry.
 - Feature proposals and pull requests that add hosted-only behaviour MUST explicitly state
   the self-hosted impact, including how self-hosted operators bypass or replace any hosted
   service workflow that would otherwise be irrelevant or obstructive.

@@ -8,9 +8,14 @@ feature 008.
 1. Add a non-secret AppHost parameter for commercial mode.
 2. Forward that parameter to the web project as configuration, for example under
    `Features__CommercialMode__Enabled`.
-3. Update the staging workflow to pass the new parameter via environment
-   variables.
-4. Keep the feature disabled for self-hosted and other non-commercial
+3. Ensure web configuration contains `Features:CommercialMode:Enabled` and
+   storage defaults for `Storage:CommercialAccountsTable` and
+   `Storage:CommercialAuditTable`.
+4. Update the staging workflow to pass the new parameter via
+   `Parameters__enableCommercialMode`.
+5. In staged rollout, keep `ENABLE_COMMERCIAL_MODE` unset or `false` until the
+   deployment slot is ready for commercial access.
+6. Keep the feature disabled for self-hosted and other non-commercial
    environments unless explicitly enabled.
 
 ## 2. Application and infrastructure changes
@@ -65,7 +70,11 @@ Automated tests:
 Manual verification:
 
 1. Run the app with commercial mode disabled and confirm the current self-hosted
-   sign-in flow is unchanged.
+   sign-in flow is unchanged:
+   - Set `Features:CommercialMode:Enabled=false`.
+   - Start the app and confirm the commercial login gate is not shown.
+   - Confirm the existing automatic Microsoft 365 sign-in path still controls access.
+   - Confirm no commercial account persistence is required for startup.
 2. Run the app with commercial mode enabled and confirm an unsigned user sees the
    explanatory commercial login screen.
 3. Complete first sign-in and confirm account creation, access to the main app,
@@ -80,8 +89,28 @@ Manual verification:
 
 Operational checks:
 
-1. Confirm staging deployment receives the commercial-mode parameter.
-2. Confirm no new database resources are introduced beyond the existing storage
+1. Confirm staging deployment receives `Parameters__enableCommercialMode` from
+   `ENABLE_COMMERCIAL_MODE`.
+2. Confirm the staged web configuration resolves
+   `Features:CommercialMode:Enabled` to the expected value before verification.
+3. Confirm no new database resources are introduced beyond the existing storage
    account.
-3. Confirm diagnostics remain user-safe and do not expose secrets or raw
+4. Confirm diagnostics remain user-safe and do not expose secrets or raw
    exception detail.
+
+## 6. Verification outcomes (2026-05-28)
+
+Automated verification results:
+
+1. `dotnet build ImportToPlanner.slnx --nologo` passed with `0` warnings and `0` errors.
+2. `dotnet test ImportToPlanner.slnx --nologo` passed.
+   - `ImportToPlanner.Tests`: `58` passed, `0` failed, `0` skipped.
+   - `ImportToPlanner.Web.Tests`: `70` passed, `0` failed, `0` skipped.
+
+Checklist outcome summary:
+
+1. Commercial-mode and self-hosted parity behaviour is covered by web tests, including gate visibility, access bypass, and hosted authentication handling.
+2. Identity summary, profile navigation, profile delete flow, and deleted-account restore flow are covered by new component tests.
+3. Delete, restore, blocked-deleted access, and retention purge lifecycle behaviour is covered by new application tests.
+4. Startup validation now enforces commercial table settings only when commercial mode is enabled.
+5. User-facing diagnostics and wording were reviewed to keep messages privacy-safe and UK English.

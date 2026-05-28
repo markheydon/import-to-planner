@@ -63,7 +63,25 @@ The key settings are now authority and storage values owned by the Web project:
 - `Storage:DataProtectionContainer`
 - `Storage:DataProtectionBlob`
 
+Commercial mode settings:
+
+- `Features:CommercialMode:Enabled`
+- `Features:CommercialMode:RetentionSweepEnabled`
+- `Storage:CommercialAccountsTable` (required when commercial mode is enabled)
+- `Storage:CommercialAuditTable` (required when commercial mode is enabled)
+
 Removed keys such as `DeploymentMode:*`, `PlannerGateway:*`, and `HostedStorage:*` are treated as startup validation errors.
+
+When commercial mode is disabled, startup validation and infrastructure registration intentionally keep the existing self-hosted path working without requiring commercial table settings.
+
+## Commercial account verification loop
+
+1. Run with `Features:CommercialMode:Enabled=true` and confirm the sign-in gate appears for unsigned sessions.
+2. Sign in and confirm first-use account creation guidance appears once, then workflow access continues.
+3. Open `/profile` and confirm only `TenantId`, `UserId`, and account created date are shown from persisted account data.
+4. Delete the account, then confirm the Home page shows retention guidance and offers restore.
+5. Restore the account and confirm the existing account record is reactivated.
+6. Re-run with `Features:CommercialMode:Enabled=false` and confirm self-hosted sign-in behaviour is unchanged.
 
 ## Minimum Graph prerequisites
 

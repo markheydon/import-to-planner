@@ -104,4 +104,18 @@ public sealed class HomePageSmokeTests
         // Assert
         Assert.Null(exception);
     }
+
+    [Fact]
+    public async Task HomePage_WhenCommercialModeDisabled_DoesNotShowCommercialLoginGate()
+    {
+        await using var ctx = new HomePageTestContext(commercialModeEnabled: false, isAuthenticated: true);
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.DoesNotContain("Sign in with Microsoft 365 to continue", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Select Planner location", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
 }

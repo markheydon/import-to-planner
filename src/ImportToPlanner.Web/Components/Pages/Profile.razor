@@ -1,0 +1,96 @@
+@page "/profile"
+
+<PageTitle>Your profile</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="3">
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h4">Your profile</MudText>
+                <MudText Typo="Typo.body2">
+                    This page shows the account details currently stored for your account.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+
+        @if (!string.IsNullOrWhiteSpace(statusMessage))
+        {
+            <MudAlert Severity="@statusSeverity" Dense="true">
+                <MudText Typo="Typo.body2">@statusMessage</MudText>
+            </MudAlert>
+        }
+
+        @if (showSignInPrompt)
+        {
+            <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body1">Sign in to view and manage your account.</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnSignInClicked">Sign in</MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+        else if (isBusy)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (account is null)
+        {
+            <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                <MudText Typo="Typo.body1">No account record was found for this session.</MudText>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">Stored account details</MudText>
+                    <MudSimpleTable Dense="true" Elevation="0">
+                        <tbody>
+                            <tr>
+                                <th>Tenant ID</th>
+                                <td>@account.TenantId</td>
+                            </tr>
+                            <tr>
+                                <th>User ID</th>
+                                <td>@account.UserId</td>
+                            </tr>
+                            <tr>
+                                <th>Created</th>
+                                <td>@account.CreatedUtc.UtcDateTime.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture)</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">Delete account</MudText>
+                    <MudText Typo="Typo.body2">
+                        Deleting your account blocks access immediately and starts a 6-month retention period before permanent removal.
+                    </MudText>
+                    @if (!showDeleteConfirmation)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="OnDeleteRequested">
+                            Delete account
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true">
+                            Confirm account deletion to continue.
+                        </MudAlert>
+                        <MudStack Row="true" Spacing="2">
+                            <MudButton Variant="Variant.Filled" Color="Color.Error" OnClick="OnDeleteConfirmedAsync">
+                                Confirm delete account
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Inherit" OnClick="OnDeleteCancelled">
+                                Cancel
+                            </MudButton>
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudPaper>
+        }
+    </MudStack>
+</MudContainer>
