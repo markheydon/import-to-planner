@@ -17,7 +17,7 @@ public sealed class HomePageCommercialAccessTests
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("Sign in to Import To Planner", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("signing in creates your account", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("signing in creates an account", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("minimum details required", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Sign in", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("CSV to Planner Import", cut.Markup, StringComparison.OrdinalIgnoreCase);
