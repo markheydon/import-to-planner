@@ -94,7 +94,11 @@ public sealed class ClaimsTenantContextAccessorTests
                 ? TenantAuthorityKind.SharedOrganisations
                 : TenantAuthorityKind.SpecificTenant,
             ["User.Read"],
-            null);
+            null,
+            tenantId,
+            string.Equals(tenantId, "organizations", StringComparison.OrdinalIgnoreCase)
+                ? "multiple"
+                : tenantId);
 
     private static ClaimsPrincipal CreateAuthenticatedPrincipal(params Claim[] claims)
     {

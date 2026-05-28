@@ -10,8 +10,8 @@ Start with the shared-organisations authority path first, then move to a specifi
 
 | Scenario | Recommended mode | Why |
 | --- | --- | --- |
-| First run with shared authority | `AzureAd:TenantId=organizations` via Aspire AppHost | Exercises supported sign-in and consent guards with the default authority path |
-| Tenant-constrained verification | `AzureAd:TenantId=<tenant-id-or-domain>` via Aspire AppHost | Confirms single-tenant authority behaviour with the same runtime dependencies |
+| First run with shared authority | `AzureAd:HomeTenantId=multiple` via Aspire AppHost | Exercises supported sign-in and consent guards with the default authority path |
+| Tenant-constrained verification | `AzureAd:HomeTenantId=<tenant-id-or-domain>` via Aspire AppHost | Confirms single-tenant authority behaviour with the same runtime dependencies |
 | Web-only troubleshooting | Run `ImportToPlanner.Web` directly with equivalent storage and AzureAd settings | Useful for focused debugging when AppHost orchestration is not required |
 
 ## VS Code launch profiles
@@ -58,6 +58,7 @@ ASP.NET Core Data Protection keys are always persisted to blob storage in this f
 The key settings are now authority and storage values owned by the Web project:
 
 - `AzureAd:TenantId`
+- `AzureAd:HomeTenantId`
 - `Storage:TenantMetadataTable`
 - `Storage:DataProtectionContainer`
 - `Storage:DataProtectionBlob`

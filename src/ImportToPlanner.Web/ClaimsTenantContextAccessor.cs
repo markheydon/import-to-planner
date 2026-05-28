@@ -15,8 +15,6 @@ internal sealed class ClaimsTenantContextAccessor(
     ILogger<ClaimsTenantContextAccessor> logger,
     UserFacingFailureDiagnostics failureDiagnostics) : ICurrentTenantContextAccessor
 {
-    private const string CommonAuthorityTenant = "common";
-    private const string OrganizationsAuthorityTenant = "organizations";
     private const string LegacyObjectIdentifierClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
     private const string LegacyTenantIdentifierClaimType = "http://schemas.microsoft.com/identity/claims/tenantid";
 
@@ -120,8 +118,8 @@ internal sealed class ClaimsTenantContextAccessor(
     {
         var authorityTenant = tenantAuthorityConfiguration.TenantId;
         if (string.IsNullOrWhiteSpace(authorityTenant)
-            || string.Equals(authorityTenant, CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(authorityTenant, OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(authorityTenant, TenantAuthorityConfiguration.CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(authorityTenant, TenantAuthorityConfiguration.OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
             || string.Equals(authorityTenant, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase))
         {
             return null;

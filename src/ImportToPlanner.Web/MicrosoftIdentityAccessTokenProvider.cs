@@ -19,8 +19,6 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
     private const string LoginHintClaimType = "login_hint";
     private const string UpnClaimType = "upn";
     private const string EmailClaimType = "email";
-    private const string CommonAuthorityTenant = "common";
-    private const string OrganizationsAuthorityTenant = "organizations";
     private readonly ITokenAcquisition tokenAcquisition;
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly TenantAuthorityConfiguration tenantAuthorityConfiguration;
@@ -181,8 +179,8 @@ internal sealed class MicrosoftIdentityAccessTokenProvider : IAccessTokenProvide
 
         var authorityTenant = tenantAuthorityConfiguration.TenantId;
         if (string.IsNullOrWhiteSpace(authorityTenant)
-            || string.Equals(authorityTenant, CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(authorityTenant, OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(authorityTenant, TenantAuthorityConfiguration.CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(authorityTenant, TenantAuthorityConfiguration.OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
             || string.Equals(authorityTenant, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase))
         {
             return null;

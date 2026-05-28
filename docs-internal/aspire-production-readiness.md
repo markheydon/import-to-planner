@@ -25,7 +25,7 @@ This document tracks deployment preparation only. It does **not** change current
 
 | Key | Local development (default) | Hosted environment (production-ready expectation) |
 | --- | --- | --- |
-| `AzureAd:TenantId`, `AzureAd:ClientId`, `AzureAd:Instance`, `AzureAd:CallbackPath` | Store in user secrets for local Graph-mode testing. | Provide via AppHost deploy parameters (`azureAdTenantId`, `azureAdClientId`) and platform-managed defaults; never commit values. |
+| `AzureAd:TenantId`, `AzureAd:HomeTenantId`, `AzureAd:ClientId`, `AzureAd:Instance`, `AzureAd:CallbackPath` | Store in user secrets for local Graph-mode testing. Use `AzureAd:HomeTenantId=multiple` only when intentionally verifying shared hosted authority locally; otherwise use a concrete tenant ID or verified domain. | Provide via AppHost deploy parameters (`azureAdTenantId`, `azureAdHomeTenantId`, `azureAdClientId`) and platform-managed defaults; never commit values. Shared hosted deployments must set `azureAdHomeTenantId=multiple`, while self-hosted deployments should use a concrete home tenant value. |
 | `AzureAd:ClientCertificates:0:SourceType`, `AzureAd:ClientCertificates:0:CertificateDiskPath`, `AzureAd:ClientCertificates:0:CertificatePassword`, `AzureAd:ClientCertificates:0:CertificateBase64` | Use `SourceType: Path` with an absolute Linux, WSL, or macOS-visible path to a local `.pfx`. | Current hosted baseline uses AppHost deploy parameters (`graphClientCertificatePassword`, `graphClientCertificateBase64`) and startup materialisation to `/tmp/import-to-planner-graph-client.pfx`; production should move to managed certificate sources when ready. |
 | `Storage:TenantMetadataTable`, `Storage:DataProtectionContainer`, `Storage:DataProtectionBlob` | Keep defaults from `appsettings.json` unless a local test scenario requires alternate names. | Provide explicit values through hosted configuration so metadata and Data Protection persistence remain stable across restarts. |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Usually unset unless developing against a local collector. | Set to the hosted OTLP collector endpoint to export logs, metrics, and traces; when unset, OTLP export remains disabled. |
@@ -42,8 +42,9 @@ This document tracks deployment preparation only. It does **not** change current
 2. Hand off hosted configuration values (`AzureAd:*`, `Storage:*`, certificate source, and OTLP endpoint) to the deployment owner as secret-backed settings, including AppHost parameter mapping in CI.
 3. For custom-domain deployments, use a two-stage rollout: deploy once without binding, provision DNS + ACA managed certificate, then redeploy with `customDomain` and `customDomainCertificateName` mapped.
 4. Verify redirect URI and delegated Graph permissions remain aligned with the target hosted URL.
-5. Run CI-equivalent validation before rollout: solution build and tests plus AppHost build.
-6. Capture post-deployment smoke checks, including sign-in, preview, execute, and telemetry flow, before enabling wider access.
+5. Verify the hosted runtime authority remains `AzureAd:HomeTenantId=multiple`; do not conflate this runtime authority setting with deployment identity values.
+6. Run CI-equivalent validation before rollout: solution build and tests plus AppHost build.
+7. Capture post-deployment smoke checks, including sign-in, preview, execute, and telemetry flow, before enabling wider access.
 
 ## Hosted Reference Deployment
 
@@ -66,7 +67,7 @@ manual approval step and isolated configuration.
 Before promoting hosted changes, capture and retain the following evidence:
 
 - `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj` and `dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj` pass with no new failures.
-- Focused authority-path parity evidence exists for planner-facing behaviour changes in both `AzureAd:TenantId=organizations` and tenant-specific authority runs.
+- Focused authority-path parity evidence exists for planner-facing behaviour changes in both `AzureAd:HomeTenantId=multiple` and tenant-specific authority runs.
 - Hosted sign-in evidence confirms supported work or school account admission across at least two customer tenants and rejects unsupported account types before workflow entry.
 - Tenant-isolation evidence confirms hosted metadata and active workflow context are partitioned by tenant boundary.
 - Consent-flow evidence confirms both user-consent and administrator-consent-required paths render clear UK-English guidance.

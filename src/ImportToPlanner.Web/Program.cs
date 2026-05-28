@@ -13,6 +13,7 @@ builder.AddInfrastructureStorageClients();
 ApplyLegacyCertificatePathOverrides(builder.Configuration);
 ApplyCertificateBase64Overrides(builder.Configuration);
 StartupConfigurationValidator.Validate(builder.Configuration);
+AzureAdConfigurationNormalizer.Apply(builder.Configuration);
 
 var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(builder.Configuration);
 var storageConfiguration = StorageConfiguration.FromConfiguration(builder.Configuration);

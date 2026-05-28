@@ -10,8 +10,14 @@ internal sealed record TenantAuthorityConfiguration(
     string TenantId,
     TenantAuthorityKind AuthorityKind,
     IReadOnlyList<string> RequiredScopes,
-    Uri? AdminConsentUri)
+    Uri? AdminConsentUri,
+    string AppRegistrationTenantId,
+    string? HomeTenantId)
 {
+    internal const string CommonAuthorityTenant = "common";
+    internal const string MultipleHomeTenantAlias = "multiple";
+    internal const string OrganizationsAuthorityTenant = "organizations";
+
     public bool IsSharedOrganisations => AuthorityKind == TenantAuthorityKind.SharedOrganisations;
 
     public static TenantAuthorityConfiguration FromConfiguration(IConfiguration configuration)
@@ -29,14 +35,32 @@ internal sealed record TenantAuthorityConfiguration(
             throw new InvalidOperationException("Application startup configuration is invalid: replace the placeholder value for 'AzureAd:TenantId'.");
         }
 
-        var authorityKind = string.Equals(tenantId, "organizations", StringComparison.OrdinalIgnoreCase)
+        var appRegistrationTenantId = configuration["AzureAd:AppRegistrationTenantId"]?.Trim();
+        if (string.IsNullOrWhiteSpace(appRegistrationTenantId))
+        {
+            appRegistrationTenantId = tenantId;
+        }
+
+        var homeTenantId = configuration["AzureAd:HomeTenantId"]?.Trim();
+
+        var authorityKind = string.Equals(tenantId, OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
             ? TenantAuthorityKind.SharedOrganisations
             : TenantAuthorityKind.SpecificTenant;
 
         var requiredScopes = configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
         var adminConsentUri = BuildAdminConsentUri(configuration, tenantId);
 
-        return new TenantAuthorityConfiguration(tenantId, authorityKind, requiredScopes, adminConsentUri);
+        return new TenantAuthorityConfiguration(tenantId, authorityKind, requiredScopes, adminConsentUri, appRegistrationTenantId, homeTenantId);
+    }
+
+    public static string NormalizeHomeTenantId(string homeTenantId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(homeTenantId);
+
+        var normalizedHomeTenantId = homeTenantId.Trim();
+        return string.Equals(normalizedHomeTenantId, MultipleHomeTenantAlias, StringComparison.OrdinalIgnoreCase)
+            ? OrganizationsAuthorityTenant
+            : normalizedHomeTenantId;
     }
 
     private static Uri? BuildAdminConsentUri(IConfiguration configuration, string tenantId)

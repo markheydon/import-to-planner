@@ -12,7 +12,7 @@ internal static class StartupConfigurationValidator
         {
             ["PlannerGateway"] = "Remove 'PlannerGateway:*'. The app now always uses the Graph planner gateway.",
             ["HostedStorage"] = "Remove 'HostedStorage:*'. Use 'Storage:*' and AppHost storage references instead.",
-            ["DeploymentMode"] = "Remove 'DeploymentMode:*'. Authority behaviour now comes from 'AzureAd:TenantId'.",
+            ["DeploymentMode"] = "Remove 'DeploymentMode:*'. Authority behaviour now comes from 'AzureAd:HomeTenantId' or the legacy 'AzureAd:TenantId' fallback.",
         };
 
         foreach (var rule in obsoleteConfigurationRules)
@@ -26,11 +26,26 @@ internal static class StartupConfigurationValidator
         var tenantId = configuration["AzureAd:TenantId"];
         if (string.IsNullOrWhiteSpace(tenantId))
         {
-            validationErrors.Add("Set 'AzureAd:TenantId' to 'organizations' or a specific tenant identifier.");
+            validationErrors.Add("Set 'AzureAd:TenantId' to the tenant that owns your app registration.");
         }
         else if (tenantId.StartsWith("__REPLACE", StringComparison.OrdinalIgnoreCase))
         {
             validationErrors.Add("Replace the placeholder value for 'AzureAd:TenantId'.");
+        }
+
+        var homeTenantId = configuration["AzureAd:HomeTenantId"];
+        if (!string.IsNullOrWhiteSpace(homeTenantId))
+        {
+            if (homeTenantId.StartsWith("__REPLACE", StringComparison.OrdinalIgnoreCase))
+            {
+                validationErrors.Add("Replace the placeholder value for 'AzureAd:HomeTenantId'.");
+            }
+            else if (string.Equals(homeTenantId, TenantAuthorityConfiguration.CommonAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(homeTenantId, TenantAuthorityConfiguration.OrganizationsAuthorityTenant, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(homeTenantId, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase))
+            {
+                validationErrors.Add($"Set 'AzureAd:HomeTenantId' to '{TenantAuthorityConfiguration.MultipleHomeTenantAlias}' or a specific tenant identifier.");
+            }
         }
 
         ValidateRequiredSetting("Storage:TenantMetadataTable");

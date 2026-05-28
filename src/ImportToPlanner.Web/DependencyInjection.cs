@@ -21,6 +21,8 @@ public static class DependencyInjection
     private const string AuthenticationErrorQueryKey = "authError";
     private const string AuthenticationReferenceQueryKey = "authRef";
     private const string UnsupportedAccountErrorMessage = "Unsupported account type. Sign in with a supported work or school account.";
+    private const string LegacyTenantIdentifierClaimType = "http://schemas.microsoft.com/identity/claims/tenantid";
+    private const string LegacyIdentityProviderClaimType = "http://schemas.microsoft.com/identity/claims/identityprovider";
 
     /// <summary>
     /// Adds Aspire-managed Azure storage service clients used by the web host.
@@ -93,8 +95,10 @@ public static class DependencyInjection
                         return;
                     }
 
-                    var tenantId = context.Principal?.FindFirst("tid")?.Value;
-                    var identityProvider = context.Principal?.FindFirst("idp")?.Value;
+                    var tenantId = context.Principal?.FindFirst("tid")?.Value
+                        ?? context.Principal?.FindFirst(LegacyTenantIdentifierClaimType)?.Value;
+                    var identityProvider = context.Principal?.FindFirst("idp")?.Value
+                        ?? context.Principal?.FindFirst(LegacyIdentityProviderClaimType)?.Value;
                     if (string.IsNullOrWhiteSpace(tenantId)
                         || string.Equals(tenantId, AuthTenantConstants.ConsumerTenantId, StringComparison.OrdinalIgnoreCase)
                         || (!string.IsNullOrWhiteSpace(identityProvider) && identityProvider.Contains("live.com", StringComparison.OrdinalIgnoreCase)))

@@ -34,6 +34,16 @@ You may also see a consent prompt. This allows the app to:
 
 If your tenant requires administrator approval, you may be blocked until an administrator grants consent.
 
+If you see a tenant-specific sign-in error before you reach the app, contact your administrator or the service operator. Shared hosted access should use a work or school multitenant sign-in path, while self-hosted deployments should use your organisation's own tenant-specific setup.
+
+## For administrators
+
+If your organisation is preparing first-time access to the hosted service, make sure:
+
+- users sign in with work or school accounts
+- the hosted app registration is approved according to your tenant's consent policy
+- any required administrator consent is completed before wider rollout
+
 ## Your first run path
 
 1. Sign in.

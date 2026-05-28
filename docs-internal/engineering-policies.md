@@ -41,8 +41,10 @@ and workflow but are intentionally outside the architecture constitution.
   in adapter/infrastructure layers.
 - Because supported Planner scenarios currently rely on Microsoft Graph beta endpoints,
   Graph contract changes MUST include compatibility notes and mitigation guidance.
-- The repository scope is single-tenant; multi-tenant behaviour MUST NOT be introduced
-  without explicit maintainer approval and corresponding governance updates.
+- The repository supports two explicit authority modes only: self-hosted single-tenant and
+  approved hosted shared multi-tenant. Changes to tenant behaviour MUST preserve the
+  self-hosted single-tenant baseline and stay aligned with the approved hosted contracts and
+  runbooks.
 - Security-sensitive values (credentials, certificate material, tenant identifiers)
   MUST NOT be committed and MUST use approved configuration paths.
 

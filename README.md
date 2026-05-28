@@ -12,7 +12,7 @@ Import To Planner is a single-purpose Blazor application that imports CSV task l
 Primary purpose:
 
 - Provide a controlled CSV-to-Planner import workflow with validation, preview, and explicit execution confirmation.
-- Support hosted and self-hosted authority configurations through `AzureAd:TenantId` while keeping one Graph-backed runtime path.
+- Support hosted and self-hosted authority configurations through `AzureAd:HomeTenantId` while keeping one Graph-backed runtime path.
 
 The workflow preserves operational safeguards:
 
@@ -25,7 +25,7 @@ The workflow preserves operational safeguards:
 The app now has one supported runtime path:
 
 - Microsoft Graph planner operations with table-backed tenant metadata and blob-backed Data Protection persistence.
-- Authentication remains authority-driven through `AzureAd:TenantId` (`organizations` or a specific tenant value).
+- Authentication remains authority-driven through `AzureAd:HomeTenantId` (`multiple` or a specific tenant value).
 
 ## User Documentation
 
@@ -117,9 +117,17 @@ Architecture and governance references:
 
 ### Choose your path
 
-- Run with `AzureAd:TenantId=organizations` when you need shared-organisations authority behaviour.
-- Run with a specific tenant ID when you need single-tenant authority behaviour.
+- Run with `AzureAd:HomeTenantId=multiple` when you need shared-organisations authority behaviour.
+- Run with `AzureAd:HomeTenantId=<tenant-id-or-domain>` when you need single-tenant authority behaviour.
 - Use Aspire for both paths so storage wiring remains consistent with production.
+
+Recommended Entra setup:
+
+- Hosted shared mode: use a dedicated multitenant app registration, set `AzureAd:TenantId` to the registration's home tenant, and set `AzureAd:HomeTenantId=multiple`.
+- Self-hosted mode: use a tenant-owned single-tenant app registration, set `AzureAd:TenantId` to that registration tenant, and set `AzureAd:HomeTenantId` to that same tenant.
+- Do not treat the Azure deployment tenant ID as the hosted runtime authority toggle. Runtime authority is controlled by `AzureAd:HomeTenantId`.
+
+For the full internal setup guide, including the recommended separate-registration strategy and troubleshooting for the "Selected user account does not exist in tenant" error, see `docs-internal/entra-app-registration-setup.md`.
 
 ### Prerequisites
 
@@ -158,7 +166,8 @@ Profile names are historical labels; all supported paths now use Graph plus stor
 Aspire is the recommended path because it wires `storage`, `blobs`, and `tables` automatically. If you need to run the Web project directly, provide equivalent connection settings and AzureAd secrets first:
 
 ```bash
-dotnet user-secrets set "AzureAd:TenantId" "organizations" --project src/ImportToPlanner.Web
+dotnet user-secrets set "AzureAd:TenantId" "<app-registration-tenant-id-or-domain>" --project src/ImportToPlanner.Web
+dotnet user-secrets set "AzureAd:HomeTenantId" "multiple" --project src/ImportToPlanner.Web
 dotnet user-secrets set "AzureAd:ClientId" "<client-id>" --project src/ImportToPlanner.Web
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
@@ -175,8 +184,11 @@ Use this path when you want sign-in constrained to one tenant:
 
 ```bash
 dotnet user-secrets set "AzureAd:TenantId" "<tenant-id-or-domain>" --project src/ImportToPlanner.Web
+dotnet user-secrets set "AzureAd:HomeTenantId" "<tenant-id-or-domain>" --project src/ImportToPlanner.Web
 dotnet run --project src/ImportToPlanner.Web/ImportToPlanner.Web.csproj
 ```
+
+Use a tenant-owned single-tenant app registration for this path. Keep the redirect URI aligned with the app origin you are running, always ending with `/signin-oidc`, and grant the delegated Graph permissions listed in `src/ImportToPlanner.Web/appsettings.json`.
 
 Expected behaviour:
 
