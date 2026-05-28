@@ -16,6 +16,11 @@ Use this page if your organisation plans to deploy and operate its own instance.
 
 Self-hosted setup involves environment configuration, identity setup, and operational ownership by your team.
 
+Self-hosting is a permanent supported path for this project. Commercial or hosted-only
+capabilities may be added over time, but they are intended to remain additive. If a hosted
+service introduces workflows that do not apply to self-hosters, self-hosted deployments
+must continue to have a supported route that does not depend on those hosted-only steps.
+
 For self-hosted deployments, keep authentication tenant-specific:
 
 - Create or use an Entra app registration owned by your tenant.
@@ -32,4 +37,4 @@ This route is intentionally different from the hosted shared service. Do not poi
 - Use your own tenant-owned app registration rather than the hosted shared registration.
 - If your team is self-hosting, use your own deployment runbook for environment-specific operations and ownership.
 
-This self-hosted route is intentionally separate so the main docs path stays focused on hosted end users.
+This self-hosted route is intentionally separate so the main docs path stays focused on hosted end users without making self-hosting a second-class option.

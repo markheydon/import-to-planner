@@ -45,6 +45,12 @@ and workflow but are intentionally outside the architecture constitution.
   approved hosted shared multi-tenant. Changes to tenant behaviour MUST preserve the
   self-hosted single-tenant baseline and stay aligned with the approved hosted contracts and
   runbooks.
+- Commercial or hosted-service capabilities MUST be designed so self-hosters retain a
+  supported path without depending on SaaS-specific login, billing, subscription state, or
+  hosted control-plane availability.
+- Feature proposals and pull requests that add hosted-only behaviour MUST explicitly state
+  the self-hosted impact, including how self-hosted operators bypass or replace any hosted
+  service workflow that would otherwise be irrelevant or obstructive.
 - Security-sensitive values (credentials, certificate material, tenant identifiers)
   MUST NOT be committed and MUST use approved configuration paths.
 
