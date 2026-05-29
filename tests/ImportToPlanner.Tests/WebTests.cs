@@ -28,6 +28,7 @@ public class WebTests
         {
             clientBuilder.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
             {
+                // A test-only HTTP client handler that accepts the Aspire test server certificate.
                 ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
             });
             clientBuilder.AddStandardResilienceHandler();
