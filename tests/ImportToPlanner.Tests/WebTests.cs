@@ -26,6 +26,10 @@ public class WebTests
         });
         appHost.Services.ConfigureHttpClientDefaults(clientBuilder =>
         {
+            clientBuilder.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+            });
             clientBuilder.AddStandardResilienceHandler();
         });
 
