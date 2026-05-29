@@ -3,7 +3,9 @@ using ImportToPlanner.Application.Models;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web;
 using ImportToPlanner.Web.Components;
-using ImportToPlanner.Web.Services;
+using ImportToPlanner.Web.Features.Authentication;
+using ImportToPlanner.Web.Features.CommercialAccounts;
+using ImportToPlanner.Web.Infrastructure;
 using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);

@@ -1,0 +1,153 @@
+using System.Globalization;
+using CsvHelper;
+using CsvHelper.Configuration;
+using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Models;
+
+namespace ImportToPlanner.Infrastructure.Graph.Import;
+
+/// <summary>
+/// Parses CSV files into normalised import rows.
+/// </summary>
+public sealed class CsvImportParser : ICsvImportParser
+{
+    private const string TaskNameHeader = "task name";
+    private const string DescriptionHeader = "description";
+    private const string PriorityHeader = "priority";
+    private const string BucketHeader = "bucket";
+    private const string GoalHeader = "goal";
+
+    private static readonly HashSet<string> SupportedHeaders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Task Name",
+        "Description",
+        "Priority",
+        "Bucket",
+        "Goal",
+    };
+
+    /// <inheritdoc/>
+    public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken, bool ignoreExtraColumns = false)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (string.IsNullOrWhiteSpace(csvContent))
+        {
+            return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV file is empty.")]));
+        }
+
+        using var reader = new StringReader(csvContent);
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            IgnoreBlankLines = true,
+            TrimOptions = TrimOptions.Trim,
+            MissingFieldFound = null,
+            HeaderValidated = null,
+            PrepareHeaderForMatch = args => args.Header?.Trim().ToLowerInvariant() ?? string.Empty,
+        };
+
+        using var csv = new CsvReader(reader, config);
+
+        var errors = new List<ImportValidationError>();
+        var rows = new List<CsvTaskRow>();
+
+        if (!csv.Read() || !csv.ReadHeader() || csv.HeaderRecord is null)
+        {
+            return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV header row is missing.")]));
+        }
+
+        ValidateHeaders(csv.HeaderRecord, errors, ignoreExtraColumns);
+
+        while (csv.Read())
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var rowNumber = csv.Parser.Row;
+            var taskName = csv.GetField(TaskNameHeader)?.Trim();
+            var description = Normalise(csv.GetField(DescriptionHeader));
+            var priorityText = Normalise(csv.GetField(PriorityHeader));
+            var bucket = Normalise(csv.GetField(BucketHeader));
+            var goal = Normalise(csv.GetField(GoalHeader));
+
+            if (string.IsNullOrWhiteSpace(taskName))
+            {
+                errors.Add(new ImportValidationError(rowNumber, "Task Name", "Task Name is required."));
+                continue;
+            }
+
+            if (!TryParsePriority(priorityText, out var priority))
+            {
+                errors.Add(new ImportValidationError(
+                    rowNumber,
+                    "Priority",
+                    "Priority must be empty, a value 0-10, or one of: Urgent, Important, Medium, Low."));
+                continue;
+            }
+
+            rows.Add(new CsvTaskRow(rowNumber, taskName, description, priority, bucket, goal));
+        }
+
+        return Task.FromResult(new CsvParseResult(rows, errors));
+    }
+
+    private static void ValidateHeaders(IEnumerable<string> headers, List<ImportValidationError> errors, bool ignoreExtraColumns = false)
+    {
+        var normalised = headers
+            .Select(header => header.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (!normalised.Contains("Task Name"))
+        {
+            errors.Add(new ImportValidationError(0, "Task Name", "Task Name column is required."));
+        }
+
+        if (!ignoreExtraColumns)
+        {
+            foreach (var header in normalised)
+            {
+                if (!SupportedHeaders.Contains(header))
+                {
+                    errors.Add(new ImportValidationError(0, header, "Unexpected column."));
+                }
+            }
+        }
+    }
+
+    private static bool TryParsePriority(string? priorityText, out int? priority)
+    {
+        priority = null;
+
+        if (string.IsNullOrWhiteSpace(priorityText))
+        {
+            return true;
+        }
+
+        if (int.TryParse(priorityText, out var numeric))
+        {
+            if (numeric is >= 0 and <= 10)
+            {
+                priority = numeric;
+                return true;
+            }
+
+            return false;
+        }
+
+        var normalised = priorityText.Trim().ToLowerInvariant();
+        priority = normalised switch
+        {
+            "urgent" => 1,
+            "important" => 3,
+            "medium" => 5,
+            "low" => 9,
+            _ => null,
+        };
+
+        return priority is not null;
+    }
+
+    private static string? Normalise(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+}

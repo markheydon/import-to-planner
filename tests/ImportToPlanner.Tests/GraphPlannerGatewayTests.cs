@@ -2,7 +2,7 @@ using System.Globalization;
 using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
-using ImportToPlanner.Infrastructure.Graph;
+using ImportToPlanner.Infrastructure.Graph.Planner;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;

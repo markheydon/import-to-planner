@@ -3,8 +3,6 @@ using Bunit;
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
-using ImportToPlanner.Web.Presenters;
-using ImportToPlanner.Web.Workflows;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -79,13 +77,13 @@ internal sealed class HomePageTestContext : BunitContext
         };
 
         Services.AddSingleton<IHttpContextAccessor>(httpContextAccessor);
-        var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.UserFacingFailureDiagnostics", throwOnError: true)!;
+        var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Diagnostics.UserFacingFailureDiagnostics", throwOnError: true)!;
         Services.AddScoped(failureDiagnosticsType, serviceProvider => Activator.CreateInstance(
             failureDiagnosticsType,
             serviceProvider.GetRequiredService<IHttpContextAccessor>(),
             serviceProvider.GetRequiredService<TenantAuthorityConfiguration>())!);
-        var sessionIdentityAccessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.ISessionIdentityContextAccessor", throwOnError: true)!;
-        var claimsSessionIdentityAccessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.ClaimsSessionIdentityContextAccessor", throwOnError: true)!;
+        var sessionIdentityAccessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Features.Authentication.ISessionIdentityContextAccessor", throwOnError: true)!;
+        var claimsSessionIdentityAccessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Features.Authentication.ClaimsSessionIdentityContextAccessor", throwOnError: true)!;
         Services.AddScoped(
             sessionIdentityAccessorType,
             serviceProvider => Activator.CreateInstance(
