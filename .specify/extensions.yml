@@ -50,7 +50,7 @@ hooks:
     optional: false
     prompt: Commit outstanding changes before implementation?
     description: Auto-commit before implementation
-    condition: Only if the currently uncomitted changes DON'T include implementation files (e.g. src/) as could be a failed implementation that needs to be fixed before committing.
+    condition: Only if the currently uncommitted changes DON'T include implementation files (e.g. src/) as could be a failed implementation that needs to be fixed before committing.
   before_checklist:
   - extension: git
     command: speckit.git.commit
