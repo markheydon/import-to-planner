@@ -156,7 +156,7 @@ public sealed class ArchitectureComplianceTests
     public void HomePageGuidanceFlags_DoNotDependOnStatusMessageStringScanning()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home.razor");
+        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home", "Home.razor");
         var content = File.ReadAllText(homePagePath);
 
         Assert.DoesNotContain("statusMessage.Contains(", content, StringComparison.OrdinalIgnoreCase);
@@ -166,9 +166,9 @@ public sealed class ArchitectureComplianceTests
     public void HomePagePresentationContracts_AreWebOwnedAndPresentationFocused()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var pagesPath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages");
-        var statePath = Path.Combine(pagesPath, "HomeWorkflowStepState.cs");
-        var presentationPath = Path.Combine(pagesPath, "HomeWorkflowStepPresentation.cs");
+        var homePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home");
+        var statePath = Path.Combine(homePath, "HomeWorkflowStepState.cs");
+        var presentationPath = Path.Combine(homePath, "HomeWorkflowStepPresentation.cs");
 
         Assert.True(File.Exists(statePath));
         Assert.True(File.Exists(presentationPath));
@@ -186,7 +186,7 @@ public sealed class ArchitectureComplianceTests
     public void HomePage_ContainsConciseManualFollowUpGuidanceWithGoalsExample()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home.razor");
+        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home", "Home.razor");
         var content = File.ReadAllText(homePagePath);
 
         Assert.Contains("manual follow-up", content, StringComparison.OrdinalIgnoreCase);
