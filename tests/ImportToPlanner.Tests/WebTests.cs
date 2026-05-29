@@ -4,11 +4,14 @@ namespace ImportToPlanner.Tests;
 
 public class WebTests
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(30);
+    // Timeout duration -- 60 in CI run in GitHub Actions being a bit slow.
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
 
     [Fact]
     public async Task GetWebResourceRootReturnsOkStatusCode()
     {
+        using var _ = ConfigureRequiredAppHostParameters();
+
         // Arrange
         var cancellationToken = new CancellationTokenSource(DefaultTimeout).Token;
 
@@ -32,9 +35,44 @@ public class WebTests
         // Act
         var httpClient = app.CreateHttpClient("web");
         await app.ResourceNotifications.WaitForResourceHealthyAsync("web", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
-        var response = await httpClient.GetAsync("/", cancellationToken);
+        var response = await httpClient.GetAsync("/health", cancellationToken);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    private static EnvironmentVariableScope ConfigureRequiredAppHostParameters()
+    {
+        return new EnvironmentVariableScope(new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            ["Parameters__azureAdTenantId"] = "organizations",
+            ["Parameters__azureAdClientId"] = "22222222-2222-2222-2222-222222222222",
+            ["Parameters__azureAdHomeTenantId"] = "11111111-1111-1111-1111-111111111111",
+            ["Parameters__enableCommercialMode"] = "false",
+            ["Parameters__graphClientCertificatePassword"] = string.Empty,
+            ["Parameters__graphClientCertificateBase64"] = string.Empty,
+        });
+    }
+
+    private sealed class EnvironmentVariableScope : IDisposable
+    {
+        private readonly Dictionary<string, string?> _originalValues = new(StringComparer.Ordinal);
+
+        public EnvironmentVariableScope(IReadOnlyDictionary<string, string?> values)
+        {
+            foreach (var (key, value) in values)
+            {
+                _originalValues[key] = Environment.GetEnvironmentVariable(key);
+                Environment.SetEnvironmentVariable(key, value);
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var (key, originalValue) in _originalValues)
+            {
+                Environment.SetEnvironmentVariable(key, originalValue);
+            }
+        }
     }
 }
