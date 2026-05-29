@@ -1,5 +1,6 @@
 ---
 name: Address PR Review
+model: GPT-5.3-Codex
 description: Review all open comment threads on a pull request, fix the issues raised, reply to each thread explaining what was done, and resolve the conversation.
 argument-hint: PR number to address, e.g. "PR 25" or "PR 25 in owner/repo"
 ---

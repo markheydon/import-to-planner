@@ -1,12 +1,13 @@
-installed: []
+installed:
+- git
 settings:
   auto_execute_hooks: true
 hooks:
   before_constitution:
   - extension: git
     command: speckit.git.initialize
-    enabled: false
-    optional: true
+    enabled: true
+    optional: false
     prompt: Execute speckit.git.initialize?
     description: Initialize Git repository before constitution setup
     condition: null
@@ -30,7 +31,7 @@ hooks:
   - extension: git
     command: speckit.git.commit
     enabled: true
-    optional: true
+    optional: false
     prompt: Commit outstanding changes before planning?
     description: Auto-commit before implementation planning
     condition: null
@@ -46,10 +47,10 @@ hooks:
   - extension: git
     command: speckit.git.commit
     enabled: true
-    optional: true
+    optional: false
     prompt: Commit outstanding changes before implementation?
     description: Auto-commit before implementation
-    condition: null
+    condition: Only if the currently uncommitted changes DON'T include implementation files (e.g. src/) as could be a failed implementation that needs to be fixed before committing.
   before_checklist:
   - extension: git
     command: speckit.git.commit
@@ -70,7 +71,7 @@ hooks:
   - extension: git
     command: speckit.git.commit
     enabled: true
-    optional: true
+    optional: false
     prompt: Commit outstanding changes before issue sync?
     description: Auto-commit before tasks-to-issues conversion
     condition: null
