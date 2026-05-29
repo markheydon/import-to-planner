@@ -1,5 +1,6 @@
 ---
 agent: 'agent'
+model: GPT-5.4
 description: Checks a GitHub repository for compliance with Open Source Release Requirements: file presence, security settings, license analysis, and risk assessment. A compliance report is then appended to the repository README.
 tools: [read, edit, search, 'github/*']
 ---
