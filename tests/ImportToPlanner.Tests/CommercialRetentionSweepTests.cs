@@ -2,7 +2,6 @@ using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Tests.TestDoubles;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ImportToPlanner.Tests;
 

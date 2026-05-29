@@ -1,5 +1,6 @@
 {
   "appHost": {
-    "path": "src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj"
+    "path": "src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj",
+    "language": "csharp"
   }
 }
