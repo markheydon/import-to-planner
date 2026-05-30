@@ -192,7 +192,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             },
         };
 
-        var providerType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.MicrosoftIdentityAccessTokenProvider", throwOnError: true)!;
+        var providerType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Features.Authentication.MicrosoftIdentityAccessTokenProvider", throwOnError: true)!;
         return (IAccessTokenProvider)Activator.CreateInstance(providerType, tokenAcquisition, httpContextAccessor, authorityConfiguration, logger, GraphScopes)!;
     }
 

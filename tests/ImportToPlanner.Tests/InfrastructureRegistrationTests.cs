@@ -1,8 +1,8 @@
 using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Infrastructure.Graph;
+using ImportToPlanner.Infrastructure.Graph.Planner;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ImportToPlanner.Tests;
 

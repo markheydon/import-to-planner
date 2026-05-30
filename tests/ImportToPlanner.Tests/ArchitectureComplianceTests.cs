@@ -142,7 +142,7 @@ public sealed class ArchitectureComplianceTests
     public void WebWorkflowCoordination_DoesNotReferenceMudBlazorTypes()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var workflowPath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Workflows");
+        var workflowPath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Workflows");
         var workflowFiles = Directory.EnumerateFiles(workflowPath, "*.cs", SearchOption.TopDirectoryOnly);
 
         foreach (var file in workflowFiles)
@@ -156,7 +156,7 @@ public sealed class ArchitectureComplianceTests
     public void HomePageGuidanceFlags_DoNotDependOnStatusMessageStringScanning()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages", "Home.razor");
+        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home", "Home.razor");
         var content = File.ReadAllText(homePagePath);
 
         Assert.DoesNotContain("statusMessage.Contains(", content, StringComparison.OrdinalIgnoreCase);
@@ -166,9 +166,9 @@ public sealed class ArchitectureComplianceTests
     public void HomePagePresentationContracts_AreWebOwnedAndPresentationFocused()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var pagesPath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages");
-        var statePath = Path.Combine(pagesPath, "HomeWorkflowStepState.cs");
-        var presentationPath = Path.Combine(pagesPath, "HomeWorkflowStepPresentation.cs");
+        var homePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home");
+        var statePath = Path.Combine(homePath, "HomeWorkflowStepState.cs");
+        var presentationPath = Path.Combine(homePath, "HomeWorkflowStepPresentation.cs");
 
         Assert.True(File.Exists(statePath));
         Assert.True(File.Exists(presentationPath));
@@ -176,8 +176,8 @@ public sealed class ArchitectureComplianceTests
         var stateContent = File.ReadAllText(statePath);
         var presentationContent = File.ReadAllText(presentationPath);
 
-        Assert.Contains("namespace ImportToPlanner.Web.Components.Pages", stateContent, StringComparison.Ordinal);
-        Assert.Contains("namespace ImportToPlanner.Web.Components.Pages", presentationContent, StringComparison.Ordinal);
+        Assert.Contains("namespace ImportToPlanner.Web.Features.Import.Pages", stateContent, StringComparison.Ordinal);
+        Assert.Contains("namespace ImportToPlanner.Web.Features.Import.Pages", presentationContent, StringComparison.Ordinal);
         Assert.Contains("enum HomeWorkflowStepState", stateContent, StringComparison.Ordinal);
         Assert.Contains("record HomeWorkflowStepPresentation", presentationContent, StringComparison.Ordinal);
     }
@@ -186,7 +186,7 @@ public sealed class ArchitectureComplianceTests
     public void HomePage_ContainsConciseManualFollowUpGuidanceWithGoalsExample()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Components", "Pages", "Home.razor");
+        var homePagePath = Path.Combine(rootPath, "src", "ImportToPlanner.Web", "Features", "Import", "Pages", "Home", "Home.razor");
         var content = File.ReadAllText(homePagePath);
 
         Assert.Contains("manual follow-up", content, StringComparison.OrdinalIgnoreCase);

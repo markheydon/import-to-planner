@@ -1,6 +1,8 @@
 using ImportToPlanner.Application.Models;
-using ImportToPlanner.Web.Presenters;
-using ImportToPlanner.Web.Workflows;
+using ImportToPlanner.Web.Diagnostics;
+using ImportToPlanner.Web.Features.Authentication;
+using ImportToPlanner.Web.Features.Import.Presenters;
+using ImportToPlanner.Web.Features.Import.Workflows;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection.Extensions;

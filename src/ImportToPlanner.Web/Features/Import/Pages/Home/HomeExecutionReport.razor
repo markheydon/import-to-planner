@@ -1,0 +1,109 @@
+@namespace ImportToPlanner.Web.Features.Import.Pages
+
+@if (ExecutionResult is not null)
+{
+    <MudStack Spacing="2">
+        <MudText Typo="Typo.h6">Execution Report</MudText>
+
+        @if (ExecutionResult.PlanId is not null)
+        {
+            <MudAlert Severity="Severity.Success" Dense="true">
+                Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@ExecutionResult.PlanId"
+                                    target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
+            </MudAlert>
+        }
+
+        <MudTabs Rounded="false" ApplyEffectsToContainer="false">
+            <MudTabPanel Text="Summary">
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead>
+                        <tr>
+                            <th>Section</th>
+                            <th>Value</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Created</td>
+                            <td>@ExecutionResult.Created.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Reused or skipped</td>
+                            <td>@ExecutionResult.ReusedOrSkipped.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Manual actions</td>
+                            <td>@ExecutionResult.ManualActions.Count</td>
+                        </tr>
+                        <tr>
+                            <td>Errors</td>
+                            <td>@ExecutionResult.Errors.Count</td>
+                        </tr>
+                    </tbody>
+                </MudSimpleTable>
+
+                <MudText Typo="Typo.subtitle2" Class="mt-3">Created</MudText>
+                <MudDataGrid Items="@ExecutionResult.Created" T="string" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(item => item)" Title="Item" />
+                    </Columns>
+                </MudDataGrid>
+
+                <MudText Typo="Typo.subtitle2" Class="mt-3">Reused or skipped</MudText>
+                <MudDataGrid Items="@ExecutionResult.ReusedOrSkipped" T="string" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(item => item)" Title="Item" />
+                    </Columns>
+                </MudDataGrid>
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Manual Actions ({ExecutionResult.ManualActions.Count})")">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudText Typo="Typo.subtitle2">Manual actions</MudText>
+                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small">@ExecutionResult.ManualActions.Count</MudChip>
+                </MudStack>
+
+                @if (ExecutionResult.ManualActions.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">None</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="@ExecutionResult.ManualActions" T="ManualActionViewModel" Dense="true" ReadOnly="true">
+                        <Columns>
+                            <PropertyColumn Property="@(item => item.ActionType)" Title="Action type" />
+                            <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
+                            <PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
+                            <PropertyColumn Property="@(item => item.Details)" Title="Details" />
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Errors ({ExecutionResult.Errors.Count})")">
+                <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                    <MudText Typo="Typo.subtitle2">Errors</MudText>
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined" Size="Size.Small">@ExecutionResult.Errors.Count</MudChip>
+                </MudStack>
+
+                @if (ExecutionResult.Errors.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Success" Dense="true">None</MudAlert>
+                }
+                else
+                {
+                    <MudDataGrid Items="@ExecutionResult.Errors" T="string" Dense="true" ReadOnly="true">
+                        <Columns>
+                            <PropertyColumn Property="@(item => item)" Title="Error" />
+                        </Columns>
+                    </MudDataGrid>
+                }
+            </MudTabPanel>
+        </MudTabs>
+    </MudStack>
+}
+
+@code {
+    [Parameter]
+    public ImportExecutionReportViewModel? ExecutionResult { get; set; }
+}

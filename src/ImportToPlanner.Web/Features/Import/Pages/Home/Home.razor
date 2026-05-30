@@ -1,0 +1,592 @@
+@page "/"
+@namespace ImportToPlanner.Web.Features.Import.Pages
+@using ImportToPlanner.Application.Abstractions
+@using ImportToPlanner.Application.Exceptions
+@using Microsoft.AspNetCore.WebUtilities
+@inject ImportWorkflowCoordinator WorkflowCoordinator
+@inject WorkflowCoordinationState WorkflowState
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject ILogger<Home> Logger
+@inject IConfiguration Configuration
+@inject UserFacingFailureDiagnostics FailureDiagnostics
+@inject ICommercialAccessUseCase CommercialAccessUseCase
+@inject ICommercialProfileUseCase CommercialProfileUseCase
+@inject ISessionIdentityContextAccessor SessionIdentityContextAccessor
+@inject SessionIdentityPresenter SessionIdentityPresenter
+@inject CommercialModeOptions CommercialModeOptions
+
+<PageTitle>Import To Planner</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+    <MudStack Spacing="4">
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+            <MudGrid Spacing="3">
+                <MudItem xs="12" md="7">
+                    <MudStack Spacing="1" Class="step-intro">
+                        @if (showCommercialLoginGate)
+                        {
+                            <MudText Typo="Typo.h3">Sign in to Import To Planner</MudText>
+                            <MudText Typo="Typo.body1">
+                                If this is your first sign-in, we create an account in Import To Planner using your Microsoft 365 details. If you have signed in before, you can continue with your existing account.
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="step-intro__guidance">
+                                We only store the minimum details required to recognise your account for future sign-ins.
+                            </MudText>
+                        }
+                        else if (showCommercialDeletedAccountGate)
+                        {
+                            <MudText Typo="Typo.h3">Access is paused</MudText>
+                            <MudText Typo="Typo.body1">
+                                Your account is in the retention period. Restore it to continue to the import workflow.
+                            </MudText>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.h3">CSV to Planner Import</MudText>
+                            <MudText Typo="Typo.body1">
+                                Import a CSV into one Planner plan, then review each step before execution.
+                            </MudText>
+                            <MudText Typo="Typo.body2" Class="step-intro__guidance">
+                                Required field: <strong>Task Name</strong>. Accepted fields: <strong>Task Name</strong>, <strong>Description</strong>, <strong>Priority</strong>, <strong>Bucket</strong>, and <strong>Goal</strong>. Some details still need manual follow-up in Planner after import, for example confirming goals.
+                            </MudText>
+                        }
+                    </MudStack>
+                </MudItem>
+                <MudItem xs="12" md="5">
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Spacing="1" Wrap="Wrap.Wrap">
+                        <MudMenu Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode" Disabled="@(ThemeState is null)">
+                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
+                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
+                        </MudMenu>
+                        <AuthorizeView>
+                            <Authorized Context="authState">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                    <MudStack Spacing="0">
+                                        <MudText Typo="Typo.body2">@IdentityPresentation.EmailAddress</MudText>
+                                        @if (!string.IsNullOrWhiteSpace(IdentityPresentation.TenantName))
+                                        {
+                                            <MudText Typo="Typo.caption">@IdentityPresentation.TenantName</MudText>
+                                        }
+                                    </MudStack>
+                                    @if (CommercialModeOptions.Enabled)
+                                    {
+                                        <MudButton Variant="Variant.Text" Color="Color.Inherit" Size="Size.Small" Href="/profile">Profile</MudButton>
+                                    }
+                                    <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small" OnClick="OnSignOutClicked">Sign out</MudButton>
+                                </MudStack>
+                            </Authorized>
+                            <NotAuthorized>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="OnSignInClicked">Sign in</MudButton>
+                            </NotAuthorized>
+                        </AuthorizeView>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudPaper>
+
+        <MudStack Spacing="3">
+            @if (showCommercialLoginGate)
+            {
+                @* Login content is presented in the header panel for this state. *@
+            }
+            else if (showCommercialDeletedAccountGate)
+            {
+                <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h5">Your account is in the retention period</MudText>
+                        <MudText Typo="Typo.body1">
+                            Your account is currently marked as deleted, so normal access is paused.
+                        </MudText>
+                        @if (!string.IsNullOrWhiteSpace(restoreAccountStatusMessage))
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                @restoreAccountStatusMessage
+                            </MudAlert>
+                        }
+                        @if (deletedAccountRetentionExpiresUtc is not null)
+                        {
+                            <MudText Typo="Typo.body2">
+                                You can restore access until @deletedAccountRetentionExpiresUtc.Value.UtcDateTime.ToString("dd MMM yyyy", System.Globalization.CultureInfo.InvariantCulture).
+                            </MudText>
+                        }
+                        <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@isRestoringCommercialAccount" OnClick="RestoreCommercialAccountAsync">
+                                Restore account
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Color="Color.Inherit" Href="/profile">Open profile</MudButton>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Inherit" OnClick="OnSignOutClicked">Sign out</MudButton>
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            }
+            else
+            {
+            @if (isBusy)
+            {
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            }
+
+            @if (showFirstCommercialSignInGuidance)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">
+                    <MudText Typo="Typo.body2">Your account has been created. You can now continue with your import.</MudText>
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(statusMessage) && !showUnsupportedAccountGuidance && !showAdminConsentGuidance)
+            {
+                <MudAlert Severity="@StatusMessageSeverity" Dense="true">
+                    <MudText Typo="Typo.body2">@statusMessage</MudText>
+                    @if (!string.IsNullOrWhiteSpace(statusReferenceId))
+                    {
+                        <MudText Typo="Typo.caption">Reference ID: @statusReferenceId</MudText>
+                    }
+                </MudAlert>
+            }
+
+            @if (isTenantContextMismatch)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Tenant context changed since your previous sign-in. The workflow now uses the current tenant context and requires a fresh preview.
+                </MudAlert>
+            }
+
+            @if (showAdminConsentGuidance)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    <MudText Typo="Typo.body2">Hosted access requires administrator consent for this tenant. Ask your Microsoft 365 administrator to approve access, then sign in again.</MudText>
+                    @if (!string.IsNullOrWhiteSpace(statusReferenceId))
+                    {
+                        <MudText Typo="Typo.caption">Reference ID: @statusReferenceId</MudText>
+                    }
+                </MudAlert>
+            }
+
+            @if (showUnsupportedAccountGuidance)
+            {
+                <MudAlert Severity="Severity.Error" Dense="true">
+                    <MudText Typo="Typo.body2">Unsupported account type. Sign in with a supported work or school account.</MudText>
+                    @if (!string.IsNullOrWhiteSpace(statusReferenceId))
+                    {
+                        <MudText Typo="Typo.caption">Reference ID: @statusReferenceId</MudText>
+                    }
+                </MudAlert>
+            }
+
+            <MudPaper Elevation="@GetStepElevation(1)" Outlined="true" Class="@GetStepClass(1)">
+                @{ var step1Presentation = GetWorkflowStepPresentation(1); }
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                    <MudAvatar Color="@GetStepAvatarColour(1)">@step1Presentation.BadgeContent</MudAvatar>
+                    <MudText Typo="Typo.h6">@step1Presentation.Title</MudText>
+                </MudStack>
+                @if (IsStepComplete(1))
+                {
+                    <MudChip T="string" Color="@GetStepSummaryColour(1)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                        @step1Presentation.Summary
+                    </MudChip>
+                }
+
+                <MudStack Spacing="2" Class="mt-3">
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
+                    </MudAlert>
+                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                        <MudAutocomplete T="PlannerContainer"
+                                         Value="@selectedContainer"
+                                         ValueChanged="OnSelectedContainerChangedAsync"
+                                         SearchFunc="SearchContainers"
+                                         ToStringFunc="FormatContainer"
+                                         Label="Location"
+                                         Placeholder="Search or select a location"
+                                         Variant="Variant.Outlined"
+                                         Clearable="true"
+                                         Dense="true"
+                                         CoerceValue="false"
+                                         ResetValueOnEmptyText="true"
+                                         Disabled="@isBusy" />
+                        <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
+                            Refresh locations
+                        </MudButton>
+                    </MudStack>
+
+                    @if (noGroupsFound)
+                    {
+                        <MudAlert Severity="Severity.Info" Dense="true">
+                            No groups found. Ensure you are a member of at least one Microsoft 365 group.
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Elevation="@GetStepElevation(2)" Outlined="true" Class="@GetStepClass(2)">
+        @{ var step2Presentation = GetWorkflowStepPresentation(2); }
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(2)">@step2Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step2Presentation.Title</MudText>
+        </MudStack>
+        @if (IsStepComplete(2))
+        {
+            <MudChip T="string" Color="@GetStepSummaryColour(2)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step2Presentation.Summary
+            </MudChip>
+        }
+
+        <MudStack Spacing="2" Class="mt-3">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                <MudAutocomplete T="PlannerPlan"
+                                 Value="@selectedPlan"
+                                 ValueChanged="OnSelectedPlanChangedAsync"
+                                 SearchFunc="SearchPlans"
+                                 ToStringFunc="FormatPlan"
+                                 Label="Plan"
+                                 Placeholder="Search or select a plan"
+                                 Variant="Variant.Outlined"
+                                 Clearable="true"
+                                 Dense="true"
+                                 CoerceValue="false"
+                                 ResetValueOnEmptyText="true"
+                                 Disabled="@(isBusy || selectedContainer is null)" />
+                <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@(isBusy || selectedContainer is null)" OnClick="@RefreshPlansAsync">
+                    Refresh plans
+                </MudButton>
+            </MudStack>
+
+            @if (selectedContainer is not null && plans.Count == 0)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    No plans were found for this location. Create a plan in Planner, then click Refresh plans.
+                </MudAlert>
+            }
+        </MudStack>
+    </MudPaper>
+
+            <MudPaper Elevation="@GetStepElevation(3)" Outlined="true" Class="@GetStepClass(3)">
+        @{ var step3Presentation = GetWorkflowStepPresentation(3); }
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(3)">@step3Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step3Presentation.Title</MudText>
+        </MudStack>
+        @if (IsStepComplete(3))
+        {
+            <MudChip T="string" Color="@GetStepSummaryColour(3)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step3Presentation.Summary
+            </MudChip>
+        }
+
+        <MudStack Spacing="2" Class="mt-3">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                <MudFileUpload T="IBrowserFile"
+                               @ref="csvFileUpload"
+                               FilesChanged="OnFileChangedAsync"
+                               Accept=".csv,text/csv"
+                               MaximumFileCount="1"
+                               Hidden="true"
+                               Disabled="@(isBusy || IsStepLocked(3))">
+                    <CustomContent>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.UploadFile"
+                                   OnClick="OpenCsvFilePickerAsync"
+                                   Disabled="@(isBusy || IsStepLocked(3))">
+                            Choose CSV file
+                        </MudButton>
+                    </CustomContent>
+                    <SelectedTemplate>
+                        @if (context is not null)
+                        {
+                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
+                                @context.Name
+                            </MudChip>
+                        }
+                    </SelectedTemplate>
+                </MudFileUpload>
+
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           StartIcon="@Icons.Material.Filled.Clear"
+                           OnClick="ClearSelectedCsv"
+                           Disabled="@(isBusy || !hasSelectedCsv)">
+                    Clear CSV
+                </MudButton>
+            </MudStack>
+            <MudText Typo="Typo.body2">Selected file: @selectedFileName</MudText>
+            <MudSwitch T="bool"
+                       Value="@ignoreExtraColumns"
+                       ValueChanged="@OnIgnoreExtraColumnsChanged"
+                       Color="Color.Primary"
+                       Label="Ignore extra columns"
+                       Disabled="@(isBusy || IsStepLocked(3))" />
+        </MudStack>
+    </MudPaper>
+
+            <MudPaper Elevation="@GetStepElevation(4)" Outlined="true" Class="@GetStepClass(4)">
+        @{ var step4Presentation = GetWorkflowStepPresentation(4); }
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(4)">@step4Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step4Presentation.Title</MudText>
+        </MudStack>
+        @if (IsStepComplete(4))
+        {
+            <MudChip T="string" Color="@GetStepSummaryColour(4)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step4Presentation.Summary
+            </MudChip>
+        }
+
+        <MudStack Spacing="2" Class="mt-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
+                @step4Presentation.PrimaryActionLabel
+            </MudButton>
+
+            @if (isPreviewStale)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Preview is stale because Planner state changed. Generate a fresh preview before import.
+                </MudAlert>
+            }
+
+            @if (parseErrors.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2">Validation errors</MudText>
+                <MudDataGrid Items="@parseErrors" T="ImportValidationError" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
+                        <PropertyColumn Property="@(error => error.Field)" Title="Field" />
+                        <PropertyColumn Property="@(error => error.Message)" Title="Message" />
+                    </Columns>
+                </MudDataGrid>
+            }
+
+            @if (preview is not null)
+            {
+                <MudText Typo="Typo.subtitle2">Dry-run preview</MudText>
+                <MudText Typo="Typo.body2">Plan action: Reuse existing plan</MudText>
+
+                @if (preview.Preview.PlanId is not null)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.Preview.PlanId" target="_blank"
+                                          rel="noopener noreferrer">Open in Planner</a>
+                    </MudAlert>
+                }
+
+                <MudText Typo="Typo.subtitle2">Bucket actions</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead>
+                        <tr>
+                            <th>Bucket</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var action in preview.BucketActions)
+                        {
+                            <tr>
+                                <td>@action.BucketName</td>
+                                <td>@action.Action</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                <MudText Typo="Typo.subtitle2">Task actions</MudText>
+                <MudDataGrid Items="@preview.TaskActions" T="ImportTaskActionViewModel" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
+                        <PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
+                        <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
+                        <PropertyColumn Property="@(task => task.Goals)" Title="Goals" />
+                        <PropertyColumn Property="@(task => task.Action)" Title="Action" />
+                        <PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
+                    </Columns>
+                </MudDataGrid>
+            }
+        </MudStack>
+    </MudPaper>
+
+            <MudPaper Elevation="@GetStepElevation(5)" Outlined="true" Class="@GetStepClass(5)">
+        @{ var step5Presentation = GetWorkflowStepPresentation(5); }
+        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+            <MudAvatar Color="@GetStepAvatarColour(5)">@step5Presentation.BadgeContent</MudAvatar>
+            <MudText Typo="Typo.h6">@step5Presentation.Title</MudText>
+        </MudStack>
+        @if (IsStepComplete(5))
+        {
+            <MudChip T="string" Color="@GetStepSummaryColour(5)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
+                @step5Presentation.Summary
+            </MudChip>
+        }
+
+        <MudStack Spacing="2" Class="mt-3">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
+                @step5Presentation.PrimaryActionLabel
+            </MudButton>
+            <HomeExecutionReport ExecutionResult="@executionResult" />
+        </MudStack>
+    </MudPaper>
+            }
+        </MudStack>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private const string InteractiveTokenAcquisitionRequiredMessage = "Sign-in completed, but Microsoft Graph access still needs confirmation. Sign out and sign in again if access does not continue.";
+    private const string AuthenticationReferenceQueryKey = "authRef";
+    private const string TokenReauthenticationQueryKey = "tokenReauth";
+    private const string CommercialDeletedAccountMessage = "Your account is currently deleted. Restore it from your profile to continue.";
+    private const string RestoreAccountNotFoundMessage = "Your account could not be restored because it no longer exists.";
+    private const string RestoreAccountNotDeletedMessage = "Your account is already active, so no restore was needed.";
+    private const string RestoreAccountRetentionExpiredMessage = "Your account could not be restored because the retention window has expired.";
+
+    [CascadingParameter]
+    private ThemeState? ThemeState { get; set; }
+
+    private List<PlannerContainer> containers => WorkflowState.Containers;
+
+    private List<PlannerPlan> plans => WorkflowState.Plans;
+
+    private List<ImportValidationError> parseErrors => WorkflowState.ParseErrors;
+
+    private PlannerContainer? selectedContainer
+    {
+        get => WorkflowState.SelectedContainer;
+        set => WorkflowState.SelectedContainer = value;
+    }
+
+    private PlannerPlan? selectedPlan
+    {
+        get => WorkflowState.SelectedPlan;
+        set => WorkflowState.SelectedPlan = value;
+    }
+
+    private string csvContent
+    {
+        get => WorkflowState.CsvContent;
+        set => WorkflowState.CsvContent = value;
+    }
+
+    private string selectedFileName
+    {
+        get => WorkflowState.SelectedFileName;
+        set => WorkflowState.SelectedFileName = value;
+    }
+
+    private string? statusMessage
+    {
+        get => WorkflowState.StatusMessage;
+        set => WorkflowState.StatusMessage = value;
+    }
+
+    private WorkflowStatusLevel statusMessageLevel
+    {
+        get => WorkflowState.StatusLevel;
+        set => WorkflowState.StatusLevel = value;
+    }
+
+    private string? statusReferenceId
+    {
+        get => WorkflowState.StatusReferenceId;
+        set => WorkflowState.StatusReferenceId = value;
+    }
+
+    private bool isBusy
+    {
+        get => WorkflowState.IsBusy;
+        set => WorkflowState.IsBusy = value;
+    }
+
+    private bool noGroupsFound
+    {
+        get => WorkflowState.NoGroupsFound;
+        set => WorkflowState.NoGroupsFound = value;
+    }
+
+    private bool ignoreExtraColumns
+    {
+        get => WorkflowState.IgnoreExtraColumns;
+        set => WorkflowState.IgnoreExtraColumns = value;
+    }
+
+    private bool isPreviewStale
+    {
+        get => WorkflowState.IsPreviewStale;
+        set => WorkflowState.IsPreviewStale = value;
+    }
+
+    private bool hasSelectedCsv
+        => !string.Equals(selectedFileName, WorkflowCoordinationState.NoFileSelectedText, StringComparison.Ordinal);
+
+    private bool isTenantContextMismatch
+    {
+        get => WorkflowState.IsTenantContextMismatch;
+        set => WorkflowState.IsTenantContextMismatch = value;
+    }
+
+    private bool showAdminConsentGuidance => WorkflowState.IsAdminConsentRequired;
+
+    private bool showUnsupportedAccountGuidance => WorkflowState.IsUnsupportedAccount;
+
+    private bool showCommercialLoginGate;
+
+    private bool showCommercialDeletedAccountGate;
+
+    private bool showFirstCommercialSignInGuidance;
+
+    private DateTimeOffset? deletedAccountRetentionExpiresUtc;
+
+    private bool isRestoringCommercialAccount;
+
+    private string? restoreAccountStatusMessage;
+
+    private SessionIdentityPresentation IdentityPresentation { get; set; } = new("Signed in", null);
+
+    private ImportPlanningViewModel? preview => WorkflowState.PlanningViewModel;
+
+    private ImportExecutionReportViewModel? executionResult => WorkflowState.ExecutionReport;
+
+    private ImportPlanningRequest? currentRequest
+    {
+        get => WorkflowState.CurrentPlanningRequest;
+        set => WorkflowState.CurrentPlanningRequest = value;
+    }
+
+    private bool canValidate
+        => !isBusy
+           && selectedContainer is not null
+           && selectedPlan is not null
+           && !string.IsNullOrWhiteSpace(csvContent);
+
+    private bool canExecute
+        => !isBusy
+           && preview is not null
+           && currentRequest is not null
+           && !isPreviewStale
+           && IsCurrentSelectionInSyncWithRequest();
+
+    private Severity StatusMessageSeverity
+        => parseErrors.Count > 0
+           ? Severity.Error
+           : executionResult is null
+               ? ToMudSeverity(statusMessageLevel)
+               : executionResult.Errors.Count > 0
+                   ? Severity.Warning
+                   : Severity.Success;
+
+    private int? ActiveStep
+    {
+        get
+        {
+            for (var step = 1; step <= 5; step++)
+            {
+                if (!IsStepLocked(step) && !IsStepComplete(step))
+                {
+                    return step;
+                }
+            }
+
+            return null;
+        }
+    }
+
+}

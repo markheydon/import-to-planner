@@ -3,7 +3,7 @@ using Azure.Core;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using ImportToPlanner.Application.Models;
-using ImportToPlanner.Infrastructure.Graph.CommercialAccounts;
+using ImportToPlanner.Infrastructure.Graph.CommercialAccounts.Storage;
 
 namespace ImportToPlanner.Tests;
 
