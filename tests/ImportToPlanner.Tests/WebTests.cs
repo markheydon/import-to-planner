@@ -8,7 +8,7 @@ public class WebTests
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
 
     [Fact]
-    public async Task GetWebResourceRootReturnsOkStatusCode()
+    public async Task GetHealthEndpointReturnsOkStatusCode()
     {
         using var _ = ConfigureRequiredAppHostParameters();
 
