@@ -1,4 +1,6 @@
-using ImportToPlanner.Application;
+using Azure.Data.Tables;
+using ImportToPlanner.ApiService.Commercial.CommercialAccounts;
+using ImportToPlanner.ApiService.Commercial.CommercialAccounts.Storage;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Infrastructure.Graph;
@@ -11,6 +13,9 @@ namespace ImportToPlanner.ApiService.Commercial;
 /// </summary>
 public static class DependencyInjection
 {
+    private const string CommercialAccountsTableClientKey = "CommercialAccountsTable";
+    private const string CommercialAuditTableClientKey = "CommercialAuditTable";
+
     /// <summary>
     /// Adds hosted commercial API dependencies.
     /// </summary>
@@ -29,9 +34,60 @@ public static class DependencyInjection
         services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
         services.AddHostedService<CommercialAccountRetentionHostedService>();
 
-        services
-            .AddApplication(includeCommercialUseCases: true)
-            .AddInfrastructure(configuration);
+        services.AddInfrastructure(configuration);
+        services.AddCommercialBackendUseCases();
+        services.AddCommercialStorage(configuration);
+
+        return services;
+    }
+
+    private static IServiceCollection AddCommercialBackendUseCases(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
+        services.AddScoped<DeleteCommercialAccountUseCase>();
+        services.AddScoped<RestoreCommercialAccountUseCase>();
+        services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
+        services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddCommercialStorage(this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var commercialAccountsTableName = configuration["Storage:CommercialAccountsTable"];
+        if (string.IsNullOrWhiteSpace(commercialAccountsTableName))
+        {
+            throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialAccountsTable'.");
+        }
+
+        var commercialAuditTableName = configuration["Storage:CommercialAuditTable"];
+        if (string.IsNullOrWhiteSpace(commercialAuditTableName))
+        {
+            throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialAuditTable'.");
+        }
+
+        services.AddKeyedSingleton<TableClient>(
+            CommercialAccountsTableClientKey,
+            (serviceProvider, _) => serviceProvider
+                .GetRequiredService<TableServiceClient>()
+                .GetTableClient(commercialAccountsTableName));
+        services.AddKeyedSingleton<TableClient>(
+            CommercialAuditTableClientKey,
+            (serviceProvider, _) => serviceProvider
+                .GetRequiredService<TableServiceClient>()
+                .GetTableClient(commercialAuditTableName));
+
+        services.AddScoped<ICommercialAccountStore>(serviceProvider =>
+            new TableCommercialAccountStore(
+                serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAccountsTableClientKey)));
+        services.AddScoped<ICommercialAuditStore>(serviceProvider =>
+            new TableCommercialAuditStore(
+                serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAuditTableClientKey)));
 
         return services;
     }

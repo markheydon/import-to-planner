@@ -1,4 +1,3 @@
-using ImportToPlanner.Application;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Diagnostics;
 using ImportToPlanner.Web.Features.Authentication;
@@ -231,8 +230,9 @@ public static class DependencyInjection
         var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
         if (!useBackendApi)
         {
-            services.AddCommercialApplicationUseCases();
-            return services;
+            throw new InvalidOperationException(
+                "Set 'Features:CommercialMode:UseBackendApi' to 'true' when 'Features:CommercialMode:Enabled' is enabled. "
+                + "Commercial backend operations now run in the commercial API service.");
         }
 
         services.AddHttpClient<CommercialApiServiceClient>(client =>

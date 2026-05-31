@@ -1,7 +1,5 @@
 using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Infrastructure.Graph.CommercialAccounts.NoOp;
-using ImportToPlanner.Infrastructure.Graph.CommercialAccounts.Storage;
 using ImportToPlanner.Infrastructure.Graph.Import;
 using ImportToPlanner.Infrastructure.Graph.Planner;
 using ImportToPlanner.Infrastructure.Graph.TenantMetadata;
@@ -16,10 +14,6 @@ namespace ImportToPlanner.Infrastructure.Graph;
 /// </summary>
 public static class DependencyInjection
 {
-    public const string CommercialAccountsTableClientKey = "CommercialAccountsTable";
-
-    public const string CommercialAuditTableClientKey = "CommercialAuditTable";
-
     /// <summary>
     /// Adds Aspire-managed Azure Table Storage client registrations required by infrastructure adapters.
     /// </summary>
@@ -29,7 +23,7 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (ShouldUseLocalCommercialStorage(builder.Configuration))
+        if (ShouldUseTableTenantMetadataStorage(builder.Configuration))
         {
             builder.AddAzureTableServiceClient(connectionName: "tables");
         }
@@ -50,7 +44,7 @@ public static class DependencyInjection
 
         services.AddScoped<ICsvImportParser, CsvImportParser>();
 
-        if (ShouldUseLocalCommercialStorage(configuration))
+        if (ShouldUseTableTenantMetadataStorage(configuration))
         {
             var tenantMetadataTableName = configuration["Storage:TenantMetadataTable"];
             if (string.IsNullOrWhiteSpace(tenantMetadataTableName))
@@ -58,34 +52,6 @@ public static class DependencyInjection
                 throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:TenantMetadataTable'.");
             }
 
-            var commercialAccountsTableName = configuration["Storage:CommercialAccountsTable"];
-            if (string.IsNullOrWhiteSpace(commercialAccountsTableName))
-            {
-                throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialAccountsTable'.");
-            }
-
-            var commercialAuditTableName = configuration["Storage:CommercialAuditTable"];
-            if (string.IsNullOrWhiteSpace(commercialAuditTableName))
-            {
-                throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialAuditTable'.");
-            }
-
-            services.AddKeyedSingleton<TableClient>(
-                CommercialAccountsTableClientKey,
-                (serviceProvider, _) => serviceProvider
-                    .GetRequiredService<TableServiceClient>()
-                    .GetTableClient(commercialAccountsTableName));
-            services.AddKeyedSingleton<TableClient>(
-                CommercialAuditTableClientKey,
-                (serviceProvider, _) => serviceProvider
-                    .GetRequiredService<TableServiceClient>()
-                    .GetTableClient(commercialAuditTableName));
-            services.AddScoped<ICommercialAccountStore>(serviceProvider =>
-                new TableCommercialAccountStore(
-                    serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAccountsTableClientKey)));
-            services.AddScoped<ICommercialAuditStore>(serviceProvider =>
-                new TableCommercialAuditStore(
-                    serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAuditTableClientKey)));
             services.AddSingleton<ITenantOperationalMetadataStore>(serviceProvider =>
                 new TableTenantOperationalMetadataStore(
                     serviceProvider.GetRequiredService<TableServiceClient>(),
@@ -93,8 +59,6 @@ public static class DependencyInjection
         }
         else
         {
-            services.AddScoped<ICommercialAccountStore, NoOpCommercialAccountStore>();
-            services.AddScoped<ICommercialAuditStore, NoOpCommercialAuditStore>();
             services.AddSingleton<ITenantOperationalMetadataStore, SelfHostTenantOperationalMetadataStore>();
         }
 
@@ -103,7 +67,7 @@ public static class DependencyInjection
         return services;
     }
 
-    private static bool ShouldUseLocalCommercialStorage(IConfiguration configuration)
+    private static bool ShouldUseTableTenantMetadataStorage(IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
 

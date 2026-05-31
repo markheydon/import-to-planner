@@ -12,7 +12,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddWebStorageClients();
-ApplyCommercialBackendModeOverrides(builder.Configuration);
 
 ApplyLegacyCertificatePathOverrides(builder.Configuration);
 ApplyCertificateBase64Overrides(builder.Configuration);
@@ -36,7 +35,7 @@ builder.Services.AddSingleton(static serviceProvider => serviceProvider.GetRequi
 // Add services to the container.
 builder.Services
     .AddWebHostServices(builder.Configuration)
-    .AddApplication(includeCommercialUseCases: false)
+    .AddApplication()
     .AddImportWorkflow()
     .AddInfrastructure(builder.Configuration)
     .AddCommercialModeServices(builder.Configuration);
@@ -150,24 +149,3 @@ static void ApplyCertificateBase64Overrides(IConfiguration configuration)
     }
 }
 
-static void ApplyCommercialBackendModeOverrides(IConfiguration configuration)
-{
-    ArgumentNullException.ThrowIfNull(configuration);
-
-    if (configuration is not IConfigurationManager configurationManager)
-    {
-        return;
-    }
-
-    var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-    if (!commercialModeEnabled)
-    {
-        return;
-    }
-
-    configurationManager.AddInMemoryCollection(
-        new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["Features:CommercialMode:UseBackendApi"] = "true",
-        });
-}

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Bunit;
+using ImportToPlanner.ApiService.Commercial.CommercialAccounts;
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
@@ -98,6 +99,11 @@ internal sealed class HomePageTestContext : BunitContext
         CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
         Services.AddScoped<ICommercialAccountStore>(_ => CommercialAccountStore);
         Services.AddScoped<ICommercialAuditStore>(_ => CommercialAuditStore);
+        Services.AddScoped<DeleteCommercialAccountUseCase>();
+        Services.AddScoped<RestoreCommercialAccountUseCase>();
+        Services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
+        Services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
+        Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
         Services.AddSingleton(TenantAccessor);
         Services.AddScoped<ICurrentTenantContextAccessor>(_ => TenantAccessor);
         Services.AddApplication();

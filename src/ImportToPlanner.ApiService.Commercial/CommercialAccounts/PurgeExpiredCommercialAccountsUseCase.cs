@@ -1,6 +1,6 @@
 using ImportToPlanner.Application.Abstractions;
 
-namespace ImportToPlanner.Application.Services;
+namespace ImportToPlanner.ApiService.Commercial.CommercialAccounts;
 
 /// <summary>
 /// Purges expired deleted commercial accounts and expired audit records.

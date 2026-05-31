@@ -1,4 +1,4 @@
-using ImportToPlanner.Application;
+using ImportToPlanner.ApiService.Commercial.CommercialAccounts;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Tests.TestDoubles;
@@ -116,7 +116,7 @@ public sealed class CommercialAccessUseCaseTests
         var services = new ServiceCollection();
         services.AddScoped<ICommercialAccountStore>(_ => accountStore);
         services.AddScoped<ICommercialAuditStore>(_ => auditStore);
-        services.AddApplication();
+        services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
 
         return services.BuildServiceProvider();
     }

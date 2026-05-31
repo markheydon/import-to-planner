@@ -64,6 +64,7 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WithEnvironment("AzureAd__ClientId", azureAdClientId)
     .WithEnvironment("AzureAd__HomeTenantId", azureAdHomeTenantId)
     .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
+    .WithEnvironment("Features__CommercialMode__UseBackendApi", "true")
     // The app currently expects a certificate path; the base64 value is provided
     // so deployment/runtime can materialize the certificate at that location.
     .WithEnvironment("AzureAd__ClientCertificates__0__SourceType", "Path")

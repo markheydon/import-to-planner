@@ -84,16 +84,14 @@ public sealed class InfrastructureRegistrationTests
 
         using var serviceProvider = services.BuildServiceProvider();
         var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
-        var commercialAccountsTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAccountsTableClientKey);
-        var commercialAuditTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAuditTableClientKey);
+        var tableServiceClient = serviceProvider.GetRequiredService<TableServiceClient>();
 
         Assert.Equal("TableTenantOperationalMetadataStore", metadataStore.GetType().Name);
-        Assert.Equal("CommercialAccounts", commercialAccountsTableClient.Name);
-        Assert.Equal("CommercialAccountAuditEvents", commercialAuditTableClient.Name);
+        Assert.NotNull(tableServiceClient);
     }
 
     [Fact]
-    public void AddInfrastructure_WhenCommercialModeDisabled_RegistersNoOpCommercialStoresAndSelfHostMetadataStoreWithoutTables()
+    public void AddInfrastructure_WhenCommercialModeDisabled_RegistersSelfHostMetadataStoreWithoutTables()
     {
         var services = new ServiceCollection();
 
@@ -107,19 +105,15 @@ public sealed class InfrastructureRegistrationTests
         services.AddInfrastructure(configuration);
 
         using var serviceProvider = services.BuildServiceProvider();
-        var accountStore = serviceProvider.GetRequiredService<ICommercialAccountStore>();
-        var auditStore = serviceProvider.GetRequiredService<ICommercialAuditStore>();
         var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
         var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
 
-        Assert.Equal("NoOpCommercialAccountStore", accountStore.GetType().Name);
-        Assert.Equal("NoOpCommercialAuditStore", auditStore.GetType().Name);
         Assert.Equal("SelfHostTenantOperationalMetadataStore", metadataStore.GetType().Name);
         Assert.Null(tableServiceClient);
     }
 
     [Fact]
-    public void AddInfrastructure_WhenCommercialModeEnabledWithBackendApi_RegistersNoOpCommercialStoresAndSelfHostMetadataStoreWithoutTables()
+    public void AddInfrastructure_WhenCommercialModeEnabledWithBackendApi_RegistersSelfHostMetadataStoreWithoutTables()
     {
         var services = new ServiceCollection();
 
@@ -134,13 +128,9 @@ public sealed class InfrastructureRegistrationTests
         services.AddInfrastructure(configuration);
 
         using var serviceProvider = services.BuildServiceProvider();
-        var accountStore = serviceProvider.GetRequiredService<ICommercialAccountStore>();
-        var auditStore = serviceProvider.GetRequiredService<ICommercialAuditStore>();
         var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
         var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
 
-        Assert.Equal("NoOpCommercialAccountStore", accountStore.GetType().Name);
-        Assert.Equal("NoOpCommercialAuditStore", auditStore.GetType().Name);
         Assert.Equal("SelfHostTenantOperationalMetadataStore", metadataStore.GetType().Name);
         Assert.Null(tableServiceClient);
     }

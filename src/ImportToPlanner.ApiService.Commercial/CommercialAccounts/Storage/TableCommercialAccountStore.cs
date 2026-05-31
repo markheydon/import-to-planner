@@ -3,12 +3,12 @@ using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 
-namespace ImportToPlanner.Infrastructure.Graph.CommercialAccounts.Storage;
+namespace ImportToPlanner.ApiService.Commercial.CommercialAccounts.Storage;
 
 /// <summary>
 /// Persists commercial account records in Azure Table Storage.
 /// </summary>
-internal sealed class TableCommercialAccountStore(TableClient tableClient) : ICommercialAccountStore, IDisposable
+public sealed class TableCommercialAccountStore(TableClient tableClient) : ICommercialAccountStore, IDisposable
 {
     private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);

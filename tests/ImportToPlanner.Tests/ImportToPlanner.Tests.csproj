@@ -35,5 +35,5 @@
     <ProjectReference Include="..\..\src\ImportToPlanner.Domain\ImportToPlanner.Domain.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Infrastructure.Graph\ImportToPlanner.Infrastructure.Graph.csproj" />
   </ItemGroup>
-  
+
 </Project>

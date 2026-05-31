@@ -2,8 +2,8 @@ using Azure;
 using Azure.Core;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
+using ImportToPlanner.ApiService.Commercial.CommercialAccounts.Storage;
 using ImportToPlanner.Application.Models;
-using ImportToPlanner.Infrastructure.Graph.CommercialAccounts.Storage;
 
 namespace ImportToPlanner.Tests;
 

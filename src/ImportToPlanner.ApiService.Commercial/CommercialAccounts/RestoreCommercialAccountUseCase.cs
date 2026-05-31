@@ -1,7 +1,7 @@
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 
-namespace ImportToPlanner.Application.Services;
+namespace ImportToPlanner.ApiService.Commercial.CommercialAccounts;
 
 /// <summary>
 /// Restores a deleted commercial account when it is still within retention.
