@@ -29,7 +29,10 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        builder.AddAzureTableServiceClient(connectionName: "tables");
+        if (builder.Configuration.GetValue<bool>("Features:CommercialMode:Enabled"))
+        {
+            builder.AddAzureTableServiceClient(connectionName: "tables");
+        }
 
         return builder;
     }
@@ -45,17 +48,17 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        var tenantMetadataTableName = configuration["Storage:TenantMetadataTable"];
-        if (string.IsNullOrWhiteSpace(tenantMetadataTableName))
-        {
-            throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:TenantMetadataTable'.");
-        }
-
         services.AddScoped<ICsvImportParser, CsvImportParser>();
 
         var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
         if (commercialModeEnabled)
         {
+            var tenantMetadataTableName = configuration["Storage:TenantMetadataTable"];
+            if (string.IsNullOrWhiteSpace(tenantMetadataTableName))
+            {
+                throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:TenantMetadataTable'.");
+            }
+
             var commercialAccountsTableName = configuration["Storage:CommercialAccountsTable"];
             if (string.IsNullOrWhiteSpace(commercialAccountsTableName))
             {
@@ -84,17 +87,18 @@ public static class DependencyInjection
             services.AddScoped<ICommercialAuditStore>(serviceProvider =>
                 new TableCommercialAuditStore(
                     serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAuditTableClientKey)));
+            services.AddSingleton<ITenantOperationalMetadataStore>(serviceProvider =>
+                new TableTenantOperationalMetadataStore(
+                    serviceProvider.GetRequiredService<TableServiceClient>(),
+                    tenantMetadataTableName));
         }
         else
         {
             services.AddScoped<ICommercialAccountStore, NoOpCommercialAccountStore>();
             services.AddScoped<ICommercialAuditStore, NoOpCommercialAuditStore>();
+            services.AddSingleton<ITenantOperationalMetadataStore, SelfHostTenantOperationalMetadataStore>();
         }
 
-        services.AddSingleton<ITenantOperationalMetadataStore>(serviceProvider =>
-            new TableTenantOperationalMetadataStore(
-                serviceProvider.GetRequiredService<TableServiceClient>(),
-                tenantMetadataTableName));
         services.AddScoped<IPlannerGateway, GraphPlannerGateway>();
 
         return services;

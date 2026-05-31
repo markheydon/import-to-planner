@@ -41,6 +41,9 @@ if (hasCustomDomainConfigured)
 builder.AddAzureContainerAppEnvironment("aca-env")
     .WithDashboard(!builder.Environment.IsProduction());
 
+var commercialModeEnabled = bool.TryParse(builder.Configuration["Parameters:enableCommercialMode"], out var parsedCommercialModeEnabled)
+    && parsedCommercialModeEnabled;
+
 // Shared storage account (emulated locally) used by the web service.
 var storage = builder.AddAzureStorage("storage")
     .RunAsEmulator();
@@ -49,11 +52,11 @@ var storage = builder.AddAzureStorage("storage")
 var blobs = storage.AddBlobs("blobs");
 var dataProtectionContainer = storage.AddBlobContainer("dataprotection", blobContainerName: "dataprotection");
 
-// Table service stores tenant operational metadata.
-var tables = storage.AddTables("tables");
+// Table service stores hosted/commercial tenant operational metadata.
+var tables = commercialModeEnabled ? storage.AddTables("tables") : null;
 
 // Configure the web service and wire all dependencies.
-builder.AddProject<Projects.ImportToPlanner_Web>("web")
+var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
     .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
     .WithEnvironment("AzureAd__TenantId", azureAdTenantId)
@@ -71,8 +74,6 @@ builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WaitFor(blobs)
     .WithReference(dataProtectionContainer)
     .WaitFor(dataProtectionContainer)
-    .WithReference(tables)
-    .WaitFor(tables)
     .PublishAsAzureContainerApp((_, app) =>
     {
         app.Template.Scale.MinReplicas = minWebReplicas;
@@ -85,5 +86,11 @@ builder.AddProject<Projects.ImportToPlanner_Web>("web")
 #pragma warning restore ASPIREACADOMAINS001
         }
     });
+
+if (tables is not null)
+{
+    web.WithReference(tables)
+        .WaitFor(tables);
+}
 
 builder.Build().Run();
