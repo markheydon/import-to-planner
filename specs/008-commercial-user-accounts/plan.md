@@ -10,7 +10,7 @@ self-hosted sign-in path without regressing self-hosted behaviour. The planned
 implementation adds an explicit commercial-mode parameter in Aspire and the
 staging deployment workflow, keeps mode selection as an outer-layer concern,
 persists commercial account and audit records in Azure Table Storage using the
-existing storage account, adds an optional hosted/commercial backend service
+existing storage account, adds an optional hosted/commercial API service
 that owns the Table reference in AppHost topology, and defers Azure Functions
 to an optional follow-on resource until scheduled retention and credits work
 justify a separate compute surface.
@@ -44,7 +44,7 @@ choices to Azure Tables or Blobs already modelled in the app; keep user-facing
 wording in UK English; preserve self-hosted viability; do not introduce
 scheduled compute unless clearly justified  
 **Scale/Scope**: One hosted commercial mode plus one self-hosted mode, one AppHost
-with `web`, optional `backend` (commercial only), `storage`, `blobs`,
+with `web`, optional `commercialapiservice` (commercial only), `storage`, `blobs`,
 `dataprotection`, and `tables` resources, and focused changes across AppHost,
 Web auth/UI, Application account-lifecycle use cases, Infrastructure storage
 adapters, tests, and deployment configuration
@@ -137,7 +137,7 @@ new outer-layer storage adapters within the existing Infrastructure project,
 with application use cases added behind explicit interfaces. No new database
 project is introduced. An Azure Functions project is deliberately deferred from
 the baseline implementation, but the AppHost design leaves room to add one later
-for scheduled retention or credits work. A dedicated backend service project is
+for scheduled retention or credits work. A dedicated commercial API service project is
 optional and hosted/commercial-specific; self-host topology remains web-only.
 
 ## Complexity Tracking
@@ -184,9 +184,10 @@ Key design outcomes:
 - The AppHost adds a non-secret commercial-mode parameter and forwards it into
   the web project, while the staging workflow passes the corresponding parameter
   through environment variables.
-- In hosted/commercial topology, AppHost starts a separate backend resource and
-  routes the `tables` resource reference and startup dependency through backend
-  only; self-host topology keeps web-only startup without backend.
+- In hosted/commercial topology, AppHost starts a separate `commercialapiservice`
+  resource and routes the `tables` resource reference and startup dependency
+  through `commercialapiservice` only; self-host topology keeps web-only startup
+  without `commercialapiservice`.
 - Commercial account lifecycle, audit emission, and retention-state decisions are
   represented as application use cases with repository-owned request/response
   contracts.

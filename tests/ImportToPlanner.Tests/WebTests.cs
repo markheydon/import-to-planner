@@ -44,11 +44,11 @@ public class WebTests
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.ThrowsAny<Exception>(() => app.CreateHttpClient("backend"));
+        Assert.ThrowsAny<Exception>(() => app.CreateHttpClient("commercialapiservice"));
     }
 
     [Fact]
-    public async Task CommercialModeStartsWebAndBackendResources()
+    public async Task CommercialModeStartsWebAndCommercialApiServiceResources()
     {
         using var _ = ConfigureRequiredAppHostParameters(enableCommercialMode: true);
 
@@ -76,7 +76,7 @@ public class WebTests
 
         // Act
         await app.ResourceNotifications.WaitForResourceHealthyAsync("web", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
-        await app.ResourceNotifications.WaitForResourceHealthyAsync("backend", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
+        await app.ResourceNotifications.WaitForResourceHealthyAsync("commercialapiservice", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
     }
 
     private static EnvironmentVariableScope ConfigureRequiredAppHostParameters(bool enableCommercialMode = false)
