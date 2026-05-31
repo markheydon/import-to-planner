@@ -1,6 +1,7 @@
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Diagnostics;
 using ImportToPlanner.Web.Features.Authentication;
+using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 using ImportToPlanner.Web.Features.Import.Presenters;
 using ImportToPlanner.Web.Features.Import.Workflows;
 using Microsoft.AspNetCore.Authentication;
@@ -203,6 +204,37 @@ public static class DependencyInjection
         services.AddScoped<SessionIdentityPresenter>();
         services.AddScoped<WorkflowCoordinationState>();
         services.AddScoped<ImportWorkflowCoordinator>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds hosted commercial backend service clients and adapters when required.
+    /// </summary>
+    /// <param name="services">The service collection to register dependencies with.</param>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
+    public static IServiceCollection AddCommercialModeServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
+        var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
+        if (!commercialModeEnabled || !useBackendApi)
+        {
+            return services;
+        }
+
+        services.AddHttpClient<CommercialApiServiceClient>(client =>
+        {
+            // Use Aspire service discovery for the internal commercial backend service.
+            client.BaseAddress = new Uri("https+http://commercialapiservice", UriKind.Absolute);
+        });
+
+        services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialAccessUseCase, BackendCommercialAccessUseCase>();
+        services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialProfileUseCase, BackendCommercialProfileUseCase>();
+        services.AddSingleton<ImportToPlanner.Application.Abstractions.ITenantOperationalMetadataStore, BackendTenantOperationalMetadataStore>();
 
         return services;
     }

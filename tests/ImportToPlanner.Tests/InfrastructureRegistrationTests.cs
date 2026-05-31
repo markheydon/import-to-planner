@@ -43,6 +43,24 @@ public sealed class InfrastructureRegistrationTests
     }
 
     [Fact]
+    public void AddInfrastructureStorageClients_WhenCommercialModeEnabledWithBackendApi_DoesNotRegisterTableServiceClient()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Features:CommercialMode:Enabled"] = "true",
+            ["Features:CommercialMode:UseBackendApi"] = "true",
+            ["ConnectionStrings:tables"] = "UseDevelopmentStorage=true",
+        });
+
+        builder.AddInfrastructureStorageClients();
+
+        using var serviceProvider = builder.Services.BuildServiceProvider();
+        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
+        Assert.Null(tableServiceClient);
+    }
+
+    [Fact]
     public void AddInfrastructure_WhenCommercialModeEnabled_RegistersGraphGatewayAndTableMetadataStore()
     {
         var services = new ServiceCollection();
@@ -83,6 +101,33 @@ public sealed class InfrastructureRegistrationTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Features:CommercialMode:Enabled"] = "false",
+            })
+            .Build();
+
+        services.AddInfrastructure(configuration);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var accountStore = serviceProvider.GetRequiredService<ICommercialAccountStore>();
+        var auditStore = serviceProvider.GetRequiredService<ICommercialAuditStore>();
+        var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
+
+        Assert.Equal("NoOpCommercialAccountStore", accountStore.GetType().Name);
+        Assert.Equal("NoOpCommercialAuditStore", auditStore.GetType().Name);
+        Assert.Equal("SelfHostTenantOperationalMetadataStore", metadataStore.GetType().Name);
+        Assert.Null(tableServiceClient);
+    }
+
+    [Fact]
+    public void AddInfrastructure_WhenCommercialModeEnabledWithBackendApi_RegistersNoOpCommercialStoresAndSelfHostMetadataStoreWithoutTables()
+    {
+        var services = new ServiceCollection();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Features:CommercialMode:Enabled"] = "true",
+                ["Features:CommercialMode:UseBackendApi"] = "true",
             })
             .Build();
 

@@ -72,6 +72,7 @@ public sealed class StartupValidationTests
         {
             ["AzureAd:TenantId"] = "organizations",
             ["Features:CommercialMode:Enabled"] = "true",
+            ["Features:CommercialMode:UseBackendApi"] = "false",
             ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
             ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             ["Storage:DataProtectionContainer"] = "dataprotection",
@@ -106,6 +107,7 @@ public sealed class StartupValidationTests
         {
             ["AzureAd:TenantId"] = "organizations",
             ["Features:CommercialMode:Enabled"] = "true",
+            ["Features:CommercialMode:UseBackendApi"] = "false",
             ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
             ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             ["Storage:DataProtectionContainer"] = "dataprotection",
@@ -115,6 +117,23 @@ public sealed class StartupValidationTests
         var exception = Assert.Throws<InvalidOperationException>(() => StartupConfigurationValidator.Validate(configuration));
 
         Assert.Contains("Storage:TenantMetadataTable", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_WhenCommercialModeEnabledWithBackendApi_AllowsMissingCommercialTables()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AzureAd:TenantId"] = "organizations",
+            ["Features:CommercialMode:Enabled"] = "true",
+            ["Features:CommercialMode:UseBackendApi"] = "true",
+            ["Storage:DataProtectionContainer"] = "dataprotection",
+            ["Storage:DataProtectionBlob"] = "keys.xml",
+        });
+
+        var exception = Record.Exception(() => StartupConfigurationValidator.Validate(configuration));
+
+        Assert.Null(exception);
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)

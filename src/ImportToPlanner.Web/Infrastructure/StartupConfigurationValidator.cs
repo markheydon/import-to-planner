@@ -51,7 +51,8 @@ internal static class StartupConfigurationValidator
         }
 
         var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-        if (commercialModeEnabled)
+        var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
+        if (commercialModeEnabled && !useBackendApi)
         {
             ValidateRequiredSetting("Storage:TenantMetadataTable");
             ValidateRequiredSetting("Storage:CommercialAccountsTable");

@@ -4,8 +4,8 @@ namespace ImportToPlanner.Tests;
 
 public class WebTests
 {
-    // Timeout duration -- 60 in CI run in GitHub Actions being a bit slow.
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
+    // Timeout duration for distributed app resource startup in local and CI runs.
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(120);
 
     [Fact]
     public async Task SelfHostModeGetHealthEndpointReturnsOkStatusCode()

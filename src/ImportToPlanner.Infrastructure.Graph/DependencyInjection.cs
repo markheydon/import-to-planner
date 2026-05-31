@@ -29,7 +29,7 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (builder.Configuration.GetValue<bool>("Features:CommercialMode:Enabled"))
+        if (ShouldUseLocalCommercialStorage(builder.Configuration))
         {
             builder.AddAzureTableServiceClient(connectionName: "tables");
         }
@@ -50,8 +50,7 @@ public static class DependencyInjection
 
         services.AddScoped<ICsvImportParser, CsvImportParser>();
 
-        var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-        if (commercialModeEnabled)
+        if (ShouldUseLocalCommercialStorage(configuration))
         {
             var tenantMetadataTableName = configuration["Storage:TenantMetadataTable"];
             if (string.IsNullOrWhiteSpace(tenantMetadataTableName))
@@ -102,5 +101,19 @@ public static class DependencyInjection
         services.AddScoped<IPlannerGateway, GraphPlannerGateway>();
 
         return services;
+    }
+
+    private static bool ShouldUseLocalCommercialStorage(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
+        if (!commercialModeEnabled)
+        {
+            return false;
+        }
+
+        var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
+        return !useBackendApi;
     }
 }

@@ -12,7 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddWebStorageClients();
-builder.AddInfrastructureStorageClients();
+ApplyCommercialBackendModeOverrides(builder.Configuration);
 
 ApplyLegacyCertificatePathOverrides(builder.Configuration);
 ApplyCertificateBase64Overrides(builder.Configuration);
@@ -32,14 +32,14 @@ builder.Services
     .Bind(builder.Configuration.GetSection(CommercialModeOptions.ConfigurationSectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
-builder.Services.AddHostedService<CommercialAccountRetentionHostedService>();
 
 // Add services to the container.
 builder.Services
     .AddWebHostServices(builder.Configuration)
     .AddApplication()
     .AddImportWorkflow()
-    .AddInfrastructure(builder.Configuration);
+    .AddInfrastructure(builder.Configuration)
+    .AddCommercialModeServices(builder.Configuration);
 
 HostedDataProtectionConfigurator.Configure(builder.Services, storageConfiguration);
 
@@ -148,4 +148,26 @@ static void ApplyCertificateBase64Overrides(IConfiguration configuration)
     {
         File.SetUnixFileMode(certificateDiskPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
+}
+
+static void ApplyCommercialBackendModeOverrides(IConfiguration configuration)
+{
+    ArgumentNullException.ThrowIfNull(configuration);
+
+    if (configuration is not IConfigurationManager configurationManager)
+    {
+        return;
+    }
+
+    var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
+    if (!commercialModeEnabled)
+    {
+        return;
+    }
+
+    configurationManager.AddInMemoryCollection(
+        new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Features:CommercialMode:UseBackendApi"] = "true",
+        });
 }
