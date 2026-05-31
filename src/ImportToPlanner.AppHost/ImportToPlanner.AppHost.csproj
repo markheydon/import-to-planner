@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ImportToPlanner.ApiService.Commercial\ImportToPlanner.ApiService.Commercial.csproj" />
     <ProjectReference Include="..\ImportToPlanner.Web\ImportToPlanner.Web.csproj" />
   </ItemGroup>
 
