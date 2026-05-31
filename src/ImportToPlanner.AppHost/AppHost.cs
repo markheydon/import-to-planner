@@ -14,6 +14,7 @@ var appRuntimeEnvironment = builder.Environment.IsProduction()
 // Keep at least one web replica in production for availability;
 // allow scale-to-zero in non-production to reduce cost.
 var minWebReplicas = builder.Environment.IsProduction() ? 1 : 0;
+var minBackendReplicas = builder.Environment.IsProduction() ? 1 : 0;
 
 // Azure AD application parameters used by the web host to authenticate to Microsoft Graph.
 // Certificate values are secrets because they contain sensitive credential material.
@@ -87,10 +88,22 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
         }
     });
 
-if (tables is not null)
+if (commercialModeEnabled && tables is not null)
 {
-    web.WithReference(tables)
-        .WaitFor(tables);
+    var backend = builder.AddProject<Projects.ImportToPlanner_Backend>("backend")
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
+        .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
+        .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
+        .WithReference(tables)
+        .WaitFor(tables)
+        .PublishAsAzureContainerApp((_, app) =>
+        {
+            app.Template.Scale.MinReplicas = minBackendReplicas;
+            app.Template.Scale.MaxReplicas = 1;
+        });
+
+    web.WithReference(backend)
+        .WaitFor(backend);
 }
 
 builder.Build().Run();
