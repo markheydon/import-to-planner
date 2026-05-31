@@ -1,7 +1,6 @@
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.CommercialService.Models;
 
-namespace ImportToPlanner.ApiService.Commercial.CommercialAccounts;
+namespace ImportToPlanner.CommercialService.CommercialAccounts;
 
 /// <summary>
 /// Marks a commercial account as deleted and records a lifecycle audit event.

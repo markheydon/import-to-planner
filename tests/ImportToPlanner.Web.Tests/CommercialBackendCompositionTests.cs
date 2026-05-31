@@ -8,7 +8,7 @@ namespace ImportToPlanner.Web.Tests;
 public sealed class CommercialBackendCompositionTests
 {
     [Fact]
-    public void AddCommercialModeServices_WhenCommercialModeDisabled_RegistersDisabledCommercialAdapters()
+    public void AddCommercialModeServices_WhenCommercialModeDisabled_RegistersCommercialApiClient()
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
@@ -20,18 +20,17 @@ public sealed class CommercialBackendCompositionTests
 
         services.AddCommercialModeServices(configuration);
 
+        var commercialApiClientType = typeof(DependencyInjection).Assembly.GetType(
+            "ImportToPlanner.Web.Features.CommercialAccounts.Backend.CommercialApiServiceClient",
+            throwOnError: true)!;
+
         Assert.Contains(
             services,
-            descriptor => descriptor.ServiceType == typeof(ICommercialAccessUseCase)
-                && string.Equals(descriptor.ImplementationType?.Name, "DisabledCommercialAccessUseCase", StringComparison.Ordinal));
-        Assert.Contains(
-            services,
-            descriptor => descriptor.ServiceType == typeof(ICommercialProfileUseCase)
-                && string.Equals(descriptor.ImplementationType?.Name, "DisabledCommercialProfileUseCase", StringComparison.Ordinal));
+            descriptor => descriptor.ServiceType == commercialApiClientType);
     }
 
     [Fact]
-    public void AddCommercialModeServices_WhenBackendApiEnabled_RegistersBackendCommercialAdapters()
+    public void AddCommercialModeServices_WhenBackendApiEnabled_RegistersTenantMetadataStore()
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
@@ -44,14 +43,6 @@ public sealed class CommercialBackendCompositionTests
 
         services.AddCommercialModeServices(configuration);
 
-        Assert.Contains(
-            services,
-            descriptor => descriptor.ServiceType == typeof(ICommercialAccessUseCase)
-                && string.Equals(descriptor.ImplementationType?.Name, "BackendCommercialAccessUseCase", StringComparison.Ordinal));
-        Assert.Contains(
-            services,
-            descriptor => descriptor.ServiceType == typeof(ICommercialProfileUseCase)
-                && string.Equals(descriptor.ImplementationType?.Name, "BackendCommercialProfileUseCase", StringComparison.Ordinal));
         Assert.Contains(
             services,
             descriptor => descriptor.ServiceType == typeof(ITenantOperationalMetadataStore)

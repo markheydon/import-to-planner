@@ -1,4 +1,4 @@
-namespace ImportToPlanner.ApiService.Commercial;
+namespace ImportToPlanner.CommercialService;
 
 public static class StartupConfigurationValidator
 {

@@ -1,5 +1,6 @@
-using ImportToPlanner.ApiService.Commercial;
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.CommercialService;
+using ImportToPlanner.CommercialService.CommercialAccounts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 

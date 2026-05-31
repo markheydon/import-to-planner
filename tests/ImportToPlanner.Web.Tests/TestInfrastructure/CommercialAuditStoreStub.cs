@@ -1,5 +1,5 @@
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts;
+using ImportToPlanner.CommercialService.Models;
 
 namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 

@@ -1,9 +1,13 @@
+using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Bunit;
-using ImportToPlanner.ApiService.Commercial.CommercialAccounts;
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts;
+using ImportToPlanner.CommercialService.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -106,6 +110,12 @@ internal sealed class HomePageTestContext : BunitContext
         Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
         Services.AddSingleton(TenantAccessor);
         Services.AddScoped<ICurrentTenantContextAccessor>(_ => TenantAccessor);
+        var commercialApiServiceClientType = typeof(DependencyInjection).Assembly.GetType(
+            "ImportToPlanner.Web.Features.CommercialAccounts.Backend.CommercialApiServiceClient",
+            throwOnError: true)!;
+        Services.AddScoped(
+            commercialApiServiceClientType,
+            serviceProvider => CreateCommercialApiServiceClient(commercialApiServiceClientType, serviceProvider));
         Services.AddApplication();
         Services.AddScoped<ImportPlanningPresenter>();
         Services.AddScoped<ImportExecutionPresenter>();
@@ -140,6 +150,127 @@ internal sealed class HomePageTestContext : BunitContext
                     new Claim("tenant_display_name", "Contoso"),
                 ],
                 authenticationType: "test-auth"));
+    }
+
+    private static object CreateCommercialApiServiceClient(Type clientType, IServiceProvider serviceProvider)
+    {
+        var handler = new CommercialApiTestHandler(serviceProvider);
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://commercialapiservice", UriKind.Absolute),
+        };
+
+        var constructor = clientType.GetConstructor(
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic,
+            binder: null,
+            [typeof(HttpClient)],
+            modifiers: null)
+            ?? throw new InvalidOperationException("CommercialApiServiceClient constructor was not found.");
+
+        return constructor.Invoke([httpClient]);
+    }
+
+    private sealed class CommercialApiTestHandler(IServiceProvider serviceProvider) : HttpMessageHandler
+    {
+        private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+
+            return request.RequestUri?.AbsolutePath switch
+            {
+                "/internal/commercial/access/resolve" => await ResolveAccessAsync(request, cancellationToken),
+                "/internal/commercial/profile/get" => await GetProfileAsync(request, cancellationToken),
+                "/internal/commercial/profile/delete" => await DeleteProfileAsync(request, cancellationToken),
+                "/internal/commercial/profile/restore" => await RestoreProfileAsync(request, cancellationToken),
+                "/internal/commercial/profile/purge-expired" => await PurgeExpiredAsync(request, cancellationToken),
+                "/internal/commercial/tenant-metadata/get" => await GetTenantMetadataAsync(request, cancellationToken),
+                "/internal/commercial/tenant-metadata/upsert" => await UpsertTenantMetadataAsync(request, cancellationToken),
+                _ => new HttpResponseMessage(HttpStatusCode.NotFound),
+            };
+        }
+
+        private async Task<HttpResponseMessage> ResolveAccessAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await ReadPayloadAsync<ResolveCommercialAccessRequest>(request, cancellationToken);
+            var useCase = serviceProvider.GetRequiredService<ICommercialAccessUseCase>();
+            var result = await useCase.ResolveAccessAsync(
+                payload.SessionIdentity,
+                payload.CommercialModeEnabled,
+                payload.OccurredUtc,
+                cancellationToken);
+
+            return CreateJsonResponse(result);
+        }
+
+        private async Task<HttpResponseMessage> GetProfileAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await ReadPayloadAsync<GetCommercialProfileRequest>(request, cancellationToken);
+            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+            var result = await useCase.GetProfileAsync(payload.SessionIdentity, cancellationToken);
+
+            return CreateJsonResponse(result);
+        }
+
+        private async Task<HttpResponseMessage> DeleteProfileAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await ReadPayloadAsync<DeleteCommercialAccountRequest>(request, cancellationToken);
+            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+            await useCase.DeleteAccountAsync(payload.SessionIdentity, payload.OccurredUtc, cancellationToken);
+
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }
+
+        private async Task<HttpResponseMessage> RestoreProfileAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await ReadPayloadAsync<RestoreCommercialAccountRequest>(request, cancellationToken);
+            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+            var result = await useCase.RestoreAccountAsync(payload.SessionIdentity, payload.OccurredUtc, cancellationToken);
+
+            return CreateJsonResponse(result);
+        }
+
+        private async Task<HttpResponseMessage> PurgeExpiredAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await ReadPayloadAsync<PurgeExpiredCommercialDataRequest>(request, cancellationToken);
+            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+            var result = await useCase.PurgeExpiredAsync(payload.AsOfUtc, payload.BatchSize, cancellationToken);
+
+            return CreateJsonResponse(result);
+        }
+
+        private async Task<HttpResponseMessage> GetTenantMetadataAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await ReadPayloadAsync<GetTenantOperationalMetadataRequest>(request, cancellationToken);
+            var store = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+            var result = await store.GetAsync(payload.TenantId, cancellationToken);
+
+            return CreateJsonResponse(result);
+        }
+
+        private async Task<HttpResponseMessage> UpsertTenantMetadataAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await ReadPayloadAsync<UpsertTenantOperationalMetadataRequest>(request, cancellationToken);
+            var store = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+            await store.UpsertAsync(payload.Metadata, cancellationToken);
+
+            return new HttpResponseMessage(HttpStatusCode.NoContent);
+        }
+
+        private static async Task<T> ReadPayloadAsync<T>(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var payload = await request.Content!.ReadFromJsonAsync<T>(cancellationToken);
+            return payload ?? throw new InvalidOperationException($"Expected {typeof(T).Name} payload.");
+        }
+
+        private static HttpResponseMessage CreateJsonResponse<T>(T value)
+        {
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = JsonContent.Create(value, options: SerializerOptions),
+            };
+        }
     }
 }
 

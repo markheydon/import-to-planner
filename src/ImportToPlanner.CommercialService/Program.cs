@@ -1,10 +1,9 @@
-using ImportToPlanner.ApiService.Commercial;
-using ImportToPlanner.Infrastructure.Graph;
+using ImportToPlanner.CommercialService;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-builder.AddInfrastructureStorageClients();
+builder.AddAzureTableServiceClient(connectionName: "tables");
 
 StartupConfigurationValidator.Validate(builder.Configuration);
 

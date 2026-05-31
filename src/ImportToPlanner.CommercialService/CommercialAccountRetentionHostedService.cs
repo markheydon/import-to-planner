@@ -1,6 +1,6 @@
-using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.CommercialService.CommercialAccounts;
 
-namespace ImportToPlanner.ApiService.Commercial;
+namespace ImportToPlanner.CommercialService;
 
 /// <summary>
 /// Runs scheduled retention sweeps for hosted commercial accounts and audit records.

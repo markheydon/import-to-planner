@@ -57,21 +57,49 @@ public sealed class ArchitectureComplianceTests
     }
 
     [Fact]
-    public void Application_ContainsCommercialAccountBoundaryContracts()
+    public void Application_DoesNotContainCommercialAccountBoundaryContracts()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
         var applicationRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Application");
 
-        var requiredPaths = new[]
+        var forbiddenPaths = new[]
         {
             Path.Combine(applicationRoot, "Models", "SessionIdentityContext.cs"),
             Path.Combine(applicationRoot, "Models", "CommercialAccount.cs"),
             Path.Combine(applicationRoot, "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(applicationRoot, "Models", "CommercialAccountRestoreResult.cs"),
+            Path.Combine(applicationRoot, "Models", "CommercialApiContracts.cs"),
             Path.Combine(applicationRoot, "Models", "AccountAuditEvent.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialAccountStore.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialAuditStore.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialAccessUseCase.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
+        };
+
+        foreach (var forbiddenPath in forbiddenPaths)
+        {
+            Assert.False(File.Exists(forbiddenPath));
+        }
+    }
+
+    [Fact]
+    public void CommercialService_ContainsCommercialAccountBoundaryContracts()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var contractsRoot = Path.Combine(rootPath, "src", "ImportToPlanner.CommercialService");
+
+        var requiredPaths = new[]
+        {
+            Path.Combine(contractsRoot, "Models", "SessionIdentityContext.cs"),
+            Path.Combine(contractsRoot, "Models", "CommercialAccount.cs"),
+            Path.Combine(contractsRoot, "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(contractsRoot, "Models", "CommercialAccountRestoreResult.cs"),
+            Path.Combine(contractsRoot, "Models", "CommercialApiContracts.cs"),
+            Path.Combine(contractsRoot, "Models", "AccountAuditEvent.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccountStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAuditStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccessUseCase.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialProfileUseCase.cs"),
         };
 
         foreach (var requiredPath in requiredPaths)
@@ -81,20 +109,28 @@ public sealed class ArchitectureComplianceTests
     }
 
     [Fact]
+    public void CommercialAbstractionsProject_DoesNotExist()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var contractsRoot = Path.Combine(rootPath, "src", "ImportToPlanner.CommercialAbstractions");
+        Assert.False(Directory.Exists(contractsRoot));
+    }
+
+    [Fact]
     public void CommercialAccountContracts_AreProviderNeutral()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var applicationRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Application");
+        var contractsRoot = Path.Combine(rootPath, "src", "ImportToPlanner.CommercialService");
         var commercialFiles = new[]
         {
-            Path.Combine(applicationRoot, "Models", "SessionIdentityContext.cs"),
-            Path.Combine(applicationRoot, "Models", "CommercialAccount.cs"),
-            Path.Combine(applicationRoot, "Models", "CommercialAccessDecision.cs"),
-            Path.Combine(applicationRoot, "Models", "AccountAuditEvent.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccountStore.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialAuditStore.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccessUseCase.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
+            Path.Combine(contractsRoot, "Models", "SessionIdentityContext.cs"),
+            Path.Combine(contractsRoot, "Models", "CommercialAccount.cs"),
+            Path.Combine(contractsRoot, "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(contractsRoot, "Models", "AccountAuditEvent.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccountStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAuditStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccessUseCase.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialProfileUseCase.cs"),
         };
 
         var forbiddenTokens = new[]

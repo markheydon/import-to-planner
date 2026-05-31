@@ -219,11 +219,15 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
+        services.AddHttpClient<CommercialApiServiceClient>(client =>
+        {
+            // Use Aspire service discovery for the internal commercial backend service.
+            client.BaseAddress = new Uri("https+http://commercialapiservice", UriKind.Absolute);
+        });
+
         var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
         if (!commercialModeEnabled)
         {
-            services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialAccessUseCase, DisabledCommercialAccessUseCase>();
-            services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialProfileUseCase, DisabledCommercialProfileUseCase>();
             return services;
         }
 
@@ -235,14 +239,6 @@ public static class DependencyInjection
                 + "Commercial backend operations now run in the commercial API service.");
         }
 
-        services.AddHttpClient<CommercialApiServiceClient>(client =>
-        {
-            // Use Aspire service discovery for the internal commercial backend service.
-            client.BaseAddress = new Uri("https+http://commercialapiservice", UriKind.Absolute);
-        });
-
-        services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialAccessUseCase, BackendCommercialAccessUseCase>();
-        services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialProfileUseCase, BackendCommercialProfileUseCase>();
         services.AddSingleton<ImportToPlanner.Application.Abstractions.ITenantOperationalMetadataStore, BackendTenantOperationalMetadataStore>();
 
         return services;

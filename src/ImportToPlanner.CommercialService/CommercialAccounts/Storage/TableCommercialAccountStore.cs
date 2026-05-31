@@ -1,9 +1,8 @@
 using Azure;
 using Azure.Data.Tables;
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.CommercialService.Models;
 
-namespace ImportToPlanner.ApiService.Commercial.CommercialAccounts.Storage;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Storage;
 
 /// <summary>
 /// Persists commercial account records in Azure Table Storage.

@@ -1,4 +1,6 @@
-namespace ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Models;
+
+namespace ImportToPlanner.CommercialService.Models;
 
 /// <summary>
 /// Resolves hosted commercial access for the supplied session identity.

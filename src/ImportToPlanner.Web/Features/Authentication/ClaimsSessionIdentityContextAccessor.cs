@@ -1,5 +1,5 @@
 using System.Security.Claims;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 
 namespace ImportToPlanner.Web.Features.Authentication;
 

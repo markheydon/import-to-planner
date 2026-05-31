@@ -2,6 +2,7 @@
 @namespace ImportToPlanner.Web.Features.Import.Pages
 @using ImportToPlanner.Application.Abstractions
 @using ImportToPlanner.Application.Exceptions
+@using ImportToPlanner.Web.Features.CommercialAccounts.Backend
 @using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
 @inject WorkflowCoordinationState WorkflowState
@@ -10,8 +11,7 @@
 @inject ILogger<Home> Logger
 @inject IConfiguration Configuration
 @inject UserFacingFailureDiagnostics FailureDiagnostics
-@inject ICommercialAccessUseCase CommercialAccessUseCase
-@inject ICommercialProfileUseCase CommercialProfileUseCase
+@inject CommercialApiServiceClient CommercialApiServiceClient
 @inject ISessionIdentityContextAccessor SessionIdentityContextAccessor
 @inject SessionIdentityPresenter SessionIdentityPresenter
 @inject CommercialModeOptions CommercialModeOptions

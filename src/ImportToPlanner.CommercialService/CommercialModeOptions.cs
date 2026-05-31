@@ -1,4 +1,4 @@
-namespace ImportToPlanner.ApiService.Commercial;
+namespace ImportToPlanner.CommercialService;
 
 /// <summary>
 /// Represents configuration for hosted commercial mode behaviours.

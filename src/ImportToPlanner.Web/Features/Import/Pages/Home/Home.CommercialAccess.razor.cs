@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 using ImportToPlanner.Web.Features.Import.Workflows;
 
 namespace ImportToPlanner.Web.Features.Import.Pages;
@@ -16,7 +16,7 @@ public partial class Home
             return null;
         }
 
-        var accessDecision = await CommercialAccessUseCase.ResolveAccessAsync(
+        var accessDecision = await CommercialApiServiceClient.ResolveAccessAsync(
             sessionIdentity,
             CommercialModeOptions.Enabled,
             DateTimeOffset.UtcNow,
@@ -61,7 +61,7 @@ public partial class Home
         isRestoringCommercialAccount = true;
         try
         {
-            var restoreResult = await CommercialProfileUseCase.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+            var restoreResult = await CommercialApiServiceClient.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
             switch (restoreResult)
             {
                 case CommercialAccountRestoreResult.Restored:

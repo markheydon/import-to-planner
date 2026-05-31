@@ -91,7 +91,7 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
 
 if (commercialModeEnabled && tables is not null)
 {
-    var commercialApiService = builder.AddProject<Projects.ImportToPlanner_ApiService_Commercial>("commercialapiservice")
+    var commercialApiService = builder.AddProject<Projects.ImportToPlanner_CommercialService>("commercialapiservice")
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
         .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
         .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)

@@ -1,6 +1,6 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.CommercialService.Models;
 
-namespace ImportToPlanner.Application.Abstractions;
+namespace ImportToPlanner.CommercialService.CommercialAccounts;
 
 /// <summary>
 /// Defines commercial access resolution operations for authenticated sessions.
