@@ -12,7 +12,7 @@
   "containerEnv": {
     "SSL_CERT_DIR": "/home/vscode/.aspnet/dev-certs/trust:/usr/lib/ssl/certs"
   },
-  "updateContentCommand": "dotnet restore ImportToPlanner.slnx && dotnet restore apphost.cs",
+  "updateContentCommand": "dotnet restore ImportToPlanner.slnx && dotnet restore src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj",
   "hostRequirements": {
     "cpus": 4,
     "memory": "8gb",
