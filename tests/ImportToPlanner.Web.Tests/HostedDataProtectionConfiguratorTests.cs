@@ -40,7 +40,6 @@ public sealed class HostedDataProtectionConfiguratorTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
                 ["Storage:DataProtectionContainer"] = "dataprotection",
                 ["Storage:DataProtectionBlob"] = "keys.xml",
             })
@@ -48,7 +47,6 @@ public sealed class HostedDataProtectionConfiguratorTests
 
         var result = StorageConfiguration.FromConfiguration(configuration);
 
-        Assert.Equal("TenantOperationalMetadata", result.TenantMetadataTable);
         Assert.Equal("dataprotection", result.DataProtectionContainer);
         Assert.Equal("keys.xml", result.DataProtectionBlob);
     }
@@ -59,7 +57,6 @@ public sealed class HostedDataProtectionConfiguratorTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
                 ["Storage:DataProtectionContainer"] = "dataprotection",
             })
             .Build();
@@ -73,7 +70,6 @@ public sealed class HostedDataProtectionConfiguratorTests
         => new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
                 ["Storage:DataProtectionContainer"] = "dataprotection",
                 ["Storage:DataProtectionBlob"] = "keys.xml",
             })

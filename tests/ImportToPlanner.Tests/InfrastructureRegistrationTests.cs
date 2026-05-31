@@ -3,13 +3,47 @@ using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Infrastructure.Graph.Planner;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace ImportToPlanner.Tests;
 
 public sealed class InfrastructureRegistrationTests
 {
     [Fact]
-    public void AddInfrastructure_RegistersGraphGatewayAndTableMetadataStore_Unconditionally()
+    public void AddInfrastructureStorageClients_WhenCommercialModeDisabled_DoesNotRegisterTableServiceClient()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Features:CommercialMode:Enabled"] = "false",
+        });
+
+        builder.AddInfrastructureStorageClients();
+
+        using var serviceProvider = builder.Services.BuildServiceProvider();
+        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
+        Assert.Null(tableServiceClient);
+    }
+
+    [Fact]
+    public void AddInfrastructureStorageClients_WhenCommercialModeEnabled_RegistersTableServiceClient()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Features:CommercialMode:Enabled"] = "true",
+            ["ConnectionStrings:tables"] = "UseDevelopmentStorage=true",
+        });
+
+        builder.AddInfrastructureStorageClients();
+
+        using var serviceProvider = builder.Services.BuildServiceProvider();
+        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
+        Assert.NotNull(tableServiceClient);
+    }
+
+    [Fact]
+    public void AddInfrastructure_WhenCommercialModeEnabled_RegistersGraphGatewayAndTableMetadataStore()
     {
         var services = new ServiceCollection();
         services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
@@ -41,16 +75,14 @@ public sealed class InfrastructureRegistrationTests
     }
 
     [Fact]
-    public void AddInfrastructure_WhenCommercialModeDisabled_RegistersNoOpCommercialStores()
+    public void AddInfrastructure_WhenCommercialModeDisabled_RegistersNoOpCommercialStoresAndSelfHostMetadataStoreWithoutTables()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
 
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Features:CommercialMode:Enabled"] = "false",
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
             })
             .Build();
 
@@ -59,8 +91,12 @@ public sealed class InfrastructureRegistrationTests
         using var serviceProvider = services.BuildServiceProvider();
         var accountStore = serviceProvider.GetRequiredService<ICommercialAccountStore>();
         var auditStore = serviceProvider.GetRequiredService<ICommercialAuditStore>();
+        var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
 
         Assert.Equal("NoOpCommercialAccountStore", accountStore.GetType().Name);
         Assert.Equal("NoOpCommercialAuditStore", auditStore.GetType().Name);
+        Assert.Equal("SelfHostTenantOperationalMetadataStore", metadataStore.GetType().Name);
+        Assert.Null(tableServiceClient);
     }
 }

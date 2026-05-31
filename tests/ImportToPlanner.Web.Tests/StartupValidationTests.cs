@@ -90,7 +90,6 @@ public sealed class StartupValidationTests
         {
             ["AzureAd:TenantId"] = "organizations",
             ["Features:CommercialMode:Enabled"] = "false",
-            ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
             ["Storage:DataProtectionContainer"] = "dataprotection",
             ["Storage:DataProtectionBlob"] = "keys.xml",
         });
@@ -98,6 +97,24 @@ public sealed class StartupValidationTests
         var exception = Record.Exception(() => StartupConfigurationValidator.Validate(configuration));
 
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public void Validate_WhenCommercialModeEnabledAndTenantMetadataTableMissing_ThrowsFriendlyError()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AzureAd:TenantId"] = "organizations",
+            ["Features:CommercialMode:Enabled"] = "true",
+            ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
+            ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
+            ["Storage:DataProtectionContainer"] = "dataprotection",
+            ["Storage:DataProtectionBlob"] = "keys.xml",
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(() => StartupConfigurationValidator.Validate(configuration));
+
+        Assert.Contains("Storage:TenantMetadataTable", exception.Message, StringComparison.Ordinal);
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)
