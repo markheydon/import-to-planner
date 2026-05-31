@@ -75,8 +75,13 @@ public class WebTests
         await app.StartAsync(cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
 
         // Act
+        var httpClient = app.CreateHttpClient("web");
         await app.ResourceNotifications.WaitForResourceHealthyAsync("web", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
         await app.ResourceNotifications.WaitForResourceHealthyAsync("commercialapiservice", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
+        var response = await httpClient.GetAsync("/", cancellationToken);
+
+        // Assert
+        Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode);
     }
 
     private static EnvironmentVariableScope ConfigureRequiredAppHostParameters(bool enableCommercialMode = false)

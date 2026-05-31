@@ -90,6 +90,9 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
 
 if (commercialModeEnabled && tables is not null)
 {
+    web.WithReference(tables)
+        .WaitFor(tables);
+
     var commercialApiService = builder.AddProject<Projects.ImportToPlanner_ApiService_Commercial>("commercialapiservice")
         .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
         .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
