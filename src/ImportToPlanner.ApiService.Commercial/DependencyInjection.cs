@@ -30,7 +30,7 @@ public static class DependencyInjection
         services.AddHostedService<CommercialAccountRetentionHostedService>();
 
         services
-            .AddApplication()
+            .AddApplication(includeCommercialUseCases: true)
             .AddInfrastructure(configuration);
 
         return services;

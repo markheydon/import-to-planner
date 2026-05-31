@@ -36,7 +36,7 @@ builder.Services.AddSingleton(static serviceProvider => serviceProvider.GetRequi
 // Add services to the container.
 builder.Services
     .AddWebHostServices(builder.Configuration)
-    .AddApplication()
+    .AddApplication(includeCommercialUseCases: false)
     .AddImportWorkflow()
     .AddInfrastructure(builder.Configuration)
     .AddCommercialModeServices(builder.Configuration);

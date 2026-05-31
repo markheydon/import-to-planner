@@ -1,3 +1,4 @@
+using ImportToPlanner.Application;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Diagnostics;
 using ImportToPlanner.Web.Features.Authentication;
@@ -220,9 +221,17 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(configuration);
 
         var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-        var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
-        if (!commercialModeEnabled || !useBackendApi)
+        if (!commercialModeEnabled)
         {
+            services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialAccessUseCase, DisabledCommercialAccessUseCase>();
+            services.AddScoped<ImportToPlanner.Application.Abstractions.ICommercialProfileUseCase, DisabledCommercialProfileUseCase>();
+            return services;
+        }
+
+        var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
+        if (!useBackendApi)
+        {
+            services.AddCommercialApplicationUseCases();
             return services;
         }
 

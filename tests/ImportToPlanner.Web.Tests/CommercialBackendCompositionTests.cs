@@ -8,6 +8,29 @@ namespace ImportToPlanner.Web.Tests;
 public sealed class CommercialBackendCompositionTests
 {
     [Fact]
+    public void AddCommercialModeServices_WhenCommercialModeDisabled_RegistersDisabledCommercialAdapters()
+    {
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Features:CommercialMode:Enabled"] = "false",
+            })
+            .Build();
+
+        services.AddCommercialModeServices(configuration);
+
+        Assert.Contains(
+            services,
+            descriptor => descriptor.ServiceType == typeof(ICommercialAccessUseCase)
+                && string.Equals(descriptor.ImplementationType?.Name, "DisabledCommercialAccessUseCase", StringComparison.Ordinal));
+        Assert.Contains(
+            services,
+            descriptor => descriptor.ServiceType == typeof(ICommercialProfileUseCase)
+                && string.Equals(descriptor.ImplementationType?.Name, "DisabledCommercialProfileUseCase", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void AddCommercialModeServices_WhenBackendApiEnabled_RegistersBackendCommercialAdapters()
     {
         var services = new ServiceCollection();
