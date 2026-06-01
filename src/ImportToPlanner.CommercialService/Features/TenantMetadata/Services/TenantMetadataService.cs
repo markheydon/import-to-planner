@@ -1,7 +1,7 @@
-using Azure;
 using Azure.Data.Tables;
 using ImportToPlanner.Application.Consent.Models;
 using ImportToPlanner.Application.TenantContext.Models;
+using ImportToPlanner.CommercialService.Common.Storage;
 
 namespace ImportToPlanner.CommercialService.Features.TenantMetadata.Services;
 
@@ -9,119 +9,97 @@ namespace ImportToPlanner.CommercialService.Features.TenantMetadata.Services;
 /// Handles tenant operational metadata stored in Azure Table Storage.
 /// </summary>
 public class TenantMetadataService
+    : TableRepositoryBase<TenantOperationalMetadata>, ITenantMetadataService
 {
     private const string OperationalMetadataRowKey = "operational";
     private const string TableName = "TenantOperationalMetadata";
-    private readonly TableClient? tableClient;
 
+    /// <summary>
+    /// Initialises a new instance of the <see cref="TenantMetadataService"/> class with the specified Azure Table service client.
+    /// </summary>
+    /// <param name="tableServiceClient">The Azure Table service client.</param>
     public TenantMetadataService(TableServiceClient tableServiceClient)
-        : this(CreateTableClient(tableServiceClient))
+        : base(tableServiceClient, TableName)
     {
     }
 
-    internal TenantMetadataService(TableClient tableClient)
+    /// <summary>
+    /// Initialises a new instance of the <see cref="TenantMetadataService"/> class with a table client.
+    /// This constructor is primarily intended for tests.
+    /// </summary>
+    /// <param name="tableClient">The table client.</param>
+    protected TenantMetadataService(TableClient tableClient)
+        : base(tableClient)
     {
-        this.tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     }
 
-    protected TenantMetadataService()
-    {
-    }
-
-    public virtual async Task<TenantOperationalMetadata?> GetAsync(string tenantId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Retrieves tenant operational metadata for the specified tenant.
+    /// </summary>
+    /// <param name="tenantId">The tenant ID.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The tenant operational metadata if present; otherwise, null.</returns>
+    public virtual Task<TenantOperationalMetadata?> GetAsync(string tenantId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-
-        try
-        {
-            var response = await TableClient.GetEntityAsync<TenantOperationalMetadataEntity>(
-                tenantId,
-                OperationalMetadataRowKey,
-                cancellationToken: cancellationToken).ConfigureAwait(false);
-
-            return response.Value.ToModel();
-        }
-        catch (RequestFailedException exception) when (exception.Status == 404)
-        {
-            return null;
-        }
+        return GetByKeysAsync(tenantId, OperationalMetadataRowKey, cancellationToken);
     }
 
-    public virtual async Task UpsertAsync(TenantOperationalMetadata metadata, CancellationToken cancellationToken)
+    /// <summary>
+    /// Upserts tenant operational metadata.
+    /// </summary>
+    /// <param name="metadata">The metadata to upsert.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public virtual Task UpsertAsync(TenantOperationalMetadata metadata, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(metadata);
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-
-        var entity = TenantOperationalMetadataEntity.FromModel(metadata);
-        await TableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace, cancellationToken).ConfigureAwait(false);
+        return UpsertReplaceAsync(metadata, cancellationToken);
     }
 
-    private TableClient TableClient => tableClient ?? throw new InvalidOperationException("The table client has not been initialised.");
-
-    private async Task EnsureTableAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Converts a <see cref="TenantOperationalMetadata"/> model to an Azure Table <see cref="TableEntity"/> for storage.
+    /// </summary>
+    /// <param name="model">The tenant metadata model to convert.</param>
+    /// <returns>A <see cref="TableEntity"/> representing the tenant metadata.</returns>
+    protected override TableEntity ToEntity(TenantOperationalMetadata model)
     {
-        await TableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
-    }
+        ArgumentNullException.ThrowIfNull(model);
 
-    private sealed class TenantOperationalMetadataEntity : ITableEntity
-    {
-        public string PartitionKey { get; set; } = string.Empty;
-
-        public string RowKey { get; set; } = OperationalMetadataRowKey;
-
-        public DateTimeOffset? Timestamp { get; set; }
-
-        public ETag ETag { get; set; }
-
-        public string ConsentStatus { get; set; } = ConsentResolutionStatus.Unknown.ToString();
-
-        public string? ConfigurationState { get; set; }
-
-        public DateTimeOffset? LastConsentCheckUtc { get; set; }
-
-        public string? LastSupportDiagnosticCode { get; set; }
-
-        public DateTimeOffset LastUpdatedUtc { get; set; }
-
-        public static TenantOperationalMetadataEntity FromModel(TenantOperationalMetadata model)
+        return new TableEntity(model.TenantId, OperationalMetadataRowKey)
         {
-            ArgumentNullException.ThrowIfNull(model);
-            return new TenantOperationalMetadataEntity
-            {
-                PartitionKey = model.TenantId,
-                RowKey = OperationalMetadataRowKey,
-                ConsentStatus = model.ConsentStatus.ToString(),
-                ConfigurationState = model.ConfigurationState,
-                LastConsentCheckUtc = model.LastConsentCheckUtc,
-                LastSupportDiagnosticCode = model.LastSupportDiagnosticCode,
-                LastUpdatedUtc = model.LastUpdatedUtc,
-            };
-        }
-
-        public TenantOperationalMetadata ToModel()
-        {
-            var consentStatus = Enum.TryParse<ConsentResolutionStatus>(ConsentStatus, true, out var parsedStatus)
-                ? parsedStatus
-                : ConsentResolutionStatus.Unknown;
-
-            return new TenantOperationalMetadata(
-                PartitionKey,
-                consentStatus,
-                ConfigurationState,
-                LastConsentCheckUtc,
-                LastSupportDiagnosticCode,
-                LastUpdatedUtc == default ? DateTimeOffset.UtcNow : LastUpdatedUtc);
-        }
+            [nameof(TenantOperationalMetadata.ConsentStatus)] = model.ConsentStatus.ToString(),
+            [nameof(TenantOperationalMetadata.ConfigurationState)] = model.ConfigurationState,
+            [nameof(TenantOperationalMetadata.LastConsentCheckUtc)] = model.LastConsentCheckUtc,
+            [nameof(TenantOperationalMetadata.LastSupportDiagnosticCode)] = model.LastSupportDiagnosticCode,
+            [nameof(TenantOperationalMetadata.LastUpdatedUtc)] = model.LastUpdatedUtc,
+        };
     }
 
-    private static TableClient CreateTableClient(TableServiceClient tableServiceClient)
+    /// <summary>
+    /// Converts an Azure Table <see cref="TableEntity"/> to a <see cref="TenantOperationalMetadata"/> model.
+    /// </summary>
+    /// <param name="entity">The table entity to convert.</param>
+    /// <returns>A <see cref="TenantOperationalMetadata"/> model representing the table entity.</returns>
+    protected override TenantOperationalMetadata ToModel(TableEntity entity)
     {
-        ArgumentNullException.ThrowIfNull(tableServiceClient);
-        return tableServiceClient.GetTableClient(TableName);
+        ArgumentNullException.ThrowIfNull(entity);
+
+        var consentStatusValue = entity.GetString(nameof(TenantOperationalMetadata.ConsentStatus));
+        var consentStatus = Enum.TryParse<ConsentResolutionStatus>(consentStatusValue, true, out var parsedStatus)
+            ? parsedStatus
+            : ConsentResolutionStatus.Unknown;
+
+        return new TenantOperationalMetadata(
+            entity.PartitionKey,
+            consentStatus,
+            entity.GetString(nameof(TenantOperationalMetadata.ConfigurationState)),
+            entity.GetDateTimeOffset(nameof(TenantOperationalMetadata.LastConsentCheckUtc)),
+            entity.GetString(nameof(TenantOperationalMetadata.LastSupportDiagnosticCode)),
+            entity.GetDateTimeOffset(nameof(TenantOperationalMetadata.LastUpdatedUtc)) ?? DateTimeOffset.UtcNow);
     }
 }

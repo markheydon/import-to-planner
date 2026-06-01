@@ -1,5 +1,5 @@
-using Azure;
 using Azure.Data.Tables;
+using ImportToPlanner.CommercialService.Common.Storage;
 using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
 
 namespace ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
@@ -8,54 +8,74 @@ namespace ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
 /// Handles commercial account records stored in Azure Table Storage.
 /// </summary>
 public class CommercialAccountsService
+    : TableRepositoryBase<CommercialAccount>, ICommercialAccountsService
 {
+    // The name of the Azure Table used to store commercial account records.
     private const string TableName = "CommercialAccounts";
-    private readonly TableClient? tableClient;
 
+    /// <summary>
+    /// Initialises a new instance of the <see cref="CommercialAccountsService"/> class with the specified Azure Table service client.
+    /// </summary>
+    /// <param name="tableServiceClient">The Azure Table service client used to interact with the table storage.</param>
     public CommercialAccountsService(TableServiceClient tableServiceClient)
-        : this(CreateTableClient(tableServiceClient))
+        : base(tableServiceClient, TableName)
     {
     }
 
-    internal CommercialAccountsService(TableClient tableClient)
+    /// <summary>
+    /// Initialises a new instance of the <see cref="CommercialAccountsService"/> class with a table client.
+    /// This constructor is primarily intended for tests.
+    /// </summary>
+    /// <param name="tableClient">The table client.</param>
+    protected CommercialAccountsService(TableClient tableClient)
+        : base(tableClient)
     {
-        this.tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     }
 
-    protected CommercialAccountsService()
-    {
-    }
-
-    public virtual async Task<CommercialAccount?> GetAsync(string tenantId, string userId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Retrieves a commercial account for the specified tenant and user. If no account exists, null is returned.
+    /// </summary>
+    /// <param name="tenantId">The ID of the tenant.</param>
+    /// <param name="userId">The ID of the user.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The commercial account if found; otherwise, null.</returns>
+    public virtual Task<CommercialAccount?> GetAsync(
+        string tenantId,
+        string userId,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-
-        try
-        {
-            var response = await TableClient
-                .GetEntityAsync<TableEntity>(tenantId, userId, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-            return ToModel(response.Value);
-        }
-        catch (RequestFailedException exception) when (exception.Status == 404)
-        {
-            return null;
-        }
+        return GetByKeysAsync(tenantId, userId, cancellationToken);
     }
 
-    public virtual async Task CreateAsync(CommercialAccount account, CancellationToken cancellationToken)
+    /// <summary>
+    /// Creates a new commercial account.
+    /// </summary>
+    /// <param name="account">The commercial account to create.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public virtual Task CreateAsync(
+        CommercialAccount account,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(account);
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-        await TableClient.AddEntityAsync(ToEntity(account), cancellationToken).ConfigureAwait(false);
+        return AddAsync(account, cancellationToken);
     }
 
+    /// <summary>
+    /// Marks a commercial account as deleted.
+    /// </summary>
+    /// <param name="tenantId">The ID of the tenant.</param>
+    /// <param name="userId">The ID of the user.</param>
+    /// <param name="deletedUtc">The UTC time when the account was deleted.</param>
+    /// <param name="retentionExpiresUtc">The UTC time when the retention period expires.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public virtual async Task MarkDeletedAsync(
         string tenantId,
         string userId,
@@ -67,7 +87,7 @@ public class CommercialAccountsService
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        var current = await GetAsync(tenantId, userId, cancellationToken).ConfigureAwait(false);
+        var current = await GetByKeysAsync(tenantId, userId, cancellationToken).ConfigureAwait(false);
         if (current is null)
         {
             return;
@@ -80,18 +100,28 @@ public class CommercialAccountsService
             RetentionExpiresUtc = retentionExpiresUtc,
         };
 
-        await TableClient
-            .UpsertEntityAsync(ToEntity(updated), TableUpdateMode.Replace, cancellationToken)
-            .ConfigureAwait(false);
+        await UpsertReplaceAsync(updated, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task RestoreAsync(string tenantId, string userId, DateTimeOffset restoredUtc, CancellationToken cancellationToken)
+    /// <summary>
+    /// Restores a previously deleted commercial account, marking it as active again and clearing deletion-related timestamps.
+    /// </summary>
+    /// <param name="tenantId">The ID of the tenant.</param>
+    /// <param name="userId">The ID of the user.</param>
+    /// <param name="restoredUtc">The UTC time when the account was restored.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public virtual async Task RestoreAsync(
+        string tenantId,
+        string userId,
+        DateTimeOffset restoredUtc,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        var current = await GetAsync(tenantId, userId, cancellationToken).ConfigureAwait(false);
+        var current = await GetByKeysAsync(tenantId, userId, cancellationToken).ConfigureAwait(false);
         if (current is null)
         {
             return;
@@ -105,74 +135,57 @@ public class CommercialAccountsService
             RestoredUtc = restoredUtc,
         };
 
-        await TableClient
-            .UpsertEntityAsync(ToEntity(updated), TableUpdateMode.Replace, cancellationToken)
-            .ConfigureAwait(false);
+        await UpsertReplaceAsync(updated, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<IReadOnlyList<CommercialAccount>> ListExpiredDeletedAsync(
+    /// <summary>
+    /// Lists commercial accounts that are marked as deleted and have a retention expiration date that has passed, up to the specified batch size.
+    /// </summary>
+    /// <param name="asOfUtc">The UTC time to check for expired deletions.</param>
+    /// <param name="batchSize">The maximum number of accounts to return.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains a read-only list of expired deleted commercial accounts.</returns>
+    public virtual Task<IReadOnlyList<CommercialAccount>> ListExpiredDeletedAsync(
         DateTimeOffset asOfUtc,
         int batchSize,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-
-        var effectiveBatchSize = Math.Max(0, batchSize);
-        if (effectiveBatchSize == 0)
-        {
-            return [];
-        }
-
-        var results = new List<CommercialAccount>(effectiveBatchSize);
-        var queryFilter = TableClient.CreateQueryFilter(
-            $"{nameof(CommercialAccount.Status)} eq {CommercialAccountStatus.Deleted.ToString()} and {nameof(CommercialAccount.RetentionExpiresUtc)} le {asOfUtc}");
-
-        await foreach (var entity in TableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
-        {
-            var model = ToModel(entity);
-            if (model.RetentionExpiresUtc is null)
-            {
-                continue;
-            }
-
-            results.Add(model);
-            if (results.Count >= effectiveBatchSize)
-            {
-                break;
-            }
-        }
-
-        return results;
+        return QueryAsync(
+            $"{nameof(CommercialAccount.Status)} eq {CommercialAccountStatus.Deleted} and {nameof(CommercialAccount.RetentionExpiresUtc)} le {asOfUtc}",
+            batchSize,
+            cancellationToken,
+            model => model.RetentionExpiresUtc is not null);
     }
 
-    public virtual async Task PurgeAsync(string tenantId, string userId, CancellationToken cancellationToken)
+    /// <summary>
+    /// Permanently deletes a commercial account from the Azure Table Storage. This operation is irreversible and
+    /// should only be performed after the retention period has expired.
+    /// </summary>
+    /// <param name="tenantId">The ID of the tenant.</param>
+    /// <param name="userId">The ID of the user.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    public virtual Task PurgeAsync(
+        string tenantId,
+        string userId,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-
-        try
-        {
-            await TableClient.DeleteEntityAsync(tenantId, userId, cancellationToken: cancellationToken).ConfigureAwait(false);
-        }
-        catch (RequestFailedException exception) when (exception.Status == 404)
-        {
-            // No-op when the account has already been removed.
-        }
+        return DeleteIgnoreNotFoundAsync(tenantId, userId, cancellationToken);
     }
 
-    private TableClient TableClient => tableClient ?? throw new InvalidOperationException("The table client has not been initialised.");
-
-    private async Task EnsureTableAsync(CancellationToken cancellationToken)
-    {
-        await TableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private static TableEntity ToEntity(CommercialAccount model)
+    /// <summary>
+    /// Converts a <see cref="CommercialAccount"/> model to an Azure Table <see cref="TableEntity"/> for storage.
+    /// The tenant ID is used as the partition key and the user ID is used as the row key.
+    /// </summary>
+    /// <param name="model">The commercial account model to convert.</param>
+    /// <returns>A <see cref="TableEntity"/> representing the commercial account.</returns>
+    protected override TableEntity ToEntity(CommercialAccount model)
     {
         ArgumentNullException.ThrowIfNull(model);
 
@@ -187,12 +200,21 @@ public class CommercialAccountsService
         };
     }
 
-    private static CommercialAccount ToModel(TableEntity entity)
+    /// <summary>
+    /// Converts an Azure Table <see cref="TableEntity"/> to a <see cref="CommercialAccount"/> model.
+    /// </summary>
+    /// <param name="entity">The table entity to convert.</param>
+    /// <returns>A <see cref="CommercialAccount"/> model representing the table entity.</returns>
+    protected override CommercialAccount ToModel(TableEntity entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
         var statusValue = entity.GetString(nameof(CommercialAccount.Status));
-        var parsedStatus = Enum.TryParse<CommercialAccountStatus>(statusValue, ignoreCase: true, out var status)
+
+        var parsedStatus = Enum.TryParse<CommercialAccountStatus>(
+            statusValue,
+            ignoreCase: true,
+            out var status)
             ? status
             : CommercialAccountStatus.Active;
 
@@ -205,11 +227,5 @@ public class CommercialAccountsService
             entity.GetDateTimeOffset(nameof(CommercialAccount.RetentionExpiresUtc)),
             entity.GetDateTimeOffset(nameof(CommercialAccount.RestoredUtc)),
             entity.GetDateTimeOffset(nameof(CommercialAccount.LastSignInOutcomeUtc)));
-    }
-
-    private static TableClient CreateTableClient(TableServiceClient tableServiceClient)
-    {
-        ArgumentNullException.ThrowIfNull(tableServiceClient);
-        return tableServiceClient.GetTableClient(TableName);
     }
 }

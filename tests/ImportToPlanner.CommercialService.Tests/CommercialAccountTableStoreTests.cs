@@ -4,6 +4,7 @@ using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
 using ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
+using Moq;
 
 namespace ImportToPlanner.CommercialService.Tests;
 
@@ -12,8 +13,51 @@ public sealed class CommercialAccountTableStoreTests
     [Fact]
     public async Task CreateAsync_ThenGetAsync_PersistsCommercialAccountUsingTenantAndUserIdentityKey()
     {
-        var tableClient = new FakeTableClient();
-        var store = new CommercialAccountsService(tableClient);
+        var storedEntities = new Dictionary<string, TableEntity>(StringComparer.Ordinal);
+        var createIfNotExistsCallCount = 0;
+
+        var tableClient = new Mock<TableClient>(MockBehavior.Loose);
+
+        tableClient
+            .Setup(client => client.CreateIfNotExistsAsync(It.IsAny<CancellationToken>()))
+            .Returns(() =>
+            {
+                createIfNotExistsCallCount++;
+                return Task.FromResult(Response.FromValue(new TableItem("CommercialAccounts"), new FakeResponse(204)));
+            });
+
+        tableClient
+            .Setup(client => client.AddEntityAsync(It.IsAny<TableEntity>(), It.IsAny<CancellationToken>()))
+            .Returns<TableEntity, CancellationToken>((entity, _) =>
+            {
+                storedEntities[BuildEntityKey(entity.PartitionKey, entity.RowKey)] = CopyTableEntity(entity);
+                return Task.FromResult<Response>(new FakeResponse(204));
+            });
+
+        tableClient
+            .Setup(client => client.GetEntityAsync<TableEntity>(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<string>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, IEnumerable<string>?, CancellationToken>((partitionKey, rowKey, _, _) =>
+            {
+                var key = BuildEntityKey(partitionKey, rowKey);
+                if (!storedEntities.TryGetValue(key, out var value))
+                {
+                    throw new RequestFailedException(404, "Entity not found.");
+                }
+
+                return Task.FromResult(Response.FromValue(value, new FakeResponse(200)));
+            });
+
+        var tableServiceClient = new Mock<TableServiceClient>(MockBehavior.Loose);
+
+        tableServiceClient
+            .Setup(client => client.GetTableClient(It.Is<string>(name => name == "CommercialAccounts")))
+            .Returns(tableClient.Object);
+
+        var store = new CommercialAccountsService(tableServiceClient.Object);
         var createdUtc = new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero);
 
         await store.CreateAsync(
@@ -35,14 +79,18 @@ public sealed class CommercialAccountTableStoreTests
         Assert.Equal("user-001", account.UserId);
         Assert.Equal(CommercialAccountStatus.Active, account.Status);
         Assert.Equal(createdUtc, account.CreatedUtc);
-        Assert.Equal(2, tableClient.CreateIfNotExistsCallCount);
+
+        // The service now caches EnsureTableAsync, so initialisation should only happen once.
+        Assert.Equal(1, createIfNotExistsCallCount);
+
+        tableServiceClient.Verify(client => client.GetTableClient("CommercialAccounts"), Times.Once);
     }
 
     [Fact]
     public async Task AppendAsync_PersistsSignInOutcomeAuditEvent_WithStableOutcomeCode()
     {
         var tableClient = new FakeTableClient();
-        var store = new CommercialAuditService(tableClient);
+        var store = new TestCommercialAuditService(tableClient);
         var occurredUtc = new DateTimeOffset(2026, 5, 28, 12, 15, 0, TimeSpan.Zero);
 
         await store.AppendAsync(
@@ -63,6 +111,8 @@ public sealed class CommercialAccountTableStoreTests
         Assert.Equal("sign_in_allowed", storedEntity.GetString("Outcome"));
         Assert.Equal(1, tableClient.CreateIfNotExistsCallCount);
     }
+
+    private sealed class TestCommercialAuditService(TableClient tableClient) : CommercialAuditService(tableClient);
 
     private sealed class FakeTableClient : TableClient
     {
@@ -163,5 +213,27 @@ public sealed class CommercialAccountTableStoreTests
             values = [];
             return false;
         }
+    }
+
+    private static string BuildEntityKey(string partitionKey, string rowKey)
+        => $"{partitionKey}|{rowKey}";
+
+    private static TableEntity CopyTableEntity(TableEntity source)
+    {
+        var entity = new TableEntity(source.PartitionKey, source.RowKey)
+        {
+            ETag = source.ETag,
+            Timestamp = source.Timestamp,
+        };
+
+        if (source is TableEntity tableEntity)
+        {
+            foreach (var value in tableEntity)
+            {
+                entity[value.Key] = value.Value;
+            }
+        }
+
+        return entity;
     }
 }

@@ -9,9 +9,9 @@ builder.AddServiceDefaults();
 builder.AddAzureTableServiceClient(connectionName: "tables");
 
 // Register our services.
-builder.Services.AddSingleton<CommercialAccountsService>();
-builder.Services.AddSingleton<CommercialAuditService>();
-builder.Services.AddSingleton<TenantMetadataService>();
+builder.Services.AddSingleton<ICommercialAccountsService, CommercialAccountsService>();
+builder.Services.AddSingleton<ICommercialAuditService, CommercialAuditService>();
+builder.Services.AddSingleton<ITenantMetadataService, TenantMetadataService>();
 builder.Services.AddSingleton<CommercialProfileService>();
 builder.Services.AddSingleton<CommercialAccessService>();
 builder.Services.AddHostedService<CommercialAccountRetentionHostedService>();

@@ -1,5 +1,5 @@
-using Azure;
 using Azure.Data.Tables;
+using ImportToPlanner.CommercialService.Common.Storage;
 using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
 
 namespace ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
@@ -8,91 +8,91 @@ namespace ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
 /// Handles commercial audit events stored in Azure Table Storage.
 /// </summary>
 public class CommercialAuditService
+    : TableRepositoryBase<AccountAuditEvent>, ICommercialAuditService
 {
     private const string TableName = "CommercialAccountAuditEvents";
-    private readonly TableClient? tableClient;
 
+    /// <summary>
+    /// Initialises a new instance of the <see cref="CommercialAuditService"/> class with the specified Azure Table service client.
+    /// </summary>
+    /// <param name="tableServiceClient">The Azure Table service client.</param>
     public CommercialAuditService(TableServiceClient tableServiceClient)
-        : this(CreateTableClient(tableServiceClient))
+        : base(tableServiceClient, TableName)
     {
     }
 
-    internal CommercialAuditService(TableClient tableClient)
+    /// <summary>
+    /// Initialises a new instance of the <see cref="CommercialAuditService"/> class with a table client.
+    /// This constructor is primarily intended for tests.
+    /// </summary>
+    /// <param name="tableClient">The table client.</param>
+    protected CommercialAuditService(TableClient tableClient)
+        : base(tableClient)
     {
-        this.tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     }
 
-    protected CommercialAuditService()
-    {
-    }
-
+    /// <summary>
+    /// Appends an audit event.
+    /// </summary>
+    /// <param name="auditEvent">The audit event to append.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     public virtual async Task AppendAsync(AccountAuditEvent auditEvent, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(auditEvent);
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-        await TableClient.AddEntityAsync(ToEntity(auditEvent), cancellationToken).ConfigureAwait(false);
+        await AddAsync(auditEvent, cancellationToken).ConfigureAwait(false);
     }
 
-    public virtual async Task<IReadOnlyList<AccountAuditEvent>> ListExpiredAsync(
+    /// <summary>
+    /// Lists expired audit events up to the specified batch size.
+    /// </summary>
+    /// <param name="asOfUtc">The UTC time to compare retention expiry against.</param>
+    /// <param name="batchSize">The maximum number of items to return.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains matching expired audit events.</returns>
+    public virtual Task<IReadOnlyList<AccountAuditEvent>> ListExpiredAsync(
         DateTimeOffset asOfUtc,
         int batchSize,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
-
-        var effectiveBatchSize = Math.Max(0, batchSize);
-        if (effectiveBatchSize == 0)
-        {
-            return [];
-        }
-
-        var results = new List<AccountAuditEvent>(effectiveBatchSize);
-        var queryFilter = TableClient.CreateQueryFilter($"{nameof(AccountAuditEvent.RetentionExpiresUtc)} le {asOfUtc}");
-
-        await foreach (var entity in TableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
-        {
-            results.Add(ToModel(entity));
-            if (results.Count >= effectiveBatchSize)
-            {
-                break;
-            }
-        }
-
-        return results;
+        return QueryAsync(
+            $"{nameof(AccountAuditEvent.RetentionExpiresUtc)} le {asOfUtc}",
+            batchSize,
+            cancellationToken);
     }
 
+    /// <summary>
+    /// Permanently deletes expired audit events and returns the number removed.
+    /// </summary>
+    /// <param name="asOfUtc">The UTC time to compare retention expiry against.</param>
+    /// <param name="batchSize">The maximum number of expired events to purge.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the number of purged events.</returns>
     public virtual async Task<int> PurgeExpiredAsync(DateTimeOffset asOfUtc, int batchSize, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var expired = await ListExpiredAsync(asOfUtc, batchSize, cancellationToken).ConfigureAwait(false);
 
         foreach (var auditEvent in expired)
         {
             var rowKey = BuildRowKey(auditEvent);
-            try
-            {
-                await TableClient.DeleteEntityAsync(auditEvent.TenantId, rowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
-            }
-            catch (RequestFailedException exception) when (exception.Status == 404)
-            {
-                // No-op when an event was concurrently removed.
-            }
+            await DeleteIgnoreNotFoundAsync(auditEvent.TenantId, rowKey, cancellationToken).ConfigureAwait(false);
         }
 
         return expired.Count;
     }
 
-    private TableClient TableClient => tableClient ?? throw new InvalidOperationException("The table client has not been initialised.");
-
-    private async Task EnsureTableAsync(CancellationToken cancellationToken)
-    {
-        await TableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    private static TableEntity ToEntity(AccountAuditEvent model)
+    /// <summary>
+    /// Converts an <see cref="AccountAuditEvent"/> model to an Azure Table <see cref="TableEntity"/> for storage.
+    /// </summary>
+    /// <param name="model">The audit event model to convert.</param>
+    /// <returns>A <see cref="TableEntity"/> representing the audit event.</returns>
+    protected override TableEntity ToEntity(AccountAuditEvent model)
     {
         ArgumentNullException.ThrowIfNull(model);
 
@@ -106,7 +106,12 @@ public class CommercialAuditService
         };
     }
 
-    private static AccountAuditEvent ToModel(TableEntity entity)
+    /// <summary>
+    /// Converts an Azure Table <see cref="TableEntity"/> to an <see cref="AccountAuditEvent"/> model.
+    /// </summary>
+    /// <param name="entity">The table entity to convert.</param>
+    /// <returns>An <see cref="AccountAuditEvent"/> model representing the table entity.</returns>
+    protected override AccountAuditEvent ToModel(TableEntity entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
@@ -128,11 +133,5 @@ public class CommercialAuditService
     {
         ArgumentNullException.ThrowIfNull(model);
         return $"{model.UserId}|{model.OccurredUtc.UtcTicks:D19}|{model.EventType}";
-    }
-
-    private static TableClient CreateTableClient(TableServiceClient tableServiceClient)
-    {
-        ArgumentNullException.ThrowIfNull(tableServiceClient);
-        return tableServiceClient.GetTableClient(TableName);
     }
 }

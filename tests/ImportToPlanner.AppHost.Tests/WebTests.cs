@@ -1,6 +1,6 @@
-using Microsoft.Extensions.Logging;
+namespace ImportToPlanner.AppHost.Tests;
 
-namespace ImportToPlanner.Tests;
+using Microsoft.Extensions.Logging;
 
 public class WebTests
 {

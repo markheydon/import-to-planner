@@ -21,7 +21,7 @@ public static class TenantMetadataEndpoints
 
         group.MapPost("/get", async (
             GetTenantOperationalMetadataRequest request,
-            TenantMetadataService service,
+            ITenantMetadataService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -40,7 +40,7 @@ public static class TenantMetadataEndpoints
 
         group.MapPost("/upsert", async (
             UpsertTenantOperationalMetadataRequest request,
-            TenantMetadataService service,
+            ITenantMetadataService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);

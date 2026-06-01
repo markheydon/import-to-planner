@@ -9,8 +9,9 @@
     <Project Path="src/ImportToPlanner.AppHost/ImportToPlanner.AppHost.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ImportToPlanner.AppHost.Tests/ImportToPlanner.AppHost.Tests.csproj" />
     <Project Path="tests/ImportToPlanner.CommercialService.Tests/ImportToPlanner.CommercialService.Tests.csproj" />
-      <Project Path="tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj" />
+    <Project Path="tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj" />
     <Project Path="tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj" />
   </Folder>
 </Solution>
