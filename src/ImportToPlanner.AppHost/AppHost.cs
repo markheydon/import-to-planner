@@ -46,8 +46,9 @@ var commercialModeEnabled = bool.TryParse(builder.Configuration["Parameters:enab
     && parsedCommercialModeEnabled;
 
 // Shared storage account (emulated locally) used by the web service.
-var storage = builder.AddAzureStorage("storage")
-    .RunAsEmulator();
+var storage = builder.AddAzureStorage("storage");
+if (builder.Environment.IsDevelopment())
+    storage.RunAsEmulator();
 
 // Blob service is used by app features and Data Protection key-ring persistence.
 var blobs = storage.AddBlobs("blobs");
@@ -64,7 +65,6 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WithEnvironment("AzureAd__ClientId", azureAdClientId)
     .WithEnvironment("AzureAd__HomeTenantId", azureAdHomeTenantId)
     .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
-    .WithEnvironment("Features__CommercialMode__UseBackendApi", "true")
     // The app currently expects a certificate path; the base64 value is provided
     // so deployment/runtime can materialize the certificate at that location.
     .WithEnvironment("AzureAd__ClientCertificates__0__SourceType", "Path")
@@ -89,6 +89,7 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
         }
     });
 
+// The commercial API service is only required if commercial mode is enabled, and depends on the same storage account for tenant metadata.
 if (commercialModeEnabled && tables is not null)
 {
     var commercialApiService = builder.AddProject<Projects.ImportToPlanner_CommercialService>("commercialapiservice")

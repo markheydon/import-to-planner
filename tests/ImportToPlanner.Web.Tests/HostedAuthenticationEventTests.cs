@@ -152,7 +152,7 @@ public sealed class HostedAuthenticationEventTests
         services.AddSingleton(storage);
         services.AddSingleton(new ConsentResolutionDefaults(authority.RequiredScopes, authority.AdminConsentUri));
 
-        services.AddWebHostServices(configuration);
+        services.AddHostedAuthenticationServices(configuration);
 
         return services.BuildServiceProvider();
     }

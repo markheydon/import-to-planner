@@ -1,4 +1,4 @@
-namespace ImportToPlanner.Web;
+namespace ImportToPlanner.Web.Features.Authentication;
 
 /// <summary>
 /// Thrown when a Graph token cannot be acquired because there is no authenticated user context.

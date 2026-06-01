@@ -30,7 +30,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ImportToPlanner.AppHost\ImportToPlanner.AppHost.csproj" />
-    <ProjectReference Include="..\..\src\ImportToPlanner.CommercialService\ImportToPlanner.CommercialService.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Domain\ImportToPlanner.Domain.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Infrastructure.Graph\ImportToPlanner.Infrastructure.Graph.csproj" />

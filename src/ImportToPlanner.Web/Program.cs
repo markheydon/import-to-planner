@@ -1,26 +1,34 @@
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Infrastructure.Graph;
-using ImportToPlanner.Web;
 using ImportToPlanner.Web.Components;
 using ImportToPlanner.Web.Features.Authentication;
 using ImportToPlanner.Web.Features.CommercialAccounts;
+using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
+using ImportToPlanner.Web.Features.Import.Presenters;
+using ImportToPlanner.Web.Features.Import.Workflows;
 using ImportToPlanner.Web.Infrastructure;
 using Microsoft.Extensions.Options;
+using Microsoft.Identity.Web.UI;
+using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Shared service defaults and storage clients consumed by web and infrastructure adapters.
 builder.AddServiceDefaults();
-builder.AddWebStorageClients();
+builder.AddAzureBlobServiceClient(connectionName: "blobs");
 
+// Startup configuration normalisation and validation.
 ApplyLegacyCertificatePathOverrides(builder.Configuration);
 ApplyCertificateBase64Overrides(builder.Configuration);
 StartupConfigurationValidator.Validate(builder.Configuration);
 AzureAdConfigurationNormalizer.Apply(builder.Configuration);
 
+// Pre-computed startup configuration models used across registration blocks.
 var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(builder.Configuration);
 var storageConfiguration = StorageConfiguration.FromConfiguration(builder.Configuration);
 
+// Shared options and immutable startup state.
 builder.Services.AddSingleton(tenantAuthorityConfiguration);
 builder.Services.AddSingleton(storageConfiguration);
 builder.Services.AddSingleton(new ConsentResolutionDefaults(
@@ -32,19 +40,31 @@ builder.Services
     .ValidateOnStart();
 builder.Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
 
-// Add services to the container.
+// Web UI composition and feature registrations.
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
+builder.Services.AddMudServices();
+builder.Services.AddCascadingAuthenticationState();
 builder.Services
-    .AddWebHostServices(builder.Configuration)
+    .AddHostedAuthenticationServices(builder.Configuration)
     .AddApplication()
-    .AddImportWorkflow()
-    .AddInfrastructure(builder.Configuration)
-    .AddCommercialModeServices(builder.Configuration);
+    .AddMicrosoftGraphInfrastructure(builder.Configuration)
+    .AddCommercialBackendServices(builder.Configuration);
+builder.Services.AddScoped<ImportPlanningPresenter>();
+builder.Services.AddScoped<ImportExecutionPresenter>();
+builder.Services.AddScoped<SessionIdentityPresenter>();
+builder.Services.AddScoped<WorkflowCoordinationState>();
+builder.Services.AddScoped<ImportWorkflowCoordinator>();
+builder.Services.AddControllersWithViews()
+    .AddMicrosoftIdentityUI();
+builder.Services.AddAuthorization();
 
+// Data protection key-ring persistence for hosted environments.
 HostedDataProtectionConfigurator.Configure(builder.Services, storageConfiguration);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// HTTP pipeline and endpoint mapping.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -147,5 +167,6 @@ static void ApplyCertificateBase64Overrides(IConfiguration configuration)
     {
         File.SetUnixFileMode(certificateDiskPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
     }
+
 }
 

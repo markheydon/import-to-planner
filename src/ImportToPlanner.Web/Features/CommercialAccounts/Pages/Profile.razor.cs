@@ -62,6 +62,11 @@ public partial class Profile
         {
             account = await CommercialApiServiceClient.GetProfileAsync(sessionIdentity, CancellationToken.None);
         }
+        catch (HttpRequestException)
+        {
+            statusMessage = "The commercial backend service is unavailable. If you are running locally, start the AppHost so service discovery can resolve commercialapiservice.";
+            statusSeverity = Severity.Error;
+        }
         finally
         {
             isBusy = false;
@@ -103,6 +108,12 @@ public partial class Profile
         try
         {
             await CommercialApiServiceClient.DeleteAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+        }
+        catch (HttpRequestException)
+        {
+            statusMessage = "The commercial backend service is unavailable. If you are running locally, start the AppHost so service discovery can resolve commercialapiservice.";
+            statusSeverity = Severity.Error;
+            return;
         }
         finally
         {

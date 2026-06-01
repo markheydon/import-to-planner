@@ -1,25 +1,20 @@
+using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Diagnostics;
-using ImportToPlanner.Web.Features.Authentication;
-using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
-using ImportToPlanner.Web.Features.Import.Presenters;
-using ImportToPlanner.Web.Features.Import.Workflows;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
-using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.Kiota.Abstractions.Authentication;
-using MudBlazor.Services;
 
-namespace ImportToPlanner.Web;
+namespace ImportToPlanner.Web.Features.Authentication;
 
 /// <summary>
-/// Extension methods for registering web-layer dependencies.
+/// Adds hosted authentication and Microsoft Graph registrations used by the web host.
 /// </summary>
-public static class DependencyInjection
+public static class HostedAuthenticationServiceCollectionExtensions
 {
     private const string AuthenticationErrorQueryKey = "authError";
     private const string AuthenticationReferenceQueryKey = "authRef";
@@ -28,37 +23,19 @@ public static class DependencyInjection
     private const string LegacyIdentityProviderClaimType = "http://schemas.microsoft.com/identity/claims/identityprovider";
 
     /// <summary>
-    /// Adds Aspire-managed Azure storage service clients used by the web host.
-    /// </summary>
-    /// <param name="builder">The host application builder.</param>
-    /// <returns>The same <see cref="IHostApplicationBuilder"/> for chaining.</returns>
-    public static IHostApplicationBuilder AddWebStorageClients(this IHostApplicationBuilder builder)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-
-        builder.AddAzureBlobServiceClient(connectionName: "blobs");
-
-        return builder;
-    }
-
-    /// <summary>
-    /// Adds web UI, authentication, and Graph client services.
+    /// Adds hosted authentication services and the Microsoft Graph client used by the web host.
     /// </summary>
     /// <param name="services">The service collection to register dependencies with.</param>
-    /// <param name="configuration">Application configuration used for authentication and Graph scopes.</param>
+    /// <param name="configuration">The application configuration used for authentication and Graph scopes.</param>
     /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
-    public static IServiceCollection AddWebHostServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddHostedAuthenticationServices(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddRazorComponents()
-            .AddInteractiveServerComponents();
-        services.AddMudServices();
-        services.AddCascadingAuthenticationState();
         services.AddHttpContextAccessor();
         services.AddScoped<UserFacingFailureDiagnostics>();
-        services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
+        services.AddScoped<ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
         services.AddScoped<ISessionIdentityContextAccessor, ClaimsSessionIdentityContextAccessor>();
 
         var tenantAuthorityConfiguration = services
@@ -182,65 +159,6 @@ public static class DependencyInjection
             return new GraphServiceClient(authenticationProvider);
         });
 
-        services.AddControllersWithViews()
-            .AddMicrosoftIdentityUI();
-
-        services.AddAuthorization();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Adds workflow and presenter services used by the Blazor import experience.
-    /// </summary>
-    /// <param name="services">The service collection to register dependencies with.</param>
-    /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
-    public static IServiceCollection AddImportWorkflow(this IServiceCollection services)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        services.AddScoped<ImportPlanningPresenter>();
-        services.AddScoped<ImportExecutionPresenter>();
-        services.AddScoped<SessionIdentityPresenter>();
-        services.AddScoped<WorkflowCoordinationState>();
-        services.AddScoped<ImportWorkflowCoordinator>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Adds hosted commercial backend service clients and adapters when required.
-    /// </summary>
-    /// <param name="services">The service collection to register dependencies with.</param>
-    /// <param name="configuration">The application configuration.</param>
-    /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
-    public static IServiceCollection AddCommercialModeServices(this IServiceCollection services, IConfiguration configuration)
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
-
-        services.AddHttpClient<CommercialApiServiceClient>(client =>
-        {
-            // Use Aspire service discovery for the internal commercial backend service.
-            client.BaseAddress = new Uri("https+http://commercialapiservice", UriKind.Absolute);
-        });
-
-        var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-        if (!commercialModeEnabled)
-        {
-            return services;
-        }
-
-        var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
-        if (!useBackendApi)
-        {
-            throw new InvalidOperationException(
-                "Set 'Features:CommercialMode:UseBackendApi' to 'true' when 'Features:CommercialMode:Enabled' is enabled. "
-                + "Commercial backend operations now run in the commercial API service.");
-        }
-
-        services.AddSingleton<ImportToPlanner.Application.Abstractions.ITenantOperationalMetadataStore, BackendTenantOperationalMetadataStore>();
-
         return services;
     }
 
@@ -302,7 +220,7 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(httpContext);
 
         var loggerFactory = httpContext.RequestServices.GetRequiredService<ILoggerFactory>();
-        var logger = loggerFactory.CreateLogger(typeof(DependencyInjection).FullName!);
+        var logger = loggerFactory.CreateLogger(typeof(HostedAuthenticationServiceCollectionExtensions).FullName!);
         var failureDiagnostics = httpContext.RequestServices.GetRequiredService<UserFacingFailureDiagnostics>();
         return failureDiagnostics.RecordHandledFailure(
             logger,

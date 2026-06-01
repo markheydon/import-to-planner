@@ -50,15 +50,6 @@ internal static class StartupConfigurationValidator
             }
         }
 
-        var commercialModeEnabled = configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-        var useBackendApi = configuration.GetValue<bool>("Features:CommercialMode:UseBackendApi");
-        if (commercialModeEnabled && !useBackendApi)
-        {
-            ValidateRequiredSetting("Storage:TenantMetadataTable");
-            ValidateRequiredSetting("Storage:CommercialAccountsTable");
-            ValidateRequiredSetting("Storage:CommercialAuditTable");
-        }
-
         ValidateRequiredSetting("Storage:DataProtectionContainer");
         ValidateRequiredSetting("Storage:DataProtectionBlob");
 

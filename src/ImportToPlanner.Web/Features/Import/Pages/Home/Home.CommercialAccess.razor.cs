@@ -16,30 +16,40 @@ public partial class Home
             return null;
         }
 
-        var accessDecision = await CommercialApiServiceClient.ResolveAccessAsync(
-            sessionIdentity,
-            CommercialModeOptions.Enabled,
-            DateTimeOffset.UtcNow,
-            CancellationToken.None);
-
-        showFirstCommercialSignInGuidance = accessDecision.Decision == CommercialAccessDecisionType.CreateAccount;
-        showCommercialDeletedAccountGate = false;
-        deletedAccountRetentionExpiresUtc = null;
-        restoreAccountStatusMessage = null;
-
-        if (accessDecision.Decision is CommercialAccessDecisionType.BlockedDeleted or CommercialAccessDecisionType.OfferRestore)
+        try
         {
-            showCommercialDeletedAccountGate = true;
-            deletedAccountRetentionExpiresUtc = accessDecision.RetentionExpiresUtc;
-            SetStatus(CommercialDeletedAccountMessage, WorkflowStatusLevel.Warning);
-            if (accessDecision.ShouldSignOut)
-            {
-                OnSignOutClicked();
-                return null;
-            }
-        }
+            var accessDecision = await CommercialApiServiceClient.ResolveAccessAsync(
+                sessionIdentity,
+                CommercialModeOptions.Enabled,
+                DateTimeOffset.UtcNow,
+                CancellationToken.None);
 
-        return accessDecision;
+            showFirstCommercialSignInGuidance = accessDecision.Decision == CommercialAccessDecisionType.CreateAccount;
+            showCommercialDeletedAccountGate = false;
+            deletedAccountRetentionExpiresUtc = null;
+            restoreAccountStatusMessage = null;
+
+            if (accessDecision.Decision is CommercialAccessDecisionType.BlockedDeleted or CommercialAccessDecisionType.OfferRestore)
+            {
+                showCommercialDeletedAccountGate = true;
+                deletedAccountRetentionExpiresUtc = accessDecision.RetentionExpiresUtc;
+                SetStatus(CommercialDeletedAccountMessage, WorkflowStatusLevel.Warning);
+                if (accessDecision.ShouldSignOut)
+                {
+                    OnSignOutClicked();
+                    return null;
+                }
+            }
+
+            return accessDecision;
+        }
+        catch (HttpRequestException)
+        {
+            SetStatus(
+                "The commercial backend service is unavailable. If you are running locally, start the AppHost so service discovery can resolve commercialapiservice.",
+                WorkflowStatusLevel.Error);
+            return null;
+        }
     }
 
     private async Task RestoreCommercialAccountAsync()

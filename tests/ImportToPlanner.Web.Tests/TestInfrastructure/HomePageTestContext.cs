@@ -6,8 +6,7 @@ using Bunit;
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
-using ImportToPlanner.CommercialService.CommercialAccounts;
-using ImportToPlanner.CommercialService.Models;
+using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,8 +21,7 @@ internal sealed class HomePageTestContext : BunitContext
         string tenantId = "organizations",
         bool isAuthenticated = true,
         bool commercialModeEnabled = false,
-        CommercialAccountStoreStub? commercialAccountStoreStub = null,
-        CommercialAuditStoreStub? commercialAuditStoreStub = null)
+        CommercialAccountStoreStub? commercialAccountStoreStub = null)
     {
         Services.AddMudServices(configuration =>
         {
@@ -50,9 +48,6 @@ internal sealed class HomePageTestContext : BunitContext
                 ["AzureAd:ClientId"] = "00000000-0000-0000-0000-000000000000",
                 ["AzureAd:CallbackPath"] = "/signin-oidc",
                 ["DownstreamApis:MicrosoftGraph:Scopes:0"] = "User.Read",
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
-                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
-                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
                 ["Storage:DataProtectionContainer"] = "dataprotection",
                 ["Storage:DataProtectionBlob"] = "keys.xml",
                 ["Features:CommercialMode:Enabled"] = commercialModeEnabled.ToString(),
@@ -82,13 +77,14 @@ internal sealed class HomePageTestContext : BunitContext
         };
 
         Services.AddSingleton<IHttpContextAccessor>(httpContextAccessor);
-        var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Diagnostics.UserFacingFailureDiagnostics", throwOnError: true)!;
+        var webAssembly = typeof(TenantAuthorityConfiguration).Assembly;
+        var failureDiagnosticsType = webAssembly.GetType("ImportToPlanner.Web.Diagnostics.UserFacingFailureDiagnostics", throwOnError: true)!;
         Services.AddScoped(failureDiagnosticsType, serviceProvider => Activator.CreateInstance(
             failureDiagnosticsType,
             serviceProvider.GetRequiredService<IHttpContextAccessor>(),
             serviceProvider.GetRequiredService<TenantAuthorityConfiguration>())!);
-        var sessionIdentityAccessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Features.Authentication.ISessionIdentityContextAccessor", throwOnError: true)!;
-        var claimsSessionIdentityAccessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Features.Authentication.ClaimsSessionIdentityContextAccessor", throwOnError: true)!;
+        var sessionIdentityAccessorType = webAssembly.GetType("ImportToPlanner.Web.Features.Authentication.ISessionIdentityContextAccessor", throwOnError: true)!;
+        var claimsSessionIdentityAccessorType = webAssembly.GetType("ImportToPlanner.Web.Features.Authentication.ClaimsSessionIdentityContextAccessor", throwOnError: true)!;
         Services.AddScoped(
             sessionIdentityAccessorType,
             serviceProvider => Activator.CreateInstance(
@@ -100,17 +96,11 @@ internal sealed class HomePageTestContext : BunitContext
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
         Services.AddScoped<ITenantOperationalMetadataStore, TenantOperationalMetadataStoreStub>();
         CommercialAccountStore = commercialAccountStoreStub ?? new CommercialAccountStoreStub();
-        CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
-        Services.AddScoped<ICommercialAccountStore>(_ => CommercialAccountStore);
-        Services.AddScoped<ICommercialAuditStore>(_ => CommercialAuditStore);
-        Services.AddScoped<DeleteCommercialAccountUseCase>();
-        Services.AddScoped<RestoreCommercialAccountUseCase>();
-        Services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
-        Services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
-        Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
+        Services.AddSingleton(CommercialAccountStore);
+        Services.AddSingleton(new CommercialAuditStoreStub());
         Services.AddSingleton(TenantAccessor);
         Services.AddScoped<ICurrentTenantContextAccessor>(_ => TenantAccessor);
-        var commercialApiServiceClientType = typeof(DependencyInjection).Assembly.GetType(
+        var commercialApiServiceClientType = webAssembly.GetType(
             "ImportToPlanner.Web.Features.CommercialAccounts.Backend.CommercialApiServiceClient",
             throwOnError: true)!;
         Services.AddScoped(
@@ -131,8 +121,6 @@ internal sealed class HomePageTestContext : BunitContext
     public CurrentTenantContextAccessorStub TenantAccessor { get; } = new();
 
     public CommercialAccountStoreStub CommercialAccountStore { get; }
-
-    public CommercialAuditStoreStub CommercialAuditStore { get; }
 
     private static ClaimsPrincipal CreatePrincipal(bool isAuthenticated)
     {
@@ -194,12 +182,63 @@ internal sealed class HomePageTestContext : BunitContext
         private async Task<HttpResponseMessage> ResolveAccessAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var payload = await ReadPayloadAsync<ResolveCommercialAccessRequest>(request, cancellationToken);
-            var useCase = serviceProvider.GetRequiredService<ICommercialAccessUseCase>();
-            var result = await useCase.ResolveAccessAsync(
-                payload.SessionIdentity,
-                payload.CommercialModeEnabled,
-                payload.OccurredUtc,
+            var accountStore = serviceProvider.GetRequiredService<CommercialAccountStoreStub>();
+
+            if (!payload.CommercialModeEnabled)
+            {
+                return CreateJsonResponse(new CommercialAccessDecision(
+                    CommercialAccessDecisionType.SelfHostedBypass,
+                    AccountStatus: null,
+                    RetentionExpiresUtc: null,
+                    ShouldSignOut: false));
+            }
+
+            var existingAccount = await accountStore.GetAsync(
+                payload.SessionIdentity.TenantId,
+                payload.SessionIdentity.UserId,
                 cancellationToken);
+
+            if (existingAccount is null)
+            {
+                var createdAccount = new CommercialAccount(
+                    payload.SessionIdentity.TenantId,
+                    payload.SessionIdentity.UserId,
+                    payload.OccurredUtc,
+                    CommercialAccountStatus.Active,
+                    DeletedUtc: null,
+                    RetentionExpiresUtc: null,
+                    RestoredUtc: null,
+                    LastSignInOutcomeUtc: payload.OccurredUtc);
+                await accountStore.CreateAsync(createdAccount, cancellationToken);
+
+                return CreateJsonResponse(new CommercialAccessDecision(
+                    CommercialAccessDecisionType.CreateAccount,
+                    CommercialAccountStatus.Active,
+                    RetentionExpiresUtc: null,
+                    ShouldSignOut: false));
+            }
+
+            if (existingAccount.Status == CommercialAccountStatus.Deleted)
+            {
+                var deletedDecision = existingAccount.RetentionExpiresUtc is not null
+                    && existingAccount.RetentionExpiresUtc <= payload.OccurredUtc
+                    ? CommercialAccessDecisionType.BlockedDeleted
+                    : CommercialAccessDecisionType.OfferRestore;
+
+                return CreateJsonResponse(new CommercialAccessDecision(
+                    deletedDecision,
+                    existingAccount.Status,
+                    existingAccount.RetentionExpiresUtc,
+                    ShouldSignOut: false));
+            }
+
+            await accountStore.CreateAsync(existingAccount with { LastSignInOutcomeUtc = payload.OccurredUtc }, cancellationToken);
+
+            var result = new CommercialAccessDecision(
+                CommercialAccessDecisionType.Allow,
+                existingAccount.Status,
+                existingAccount.RetentionExpiresUtc,
+                ShouldSignOut: false);
 
             return CreateJsonResponse(result);
         }
@@ -207,8 +246,11 @@ internal sealed class HomePageTestContext : BunitContext
         private async Task<HttpResponseMessage> GetProfileAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var payload = await ReadPayloadAsync<GetCommercialProfileRequest>(request, cancellationToken);
-            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
-            var result = await useCase.GetProfileAsync(payload.SessionIdentity, cancellationToken);
+            var accountStore = serviceProvider.GetRequiredService<CommercialAccountStoreStub>();
+            var result = await accountStore.GetAsync(
+                payload.SessionIdentity.TenantId,
+                payload.SessionIdentity.UserId,
+                cancellationToken);
 
             return CreateJsonResponse(result);
         }
@@ -216,8 +258,17 @@ internal sealed class HomePageTestContext : BunitContext
         private async Task<HttpResponseMessage> DeleteProfileAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var payload = await ReadPayloadAsync<DeleteCommercialAccountRequest>(request, cancellationToken);
-            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
-            await useCase.DeleteAccountAsync(payload.SessionIdentity, payload.OccurredUtc, cancellationToken);
+            var accountStore = serviceProvider.GetRequiredService<CommercialAccountStoreStub>();
+            var auditStore = serviceProvider.GetRequiredService<CommercialAuditStoreStub>();
+            var retentionExpiresUtc = payload.OccurredUtc.AddMonths(6);
+
+            await accountStore.MarkDeletedAsync(
+                payload.SessionIdentity.TenantId,
+                payload.SessionIdentity.UserId,
+                payload.OccurredUtc,
+                retentionExpiresUtc,
+                cancellationToken);
+            await auditStore.AppendAsync(retentionExpiresUtc, cancellationToken);
 
             return new HttpResponseMessage(HttpStatusCode.NoContent);
         }
@@ -225,8 +276,28 @@ internal sealed class HomePageTestContext : BunitContext
         private async Task<HttpResponseMessage> RestoreProfileAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var payload = await ReadPayloadAsync<RestoreCommercialAccountRequest>(request, cancellationToken);
-            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
-            var result = await useCase.RestoreAccountAsync(payload.SessionIdentity, payload.OccurredUtc, cancellationToken);
+            var accountStore = serviceProvider.GetRequiredService<CommercialAccountStoreStub>();
+            var existingAccount = await accountStore.GetAsync(
+                payload.SessionIdentity.TenantId,
+                payload.SessionIdentity.UserId,
+                cancellationToken);
+
+            var result = existingAccount switch
+            {
+                null => CommercialAccountRestoreResult.AccountNotFound,
+                { Status: not CommercialAccountStatus.Deleted } => CommercialAccountRestoreResult.AccountNotDeleted,
+                { RetentionExpiresUtc: not null } account when account.RetentionExpiresUtc <= payload.OccurredUtc => CommercialAccountRestoreResult.RetentionExpired,
+                _ => CommercialAccountRestoreResult.Restored,
+            };
+
+            if (result == CommercialAccountRestoreResult.Restored)
+            {
+                await accountStore.RestoreAsync(
+                    payload.SessionIdentity.TenantId,
+                    payload.SessionIdentity.UserId,
+                    payload.OccurredUtc,
+                    cancellationToken);
+            }
 
             return CreateJsonResponse(result);
         }
@@ -234,8 +305,16 @@ internal sealed class HomePageTestContext : BunitContext
         private async Task<HttpResponseMessage> PurgeExpiredAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var payload = await ReadPayloadAsync<PurgeExpiredCommercialDataRequest>(request, cancellationToken);
-            var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
-            var result = await useCase.PurgeExpiredAsync(payload.AsOfUtc, payload.BatchSize, cancellationToken);
+            var accountStore = serviceProvider.GetRequiredService<CommercialAccountStoreStub>();
+            var auditStore = serviceProvider.GetRequiredService<CommercialAuditStoreStub>();
+            var expiredAccounts = await accountStore.ListExpiredDeletedAsync(payload.AsOfUtc, payload.BatchSize, cancellationToken);
+
+            foreach (var expiredAccount in expiredAccounts)
+            {
+                await accountStore.PurgeAsync(expiredAccount.TenantId, expiredAccount.UserId, cancellationToken);
+            }
+
+            var result = expiredAccounts.Count + await auditStore.PurgeExpiredAsync(payload.AsOfUtc, payload.BatchSize, cancellationToken);
 
             return CreateJsonResponse(result);
         }

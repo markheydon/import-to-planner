@@ -1,4 +1,5 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -18,9 +19,9 @@ public sealed class CommercialBackendCompositionTests
             })
             .Build();
 
-        services.AddCommercialModeServices(configuration);
+        services.AddCommercialBackendServices(configuration);
 
-        var commercialApiClientType = typeof(DependencyInjection).Assembly.GetType(
+        var commercialApiClientType = typeof(TenantAuthorityConfiguration).Assembly.GetType(
             "ImportToPlanner.Web.Features.CommercialAccounts.Backend.CommercialApiServiceClient",
             throwOnError: true)!;
 
@@ -30,18 +31,17 @@ public sealed class CommercialBackendCompositionTests
     }
 
     [Fact]
-    public void AddCommercialModeServices_WhenBackendApiEnabled_RegistersTenantMetadataStore()
+    public void AddCommercialModeServices_WhenCommercialModeEnabled_RegistersTenantMetadataStore()
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Features:CommercialMode:Enabled"] = "true",
-                ["Features:CommercialMode:UseBackendApi"] = "true",
             })
             .Build();
 
-        services.AddCommercialModeServices(configuration);
+        services.AddCommercialBackendServices(configuration);
 
         Assert.Contains(
             services,
@@ -50,18 +50,17 @@ public sealed class CommercialBackendCompositionTests
     }
 
     [Fact]
-    public void AddCommercialModeServices_WhenBackendApiEnabled_DoesNotRegisterWebRetentionHostedService()
+    public void AddCommercialModeServices_WhenCommercialModeEnabled_DoesNotRegisterWebRetentionHostedService()
     {
         var services = new ServiceCollection();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Features:CommercialMode:Enabled"] = "true",
-                ["Features:CommercialMode:UseBackendApi"] = "true",
             })
             .Build();
 
-        services.AddCommercialModeServices(configuration);
+        services.AddCommercialBackendServices(configuration);
 
         Assert.DoesNotContain(
             services,

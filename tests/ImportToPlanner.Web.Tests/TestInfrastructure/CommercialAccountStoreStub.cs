@@ -1,9 +1,8 @@
-using ImportToPlanner.CommercialService.CommercialAccounts;
-using ImportToPlanner.CommercialService.Models;
+using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 
 namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
-internal sealed class CommercialAccountStoreStub : ICommercialAccountStore
+internal sealed class CommercialAccountStoreStub
 {
     private readonly Dictionary<string, CommercialAccount> values = new(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyCollection<CommercialAccount> Accounts => values.Values;
