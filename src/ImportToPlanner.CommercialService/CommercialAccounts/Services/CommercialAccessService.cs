@@ -1,4 +1,3 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
 namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
@@ -6,15 +5,14 @@ namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
 /// <summary>
 /// Resolves commercial access decisions for authenticated sessions.
 /// </summary>
-public sealed class CommercialAccessUseCase(
-    ICommercialAccountStore commercialAccountStore,
-    ICommercialAuditStore commercialAuditStore) : ICommercialAccessUseCase
+public sealed class CommercialAccessService(
+    CommercialAccountsService commercialAccountsService,
+    CommercialAuditService commercialAuditService)
 {
     private const string AccountCreatedOutcomeCode = "account_created";
     private const string SignInAllowedOutcomeCode = "sign_in_allowed";
     private const string SignInBlockedDeletedOutcomeCode = "sign_in_blocked_deleted";
 
-    /// <inheritdoc/>
     public async Task<CommercialAccessDecision> ResolveAccessAsync(
         SessionIdentityContext sessionIdentity,
         bool commercialModeEnabled,
@@ -36,7 +34,7 @@ public sealed class CommercialAccessUseCase(
                 ShouldSignOut: false);
         }
 
-        var existingAccount = await commercialAccountStore
+        var existingAccount = await commercialAccountsService
             .GetAsync(sessionIdentity.TenantId, sessionIdentity.UserId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -52,21 +50,9 @@ public sealed class CommercialAccessUseCase(
                 RestoredUtc: null,
                 LastSignInOutcomeUtc: occurredUtc);
 
-            await commercialAccountStore.CreateAsync(account, cancellationToken).ConfigureAwait(false);
-            await AppendAuditAsync(
-                tenantId: sessionIdentity.TenantId,
-                userId: sessionIdentity.UserId,
-                occurredUtc,
-                eventType: AccountAuditEventType.AccountCreated,
-                outcome: AccountCreatedOutcomeCode,
-                cancellationToken).ConfigureAwait(false);
-            await AppendAuditAsync(
-                tenantId: sessionIdentity.TenantId,
-                userId: sessionIdentity.UserId,
-                occurredUtc,
-                eventType: AccountAuditEventType.SignInOutcome,
-                outcome: SignInAllowedOutcomeCode,
-                cancellationToken).ConfigureAwait(false);
+            await commercialAccountsService.CreateAsync(account, cancellationToken).ConfigureAwait(false);
+            await AppendAuditAsync(sessionIdentity.TenantId, sessionIdentity.UserId, occurredUtc, AccountAuditEventType.AccountCreated, AccountCreatedOutcomeCode, cancellationToken).ConfigureAwait(false);
+            await AppendAuditAsync(sessionIdentity.TenantId, sessionIdentity.UserId, occurredUtc, AccountAuditEventType.SignInOutcome, SignInAllowedOutcomeCode, cancellationToken).ConfigureAwait(false);
 
             return new CommercialAccessDecision(
                 CommercialAccessDecisionType.CreateAccount,
@@ -77,13 +63,7 @@ public sealed class CommercialAccessUseCase(
 
         if (existingAccount.Status == CommercialAccountStatus.Deleted)
         {
-            await AppendAuditAsync(
-                tenantId: sessionIdentity.TenantId,
-                userId: sessionIdentity.UserId,
-                occurredUtc,
-                eventType: AccountAuditEventType.SignInOutcome,
-                outcome: SignInBlockedDeletedOutcomeCode,
-                cancellationToken).ConfigureAwait(false);
+            await AppendAuditAsync(sessionIdentity.TenantId, sessionIdentity.UserId, occurredUtc, AccountAuditEventType.SignInOutcome, SignInBlockedDeletedOutcomeCode, cancellationToken).ConfigureAwait(false);
 
             return new CommercialAccessDecision(
                 CommercialAccessDecisionType.OfferRestore,
@@ -92,13 +72,7 @@ public sealed class CommercialAccessUseCase(
                 ShouldSignOut: false);
         }
 
-        await AppendAuditAsync(
-            tenantId: sessionIdentity.TenantId,
-            userId: sessionIdentity.UserId,
-            occurredUtc,
-            eventType: AccountAuditEventType.SignInOutcome,
-            outcome: SignInAllowedOutcomeCode,
-            cancellationToken).ConfigureAwait(false);
+        await AppendAuditAsync(sessionIdentity.TenantId, sessionIdentity.UserId, occurredUtc, AccountAuditEventType.SignInOutcome, SignInAllowedOutcomeCode, cancellationToken).ConfigureAwait(false);
 
         return new CommercialAccessDecision(
             CommercialAccessDecisionType.Allow,
@@ -123,6 +97,6 @@ public sealed class CommercialAccessUseCase(
             outcome,
             occurredUtc.AddMonths(12));
 
-        return commercialAuditStore.AppendAsync(auditEvent, cancellationToken);
+        return commercialAuditService.AppendAsync(auditEvent, cancellationToken);
     }
 }

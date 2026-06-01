@@ -1,28 +1,28 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 namespace ImportToPlanner.Tests.TestDoubles;
 
-public sealed class CommercialAccountStoreStub : ICommercialAccountStore
+public sealed class CommercialAccountStoreStub : CommercialAccountsService
 {
     private readonly Dictionary<string, CommercialAccount> values = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyCollection<CommercialAccount> Accounts => values.Values;
 
-    public Task<CommercialAccount?> GetAsync(string tenantId, string userId, CancellationToken cancellationToken)
+    public override Task<CommercialAccount?> GetAsync(string tenantId, string userId, CancellationToken cancellationToken)
     {
         values.TryGetValue(BuildKey(tenantId, userId), out var account);
         return Task.FromResult(account);
     }
 
-    public Task CreateAsync(CommercialAccount account, CancellationToken cancellationToken)
+    public override Task CreateAsync(CommercialAccount account, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(account);
         values[BuildKey(account.TenantId, account.UserId)] = account;
         return Task.CompletedTask;
     }
 
-    public Task MarkDeletedAsync(
+    public override Task MarkDeletedAsync(
         string tenantId,
         string userId,
         DateTimeOffset deletedUtc,
@@ -44,7 +44,7 @@ public sealed class CommercialAccountStoreStub : ICommercialAccountStore
         return Task.CompletedTask;
     }
 
-    public Task RestoreAsync(string tenantId, string userId, DateTimeOffset restoredUtc, CancellationToken cancellationToken)
+    public override Task RestoreAsync(string tenantId, string userId, DateTimeOffset restoredUtc, CancellationToken cancellationToken)
     {
         if (!values.TryGetValue(BuildKey(tenantId, userId), out var current))
         {
@@ -62,7 +62,7 @@ public sealed class CommercialAccountStoreStub : ICommercialAccountStore
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<CommercialAccount>> ListExpiredDeletedAsync(
+    public override Task<IReadOnlyList<CommercialAccount>> ListExpiredDeletedAsync(
         DateTimeOffset asOfUtc,
         int batchSize,
         CancellationToken cancellationToken)
@@ -77,7 +77,7 @@ public sealed class CommercialAccountStoreStub : ICommercialAccountStore
         return Task.FromResult<IReadOnlyList<CommercialAccount>>(expired);
     }
 
-    public Task PurgeAsync(string tenantId, string userId, CancellationToken cancellationToken)
+    public override Task PurgeAsync(string tenantId, string userId, CancellationToken cancellationToken)
     {
         values.Remove(BuildKey(tenantId, userId));
         return Task.CompletedTask;

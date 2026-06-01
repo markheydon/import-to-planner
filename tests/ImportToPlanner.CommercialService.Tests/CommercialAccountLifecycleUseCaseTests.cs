@@ -1,4 +1,3 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
 using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 using ImportToPlanner.Tests.TestDoubles;
@@ -29,9 +28,9 @@ public sealed class CommercialAccountLifecycleUseCaseTests
             CancellationToken.None);
 
         using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
-        var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+        var service = serviceProvider.GetRequiredService<CommercialProfileService>();
 
-        await useCase.DeleteAccountAsync(identity, deletedUtc, CancellationToken.None);
+        await service.DeleteAccountAsync(identity, deletedUtc, CancellationToken.None);
 
         var deletedAccount = Assert.Single(accountStore.Accounts);
         Assert.Equal(CommercialAccountStatus.Deleted, deletedAccount.Status);
@@ -64,9 +63,9 @@ public sealed class CommercialAccountLifecycleUseCaseTests
             CancellationToken.None);
 
         using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
-        var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+        var service = serviceProvider.GetRequiredService<CommercialProfileService>();
 
-        var result = await useCase.RestoreAccountAsync(identity, restoredUtc, CancellationToken.None);
+        var result = await service.RestoreAccountAsync(identity, restoredUtc, CancellationToken.None);
 
         Assert.Equal(CommercialAccountRestoreResult.Restored, result);
 
@@ -102,9 +101,9 @@ public sealed class CommercialAccountLifecycleUseCaseTests
             CancellationToken.None);
 
         using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
-        var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+        var service = serviceProvider.GetRequiredService<CommercialProfileService>();
 
-        var result = await useCase.RestoreAccountAsync(identity, restoreAttemptUtc, CancellationToken.None);
+        var result = await service.RestoreAccountAsync(identity, restoreAttemptUtc, CancellationToken.None);
 
         Assert.Equal(CommercialAccountRestoreResult.RetentionExpired, result);
         Assert.DoesNotContain(auditStore.Events, evt => evt.EventType == AccountAuditEventType.AccountRestored);
@@ -131,9 +130,9 @@ public sealed class CommercialAccountLifecycleUseCaseTests
             CancellationToken.None);
 
         using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
-        var accessUseCase = serviceProvider.GetRequiredService<ICommercialAccessUseCase>();
+        var accessService = serviceProvider.GetRequiredService<CommercialAccessService>();
 
-        var decision = await accessUseCase.ResolveAccessAsync(
+        var decision = await accessService.ResolveAccessAsync(
             identity,
             commercialModeEnabled: true,
             occurredUtc: new DateTimeOffset(2026, 5, 28, 11, 0, 0, TimeSpan.Zero),
@@ -151,13 +150,10 @@ public sealed class CommercialAccountLifecycleUseCaseTests
         ArgumentNullException.ThrowIfNull(auditStore);
 
         var services = new ServiceCollection();
-        services.AddScoped<ICommercialAccountStore>(_ => accountStore);
-        services.AddScoped<ICommercialAuditStore>(_ => auditStore);
-        services.AddScoped<DeleteCommercialAccountUseCase>();
-        services.AddScoped<RestoreCommercialAccountUseCase>();
-        services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
-        services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
-        services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
+        services.AddSingleton<CommercialAccountsService>(_ => accountStore);
+        services.AddSingleton<CommercialAuditService>(_ => auditStore);
+        services.AddSingleton<CommercialProfileService>();
+        services.AddSingleton<CommercialAccessService>();
 
         return services.BuildServiceProvider();
     }

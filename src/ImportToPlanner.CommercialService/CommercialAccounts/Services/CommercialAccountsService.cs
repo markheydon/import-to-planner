@@ -1,30 +1,42 @@
 using Azure;
 using Azure.Data.Tables;
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
-namespace ImportToPlanner.CommercialService.CommercialAccounts.Storage;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 /// <summary>
-/// Persists commercial account records in Azure Table Storage.
+/// Handles commercial account records stored in Azure Table Storage.
 /// </summary>
-public sealed class TableCommercialAccountStore(TableClient tableClient) : ICommercialAccountStore, IDisposable
+public class CommercialAccountsService
 {
-    private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
-    private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);
-    private volatile bool tableCreated;
+    private const string TableName = "CommercialAccounts";
+    private readonly TableClient? tableClient;
 
-    public async Task<CommercialAccount?> GetAsync(string tenantId, string userId, CancellationToken cancellationToken)
+    public CommercialAccountsService(TableServiceClient tableServiceClient)
+        : this(CreateTableClient(tableServiceClient))
+    {
+    }
+
+    internal CommercialAccountsService(TableClient tableClient)
+    {
+        this.tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
+    }
+
+    protected CommercialAccountsService()
+    {
+    }
+
+    public virtual async Task<CommercialAccount?> GetAsync(string tenantId, string userId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var response = await tableClient
+            var response = await TableClient
                 .GetEntityAsync<TableEntity>(tenantId, userId, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
             return ToModel(response.Value);
@@ -35,16 +47,16 @@ public sealed class TableCommercialAccountStore(TableClient tableClient) : IComm
         }
     }
 
-    public async Task CreateAsync(CommercialAccount account, CancellationToken cancellationToken)
+    public virtual async Task CreateAsync(CommercialAccount account, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(account);
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
-        await tableClient.AddEntityAsync(ToEntity(account), cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
+        await TableClient.AddEntityAsync(ToEntity(account), cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task MarkDeletedAsync(
+    public virtual async Task MarkDeletedAsync(
         string tenantId,
         string userId,
         DateTimeOffset deletedUtc,
@@ -68,12 +80,12 @@ public sealed class TableCommercialAccountStore(TableClient tableClient) : IComm
             RetentionExpiresUtc = retentionExpiresUtc,
         };
 
-        await tableClient
+        await TableClient
             .UpsertEntityAsync(ToEntity(updated), TableUpdateMode.Replace, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task RestoreAsync(string tenantId, string userId, DateTimeOffset restoredUtc, CancellationToken cancellationToken)
+    public virtual async Task RestoreAsync(string tenantId, string userId, DateTimeOffset restoredUtc, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
@@ -93,19 +105,19 @@ public sealed class TableCommercialAccountStore(TableClient tableClient) : IComm
             RestoredUtc = restoredUtc,
         };
 
-        await tableClient
+        await TableClient
             .UpsertEntityAsync(ToEntity(updated), TableUpdateMode.Replace, cancellationToken)
             .ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyList<CommercialAccount>> ListExpiredDeletedAsync(
+    public virtual async Task<IReadOnlyList<CommercialAccount>> ListExpiredDeletedAsync(
         DateTimeOffset asOfUtc,
         int batchSize,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
 
         var effectiveBatchSize = Math.Max(0, batchSize);
         if (effectiveBatchSize == 0)
@@ -117,7 +129,7 @@ public sealed class TableCommercialAccountStore(TableClient tableClient) : IComm
         var queryFilter = TableClient.CreateQueryFilter(
             $"{nameof(CommercialAccount.Status)} eq {CommercialAccountStatus.Deleted.ToString()} and {nameof(CommercialAccount.RetentionExpiresUtc)} le {asOfUtc}");
 
-        await foreach (var entity in tableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
+        await foreach (var entity in TableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             var model = ToModel(entity);
             if (model.RetentionExpiresUtc is null)
@@ -135,17 +147,17 @@ public sealed class TableCommercialAccountStore(TableClient tableClient) : IComm
         return results;
     }
 
-    public async Task PurgeAsync(string tenantId, string userId, CancellationToken cancellationToken)
+    public virtual async Task PurgeAsync(string tenantId, string userId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            await tableClient.DeleteEntityAsync(tenantId, userId, cancellationToken: cancellationToken).ConfigureAwait(false);
+            await TableClient.DeleteEntityAsync(tenantId, userId, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
         catch (RequestFailedException exception) when (exception.Status == 404)
         {
@@ -153,31 +165,11 @@ public sealed class TableCommercialAccountStore(TableClient tableClient) : IComm
         }
     }
 
-    public void Dispose()
-    {
-        initialiseSemaphore.Dispose();
-    }
+    private TableClient TableClient => tableClient ?? throw new InvalidOperationException("The table client has not been initialised.");
 
-    private async Task EnsureCreatedAsync(CancellationToken cancellationToken)
+    private async Task EnsureTableAsync(CancellationToken cancellationToken)
     {
-        if (tableCreated)
-        {
-            return;
-        }
-
-        await initialiseSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (!tableCreated)
-            {
-                await tableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
-                tableCreated = true;
-            }
-        }
-        finally
-        {
-            initialiseSemaphore.Release();
-        }
+        await TableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static TableEntity ToEntity(CommercialAccount model)
@@ -213,5 +205,11 @@ public sealed class TableCommercialAccountStore(TableClient tableClient) : IComm
             entity.GetDateTimeOffset(nameof(CommercialAccount.RetentionExpiresUtc)),
             entity.GetDateTimeOffset(nameof(CommercialAccount.RestoredUtc)),
             entity.GetDateTimeOffset(nameof(CommercialAccount.LastSignInOutcomeUtc)));
+    }
+
+    private static TableClient CreateTableClient(TableServiceClient tableServiceClient)
+    {
+        ArgumentNullException.ThrowIfNull(tableServiceClient);
+        return tableServiceClient.GetTableClient(TableName);
     }
 }

@@ -1,4 +1,4 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 namespace ImportToPlanner.CommercialService;
 
@@ -6,7 +6,7 @@ namespace ImportToPlanner.CommercialService;
 /// Runs scheduled retention sweeps for hosted commercial accounts and audit records.
 /// </summary>
 internal sealed class CommercialAccountRetentionHostedService(
-    IServiceScopeFactory serviceScopeFactory,
+    CommercialProfileService commercialProfileService,
     CommercialModeOptions commercialModeOptions,
     ILogger<CommercialAccountRetentionHostedService> logger) : BackgroundService
 {
@@ -27,9 +27,7 @@ internal sealed class CommercialAccountRetentionHostedService(
         {
             try
             {
-                using var scope = serviceScopeFactory.CreateScope();
-                var profileUseCase = scope.ServiceProvider.GetRequiredService<ICommercialProfileUseCase>();
-                var purgedAccountCount = await profileUseCase
+                var purgedAccountCount = await commercialProfileService
                     .PurgeExpiredAsync(DateTimeOffset.UtcNow, DefaultBatchSize, stoppingToken)
                     .ConfigureAwait(false);
 

@@ -1,82 +1,71 @@
 using Azure;
 using Azure.Data.Tables;
 using ImportToPlanner.Application.Consent.Models;
-using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.Application.TenantContext.Models;
 
-namespace ImportToPlanner.CommercialService.TenantMetadata.Storage;
+namespace ImportToPlanner.CommercialService.TenantMetadata.Services;
 
 /// <summary>
-/// Provides Azure Table Storage persistence for tenant-scoped operational metadata.
+/// Handles tenant operational metadata stored in Azure Table Storage.
 /// </summary>
-internal sealed class TableTenantOperationalMetadataStore(TableClient tableClient) : ITenantOperationalMetadataStore, IDisposable
+public class TenantMetadataService
 {
     private const string OperationalMetadataRowKey = "operational";
-    private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
-    private volatile bool tableCreated;
-    private readonly SemaphoreSlim initSemaphore = new(1, 1);
+    private const string TableName = "TenantOperationalMetadata";
+    private readonly TableClient? tableClient;
 
-    /// <inheritdoc/>
-    public async Task<TenantOperationalMetadata?> GetAsync(string tenantId, CancellationToken cancellationToken)
+    public TenantMetadataService(TableServiceClient tableServiceClient)
+        : this(CreateTableClient(tableServiceClient))
+    {
+    }
+
+    internal TenantMetadataService(TableClient tableClient)
+    {
+        this.tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
+    }
+
+    protected TenantMetadataService()
+    {
+    }
+
+    public virtual async Task<TenantOperationalMetadata?> GetAsync(string tenantId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
-            var response = await tableClient.GetEntityAsync<TenantOperationalMetadataEntity>(
+            var response = await TableClient.GetEntityAsync<TenantOperationalMetadataEntity>(
                 tenantId,
                 OperationalMetadataRowKey,
                 cancellationToken: cancellationToken).ConfigureAwait(false);
 
             return response.Value.ToModel();
         }
-        catch (RequestFailedException ex) when (ex.Status == 404)
+        catch (RequestFailedException exception) when (exception.Status == 404)
         {
             return null;
         }
     }
 
-    /// <inheritdoc/>
-    public async Task UpsertAsync(TenantOperationalMetadata metadata, CancellationToken cancellationToken)
+    public virtual async Task UpsertAsync(TenantOperationalMetadata metadata, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(metadata);
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
 
         var entity = TenantOperationalMetadataEntity.FromModel(metadata);
-        await tableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace, cancellationToken).ConfigureAwait(false);
+        await TableClient.UpsertEntityAsync(entity, TableUpdateMode.Replace, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task EnsureCreatedAsync(CancellationToken cancellationToken)
-    {
-        if (tableCreated)
-        {
-            return;
-        }
+    private TableClient TableClient => tableClient ?? throw new InvalidOperationException("The table client has not been initialised.");
 
-        await initSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (!tableCreated)
-            {
-                await tableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
-                tableCreated = true;
-            }
-        }
-        finally
-        {
-            initSemaphore.Release();
-        }
-    }
-
-    /// <inheritdoc/>
-    public void Dispose()
+    private async Task EnsureTableAsync(CancellationToken cancellationToken)
     {
-        initSemaphore.Dispose();
+        await TableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private sealed class TenantOperationalMetadataEntity : ITableEntity
@@ -128,5 +117,11 @@ internal sealed class TableTenantOperationalMetadataStore(TableClient tableClien
                 LastSupportDiagnosticCode,
                 LastUpdatedUtc == default ? DateTimeOffset.UtcNow : LastUpdatedUtc);
         }
+    }
+
+    private static TableClient CreateTableClient(TableServiceClient tableServiceClient)
+    {
+        ArgumentNullException.ThrowIfNull(tableServiceClient);
+        return tableServiceClient.GetTableClient(TableName);
     }
 }

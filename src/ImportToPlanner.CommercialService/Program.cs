@@ -7,7 +7,7 @@ builder.AddAzureTableServiceClient(connectionName: "tables");
 
 StartupConfigurationValidator.Validate(builder.Configuration);
 
-builder.Services.AddCommercialApiServices(builder.Configuration);
+CommercialServiceComposition.ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 

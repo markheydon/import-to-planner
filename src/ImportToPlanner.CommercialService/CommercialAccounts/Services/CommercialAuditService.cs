@@ -1,36 +1,48 @@
 using Azure;
 using Azure.Data.Tables;
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
-namespace ImportToPlanner.CommercialService.CommercialAccounts.Storage;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 /// <summary>
-/// Persists commercial account audit events in Azure Table Storage.
+/// Handles commercial audit events stored in Azure Table Storage.
 /// </summary>
-public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommercialAuditStore, IDisposable
+public class CommercialAuditService
 {
-    private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
-    private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);
-    private volatile bool tableCreated;
+    private const string TableName = "CommercialAccountAuditEvents";
+    private readonly TableClient? tableClient;
 
-    public async Task AppendAsync(AccountAuditEvent auditEvent, CancellationToken cancellationToken)
+    public CommercialAuditService(TableServiceClient tableServiceClient)
+        : this(CreateTableClient(tableServiceClient))
+    {
+    }
+
+    internal CommercialAuditService(TableClient tableClient)
+    {
+        this.tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
+    }
+
+    protected CommercialAuditService()
+    {
+    }
+
+    public virtual async Task AppendAsync(AccountAuditEvent auditEvent, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(auditEvent);
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
-        await tableClient.AddEntityAsync(ToEntity(auditEvent), cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
+        await TableClient.AddEntityAsync(ToEntity(auditEvent), cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<IReadOnlyList<AccountAuditEvent>> ListExpiredAsync(
+    public virtual async Task<IReadOnlyList<AccountAuditEvent>> ListExpiredAsync(
         DateTimeOffset asOfUtc,
         int batchSize,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        await EnsureTableAsync(cancellationToken).ConfigureAwait(false);
 
         var effectiveBatchSize = Math.Max(0, batchSize);
         if (effectiveBatchSize == 0)
@@ -41,10 +53,9 @@ public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommer
         var results = new List<AccountAuditEvent>(effectiveBatchSize);
         var queryFilter = TableClient.CreateQueryFilter($"{nameof(AccountAuditEvent.RetentionExpiresUtc)} le {asOfUtc}");
 
-        await foreach (var entity in tableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
+        await foreach (var entity in TableClient.QueryAsync<TableEntity>(filter: queryFilter, cancellationToken: cancellationToken).ConfigureAwait(false))
         {
-            var model = ToModel(entity);
-            results.Add(model);
+            results.Add(ToModel(entity));
             if (results.Count >= effectiveBatchSize)
             {
                 break;
@@ -54,7 +65,7 @@ public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommer
         return results;
     }
 
-    public async Task<int> PurgeExpiredAsync(DateTimeOffset asOfUtc, int batchSize, CancellationToken cancellationToken)
+    public virtual async Task<int> PurgeExpiredAsync(DateTimeOffset asOfUtc, int batchSize, CancellationToken cancellationToken)
     {
         var expired = await ListExpiredAsync(asOfUtc, batchSize, cancellationToken).ConfigureAwait(false);
 
@@ -63,7 +74,7 @@ public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommer
             var rowKey = BuildRowKey(auditEvent);
             try
             {
-                await tableClient.DeleteEntityAsync(auditEvent.TenantId, rowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
+                await TableClient.DeleteEntityAsync(auditEvent.TenantId, rowKey, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
             catch (RequestFailedException exception) when (exception.Status == 404)
             {
@@ -74,31 +85,11 @@ public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommer
         return expired.Count;
     }
 
-    public void Dispose()
-    {
-        initialiseSemaphore.Dispose();
-    }
+    private TableClient TableClient => tableClient ?? throw new InvalidOperationException("The table client has not been initialised.");
 
-    private async Task EnsureCreatedAsync(CancellationToken cancellationToken)
+    private async Task EnsureTableAsync(CancellationToken cancellationToken)
     {
-        if (tableCreated)
-        {
-            return;
-        }
-
-        await initialiseSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            if (!tableCreated)
-            {
-                await tableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
-                tableCreated = true;
-            }
-        }
-        finally
-        {
-            initialiseSemaphore.Release();
-        }
+        await TableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static TableEntity ToEntity(AccountAuditEvent model)
@@ -136,7 +127,12 @@ public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommer
     private static string BuildRowKey(AccountAuditEvent model)
     {
         ArgumentNullException.ThrowIfNull(model);
-
         return $"{model.UserId}|{model.OccurredUtc.UtcTicks:D19}|{model.EventType}";
+    }
+
+    private static TableClient CreateTableClient(TableServiceClient tableServiceClient)
+    {
+        ArgumentNullException.ThrowIfNull(tableServiceClient);
+        return tableServiceClient.GetTableClient(TableName);
     }
 }

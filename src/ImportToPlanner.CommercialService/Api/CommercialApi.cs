@@ -1,7 +1,7 @@
-using ImportToPlanner.Application.TenantContext.Abstractions;
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 using ImportToPlanner.CommercialService.TenantMetadata.Models;
+using ImportToPlanner.CommercialService.TenantMetadata.Services;
 
 namespace ImportToPlanner.CommercialService;
 
@@ -23,12 +23,12 @@ public static class CommercialApi
 
         group.MapPost("/access/resolve", async (
             ResolveCommercialAccessRequest request,
-            ICommercialAccessUseCase useCase,
+            CommercialAccessService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            var result = await useCase.ResolveAccessAsync(
+            var result = await service.ResolveAccessAsync(
                 request.SessionIdentity,
                 request.CommercialModeEnabled,
                 request.OccurredUtc,
@@ -39,51 +39,51 @@ public static class CommercialApi
 
         group.MapPost("/profile/get", async (
             GetCommercialProfileRequest request,
-            ICommercialProfileUseCase useCase,
+            CommercialProfileService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            var result = await useCase.GetProfileAsync(request.SessionIdentity, cancellationToken).ConfigureAwait(false);
+            var result = await service.GetProfileAsync(request.SessionIdentity, cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         });
 
         group.MapPost("/profile/delete", async (
             DeleteCommercialAccountRequest request,
-            ICommercialProfileUseCase useCase,
+            CommercialProfileService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            await useCase.DeleteAccountAsync(request.SessionIdentity, request.OccurredUtc, cancellationToken).ConfigureAwait(false);
+            await service.DeleteAccountAsync(request.SessionIdentity, request.OccurredUtc, cancellationToken).ConfigureAwait(false);
             return Results.NoContent();
         });
 
         group.MapPost("/profile/restore", async (
             RestoreCommercialAccountRequest request,
-            ICommercialProfileUseCase useCase,
+            CommercialProfileService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            var result = await useCase.RestoreAccountAsync(request.SessionIdentity, request.OccurredUtc, cancellationToken).ConfigureAwait(false);
+            var result = await service.RestoreAccountAsync(request.SessionIdentity, request.OccurredUtc, cancellationToken).ConfigureAwait(false);
             return Results.Ok(result);
         });
 
         group.MapPost("/profile/purge-expired", async (
             PurgeExpiredCommercialDataRequest request,
-            ICommercialProfileUseCase useCase,
+            CommercialProfileService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
 
-            var purgedCount = await useCase.PurgeExpiredAsync(request.AsOfUtc, request.BatchSize, cancellationToken).ConfigureAwait(false);
+            var purgedCount = await service.PurgeExpiredAsync(request.AsOfUtc, request.BatchSize, cancellationToken).ConfigureAwait(false);
             return Results.Ok(purgedCount);
         });
 
         group.MapPost("/tenant-metadata/get", async (
             GetTenantOperationalMetadataRequest request,
-            ITenantOperationalMetadataStore store,
+            TenantMetadataService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -93,13 +93,13 @@ public static class CommercialApi
                 return Results.BadRequest("TenantId is required.");
             }
 
-            var metadata = await store.GetAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
+            var metadata = await service.GetAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
             return Results.Ok(metadata);
         });
 
         group.MapPost("/tenant-metadata/upsert", async (
             UpsertTenantOperationalMetadataRequest request,
-            ITenantOperationalMetadataStore store,
+            TenantMetadataService service,
             CancellationToken cancellationToken) =>
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -109,7 +109,7 @@ public static class CommercialApi
                 return Results.BadRequest("Metadata is required.");
             }
 
-            await store.UpsertAsync(request.Metadata, cancellationToken).ConfigureAwait(false);
+            await service.UpsertAsync(request.Metadata, cancellationToken).ConfigureAwait(false);
             return Results.NoContent();
         });
 

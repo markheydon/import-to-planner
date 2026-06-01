@@ -1,4 +1,3 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
 using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 using ImportToPlanner.Tests.TestDoubles;
@@ -58,9 +57,9 @@ public sealed class CommercialRetentionSweepTests
             CancellationToken.None);
 
         using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
-        var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+        var service = serviceProvider.GetRequiredService<CommercialProfileService>();
 
-        var purgedAccountCount = await useCase.PurgeExpiredAsync(cutoffUtc, batchSize: 100, CancellationToken.None);
+        var purgedAccountCount = await service.PurgeExpiredAsync(cutoffUtc, batchSize: 100, CancellationToken.None);
 
         Assert.Equal(1, purgedAccountCount);
         Assert.DoesNotContain(accountStore.Accounts, account => account.UserId == "user-expired");
@@ -100,9 +99,9 @@ public sealed class CommercialRetentionSweepTests
             CancellationToken.None);
 
         using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
-        var useCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
+        var service = serviceProvider.GetRequiredService<CommercialProfileService>();
 
-        var purgedAccountCount = await useCase.PurgeExpiredAsync(cutoffUtc, batchSize: 0, CancellationToken.None);
+        var purgedAccountCount = await service.PurgeExpiredAsync(cutoffUtc, batchSize: 0, CancellationToken.None);
 
         Assert.Equal(0, purgedAccountCount);
         Assert.Single(accountStore.Accounts);
@@ -115,12 +114,9 @@ public sealed class CommercialRetentionSweepTests
         ArgumentNullException.ThrowIfNull(auditStore);
 
         var services = new ServiceCollection();
-        services.AddScoped<ICommercialAccountStore>(_ => accountStore);
-        services.AddScoped<ICommercialAuditStore>(_ => auditStore);
-        services.AddScoped<DeleteCommercialAccountUseCase>();
-        services.AddScoped<RestoreCommercialAccountUseCase>();
-        services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
-        services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
+        services.AddSingleton<CommercialAccountsService>(_ => accountStore);
+        services.AddSingleton<CommercialAuditService>(_ => auditStore);
+        services.AddSingleton<CommercialProfileService>();
 
         return services.BuildServiceProvider();
     }

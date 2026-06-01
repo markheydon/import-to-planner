@@ -1,6 +1,7 @@
-using ImportToPlanner.Application.TenantContext.Abstractions;
+using Azure.Data.Tables;
 using ImportToPlanner.CommercialService;
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
+using ImportToPlanner.CommercialService.TenantMetadata.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
@@ -9,48 +10,43 @@ namespace ImportToPlanner.Tests;
 public sealed class CommercialApiServiceTests
 {
     [Fact]
-    public void AddCommercialApiServices_RegistersCommercialOperationUseCases()
+    public void ConfigureServices_RegistersCommercialOperationUseCases()
     {
         var services = new ServiceCollection();
-        services.AddSingleton(new Azure.Data.Tables.TableServiceClient("UseDevelopmentStorage=true"));
+        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Features:CommercialMode:Enabled"] = "true",
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
-                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
-                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             })
             .Build();
 
-        services.AddCommercialApiServices(configuration);
+        CommercialServiceComposition.ConfigureServices(services, configuration);
 
         using var serviceProvider = services.BuildServiceProvider();
-        var accessUseCase = serviceProvider.GetRequiredService<ICommercialAccessUseCase>();
-        var profileUseCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
-        var tenantMetadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+        var accessService = serviceProvider.GetRequiredService<CommercialAccessService>();
+        var profileService = serviceProvider.GetRequiredService<CommercialProfileService>();
+        var tenantMetadataService = serviceProvider.GetRequiredService<TenantMetadataService>();
 
-        Assert.Equal("CommercialAccessUseCase", accessUseCase.GetType().Name);
-        Assert.Equal("GetCommercialProfileUseCase", profileUseCase.GetType().Name);
-        Assert.Equal("TableTenantOperationalMetadataStore", tenantMetadataStore.GetType().Name);
+        Assert.Equal("CommercialAccessService", accessService.GetType().Name);
+        Assert.Equal("CommercialProfileService", profileService.GetType().Name);
+        Assert.Equal("TenantMetadataService", tenantMetadataService.GetType().Name);
     }
 
     [Fact]
-    public void AddCommercialApiServices_RegistersRetentionHostedService()
+    public void ConfigureServices_RegistersRetentionHostedService()
     {
         var services = new ServiceCollection();
+        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Features:CommercialMode:Enabled"] = "true",
                 ["Features:CommercialMode:RetentionSweepEnabled"] = "false",
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
-                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
-                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             })
             .Build();
 
-        services.AddCommercialApiServices(configuration);
+        CommercialServiceComposition.ConfigureServices(services, configuration);
 
         Assert.Contains(
             services,
@@ -65,9 +61,6 @@ public sealed class CommercialApiServiceTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Features:CommercialMode:Enabled"] = "true",
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
-                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
-                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             })
             .Build();
 

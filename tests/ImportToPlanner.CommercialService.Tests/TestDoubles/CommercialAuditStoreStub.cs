@@ -1,22 +1,22 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 namespace ImportToPlanner.Tests.TestDoubles;
 
-public sealed class CommercialAuditStoreStub : ICommercialAuditStore
+public sealed class CommercialAuditStoreStub : CommercialAuditService
 {
     private readonly List<AccountAuditEvent> events = [];
 
     public IReadOnlyList<AccountAuditEvent> Events => events;
 
-    public Task AppendAsync(AccountAuditEvent auditEvent, CancellationToken cancellationToken)
+    public override Task AppendAsync(AccountAuditEvent auditEvent, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(auditEvent);
         events.Add(auditEvent);
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<AccountAuditEvent>> ListExpiredAsync(
+    public override Task<IReadOnlyList<AccountAuditEvent>> ListExpiredAsync(
         DateTimeOffset asOfUtc,
         int batchSize,
         CancellationToken cancellationToken)
@@ -29,7 +29,7 @@ public sealed class CommercialAuditStoreStub : ICommercialAuditStore
         return Task.FromResult<IReadOnlyList<AccountAuditEvent>>(expired);
     }
 
-    public Task<int> PurgeExpiredAsync(DateTimeOffset asOfUtc, int batchSize, CancellationToken cancellationToken)
+    public override Task<int> PurgeExpiredAsync(DateTimeOffset asOfUtc, int batchSize, CancellationToken cancellationToken)
     {
         var purgeCandidates = events
             .Where(auditEvent => auditEvent.RetentionExpiresUtc <= asOfUtc)

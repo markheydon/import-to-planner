@@ -3,7 +3,7 @@ using Azure.Core;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
 using ImportToPlanner.CommercialService.CommercialAccounts.Models;
-using ImportToPlanner.CommercialService.CommercialAccounts.Storage;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 namespace ImportToPlanner.Tests;
 
@@ -13,7 +13,7 @@ public sealed class CommercialAccountTableStoreTests
     public async Task CreateAsync_ThenGetAsync_PersistsCommercialAccountUsingTenantAndUserIdentityKey()
     {
         var tableClient = new FakeTableClient();
-        var store = new TableCommercialAccountStore(tableClient);
+        var store = new CommercialAccountsService(tableClient);
         var createdUtc = new DateTimeOffset(2026, 5, 28, 12, 0, 0, TimeSpan.Zero);
 
         await store.CreateAsync(
@@ -35,14 +35,14 @@ public sealed class CommercialAccountTableStoreTests
         Assert.Equal("user-001", account.UserId);
         Assert.Equal(CommercialAccountStatus.Active, account.Status);
         Assert.Equal(createdUtc, account.CreatedUtc);
-        Assert.Equal(1, tableClient.CreateIfNotExistsCallCount);
+        Assert.Equal(2, tableClient.CreateIfNotExistsCallCount);
     }
 
     [Fact]
     public async Task AppendAsync_PersistsSignInOutcomeAuditEvent_WithStableOutcomeCode()
     {
         var tableClient = new FakeTableClient();
-        var store = new TableCommercialAuditStore(tableClient);
+        var store = new CommercialAuditService(tableClient);
         var occurredUtc = new DateTimeOffset(2026, 5, 28, 12, 15, 0, TimeSpan.Zero);
 
         await store.AppendAsync(
