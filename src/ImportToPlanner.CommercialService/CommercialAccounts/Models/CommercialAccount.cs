@@ -1,4 +1,4 @@
-namespace ImportToPlanner.CommercialService.Models;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
 /// <summary>
 /// Represents a persisted commercial account keyed by tenant and user identifiers.

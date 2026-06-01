@@ -91,16 +91,16 @@ public sealed class ArchitectureComplianceTests
 
         var requiredPaths = new[]
         {
-            Path.Combine(contractsRoot, "Models", "SessionIdentityContext.cs"),
-            Path.Combine(contractsRoot, "Models", "CommercialAccount.cs"),
-            Path.Combine(contractsRoot, "Models", "CommercialAccessDecision.cs"),
-            Path.Combine(contractsRoot, "Models", "CommercialAccountRestoreResult.cs"),
-            Path.Combine(contractsRoot, "Models", "CommercialApiContracts.cs"),
-            Path.Combine(contractsRoot, "Models", "AccountAuditEvent.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccountStore.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAuditStore.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccessUseCase.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialProfileUseCase.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "SessionIdentityContext.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccount.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccountRestoreResult.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccountApiContracts.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "AccountAuditEvent.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialAccountStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialAuditStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialAccessUseCase.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialProfileUseCase.cs"),
         };
 
         foreach (var requiredPath in requiredPaths)
@@ -124,14 +124,14 @@ public sealed class ArchitectureComplianceTests
         var contractsRoot = Path.Combine(rootPath, "src", "ImportToPlanner.CommercialService");
         var commercialFiles = new[]
         {
-            Path.Combine(contractsRoot, "Models", "SessionIdentityContext.cs"),
-            Path.Combine(contractsRoot, "Models", "CommercialAccount.cs"),
-            Path.Combine(contractsRoot, "Models", "CommercialAccessDecision.cs"),
-            Path.Combine(contractsRoot, "Models", "AccountAuditEvent.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccountStore.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAuditStore.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialAccessUseCase.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "ICommercialProfileUseCase.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "SessionIdentityContext.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccount.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "AccountAuditEvent.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialAccountStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialAuditStore.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialAccessUseCase.cs"),
+            Path.Combine(contractsRoot, "CommercialAccounts", "Abstractions", "ICommercialProfileUseCase.cs"),
         };
 
         var forbiddenTokens = new[]

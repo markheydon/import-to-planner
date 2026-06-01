@@ -1,5 +1,6 @@
-using ImportToPlanner.CommercialService.CommercialAccounts;
-using ImportToPlanner.CommercialService.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
+using ImportToPlanner.CommercialService.CommercialAccounts.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 using ImportToPlanner.Tests.TestDoubles;
 
 namespace ImportToPlanner.Tests;

@@ -1,4 +1,6 @@
-namespace ImportToPlanner.CommercialService.CommercialAccounts;
+using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
+
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 /// <summary>
 /// Purges expired deleted commercial accounts and expired audit records.

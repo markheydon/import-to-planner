@@ -1,6 +1,7 @@
-using ImportToPlanner.CommercialService.Models;
+using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
+using ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
-namespace ImportToPlanner.CommercialService.CommercialAccounts;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
 
 /// <summary>
 /// Restores a deleted commercial account when it is still within retention.

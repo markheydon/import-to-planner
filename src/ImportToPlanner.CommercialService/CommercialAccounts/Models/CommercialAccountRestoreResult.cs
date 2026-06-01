@@ -1,4 +1,4 @@
-namespace ImportToPlanner.CommercialService.Models;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
 /// <summary>
 /// Represents the result of a commercial account restore request.

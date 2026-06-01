@@ -1,4 +1,4 @@
-namespace ImportToPlanner.CommercialService.Models;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
 /// <summary>
 /// Represents an audit event for account lifecycle changes and sign-in outcomes.

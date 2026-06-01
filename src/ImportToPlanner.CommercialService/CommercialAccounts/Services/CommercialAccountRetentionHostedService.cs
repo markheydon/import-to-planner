@@ -1,4 +1,4 @@
-using ImportToPlanner.CommercialService.CommercialAccounts;
+using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
 
 namespace ImportToPlanner.CommercialService;
 

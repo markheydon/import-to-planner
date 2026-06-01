@@ -1,8 +1,9 @@
 using Azure.Data.Tables;
 using ImportToPlanner.Application.TenantContext.Abstractions;
-using ImportToPlanner.CommercialService.CommercialAccounts;
+using ImportToPlanner.CommercialService.CommercialAccounts.Abstractions;
+using ImportToPlanner.CommercialService.CommercialAccounts.Services;
 using ImportToPlanner.CommercialService.CommercialAccounts.Storage;
-using ImportToPlanner.CommercialService.TenantMetadata;
+using ImportToPlanner.CommercialService.TenantMetadata.Storage;
 using Microsoft.Extensions.Options;
 
 namespace ImportToPlanner.CommercialService;

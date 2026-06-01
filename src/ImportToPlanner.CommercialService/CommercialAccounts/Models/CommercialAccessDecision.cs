@@ -1,4 +1,4 @@
-namespace ImportToPlanner.CommercialService.Models;
+namespace ImportToPlanner.CommercialService.CommercialAccounts.Models;
 
 /// <summary>
 /// Represents an access decision for the current commercial account session.

@@ -4,7 +4,7 @@ using ImportToPlanner.Application.Consent.Models;
 using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.Application.TenantContext.Models;
 
-namespace ImportToPlanner.CommercialService.TenantMetadata;
+namespace ImportToPlanner.CommercialService.TenantMetadata.Storage;
 
 /// <summary>
 /// Provides Azure Table Storage persistence for tenant-scoped operational metadata.
