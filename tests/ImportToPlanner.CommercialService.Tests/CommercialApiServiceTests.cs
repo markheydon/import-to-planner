@@ -20,7 +20,15 @@ public sealed class CommercialApiServiceTests
             })
             .Build();
 
+        // Mimic the service registration in Program.cs by registering the same services.
+        services.AddSingleton<CommercialAccountsService>();
+        services.AddSingleton<CommercialAuditService>();
+        services.AddSingleton<TenantMetadataService>();
+        services.AddSingleton<CommercialProfileService>();
+        services.AddSingleton<CommercialAccessService>();
         using var serviceProvider = services.BuildServiceProvider();
+
+        // Verify that our services are registered correctly.
         var accessService = serviceProvider.GetRequiredService<CommercialAccessService>();
         var profileService = serviceProvider.GetRequiredService<CommercialProfileService>();
         var tenantMetadataService = serviceProvider.GetRequiredService<TenantMetadataService>();

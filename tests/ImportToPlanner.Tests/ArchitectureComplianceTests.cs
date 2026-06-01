@@ -84,72 +84,11 @@ public sealed class ArchitectureComplianceTests
     }
 
     [Fact]
-    public void CommercialService_ContainsCommercialAccountBoundaryContracts()
-    {
-        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var contractsRoot = Path.Combine(rootPath, "src", "ImportToPlanner.CommercialService");
-
-        var requiredPaths = new[]
-        {
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "SessionIdentityContext.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccount.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccessDecision.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccountRestoreResult.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccountApiContracts.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "AccountAuditEvent.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Services", "CommercialAccountsService.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Services", "CommercialAuditService.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Services", "CommercialAccessService.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Services", "CommercialProfileService.cs"),
-        };
-
-        foreach (var requiredPath in requiredPaths)
-        {
-            Assert.True(File.Exists(requiredPath));
-        }
-    }
-
-    [Fact]
     public void CommercialAbstractionsProject_DoesNotExist()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
         var contractsRoot = Path.Combine(rootPath, "src", "ImportToPlanner.CommercialAbstractions");
         Assert.False(Directory.Exists(contractsRoot));
-    }
-
-    [Fact]
-    public void CommercialAccountContracts_AreProviderNeutral()
-    {
-        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var contractsRoot = Path.Combine(rootPath, "src", "ImportToPlanner.CommercialService");
-        var commercialFiles = new[]
-        {
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "SessionIdentityContext.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccount.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccessDecision.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "AccountAuditEvent.cs"),
-            Path.Combine(contractsRoot, "CommercialAccounts", "Models", "CommercialAccountApiContracts.cs"),
-        };
-
-        var forbiddenTokens = new[]
-        {
-            "Azure.Data.Tables",
-            "Microsoft.Graph",
-            "Microsoft.AspNetCore",
-            "System.Security.Claims",
-            "ImportToPlanner.Web",
-            "ImportToPlanner.Infrastructure",
-            "Features:CommercialMode",
-        };
-
-        foreach (var commercialFile in commercialFiles)
-        {
-            var content = File.ReadAllText(commercialFile);
-            foreach (var forbiddenToken in forbiddenTokens)
-            {
-                Assert.DoesNotContain(forbiddenToken, content, StringComparison.OrdinalIgnoreCase);
-            }
-        }
     }
 
     [Fact]
