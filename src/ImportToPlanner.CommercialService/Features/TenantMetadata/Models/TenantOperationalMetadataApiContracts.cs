@@ -1,6 +1,6 @@
 using ImportToPlanner.Application.TenantContext.Models;
 
-namespace ImportToPlanner.CommercialService.TenantMetadata.Models;
+namespace ImportToPlanner.CommercialService.Features.TenantMetadata.Models;
 
 /// <summary>
 /// Gets tenant operational metadata for a tenant identifier.

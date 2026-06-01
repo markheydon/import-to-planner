@@ -1,6 +1,9 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Models;
+using ImportToPlanner.CommercialService.Common.Models;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
+using ImportToPlanner.CommercialService.Features.CommercialProfile.Models;
 
-namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
+namespace ImportToPlanner.CommercialService.Features.CommercialProfile.Services;
 
 /// <summary>
 /// Handles commercial profile and lifecycle operations.

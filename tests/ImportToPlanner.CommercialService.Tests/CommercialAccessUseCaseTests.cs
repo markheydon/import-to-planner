@@ -1,8 +1,9 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Models;
-using ImportToPlanner.CommercialService.CommercialAccounts.Services;
-using ImportToPlanner.Tests.TestDoubles;
+using ImportToPlanner.CommercialService.Common.Models;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
+using ImportToPlanner.CommercialService.Tests.TestDoubles;
 
-namespace ImportToPlanner.Tests;
+namespace ImportToPlanner.CommercialService.Tests;
 
 public sealed class CommercialAccessUseCaseTests
 {

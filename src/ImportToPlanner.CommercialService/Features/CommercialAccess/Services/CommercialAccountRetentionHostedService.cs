@@ -1,13 +1,12 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Services;
+using ImportToPlanner.CommercialService.Features.CommercialProfile.Services;
 
-namespace ImportToPlanner.CommercialService;
+namespace ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
 
 /// <summary>
 /// Runs scheduled retention sweeps for hosted commercial accounts and audit records.
 /// </summary>
 internal sealed class CommercialAccountRetentionHostedService(
     CommercialProfileService commercialProfileService,
-    CommercialModeOptions commercialModeOptions,
     ILogger<CommercialAccountRetentionHostedService> logger) : BackgroundService
 {
     private static readonly TimeSpan SweepInterval = TimeSpan.FromHours(24);
@@ -15,12 +14,6 @@ internal sealed class CommercialAccountRetentionHostedService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!commercialModeOptions.Enabled || !commercialModeOptions.RetentionSweepEnabled)
-        {
-            logger.LogInformation("Commercial retention sweep hosted service is disabled by configuration.");
-            return;
-        }
-
         logger.LogInformation("Commercial retention sweep hosted service started.");
 
         while (!stoppingToken.IsCancellationRequested)

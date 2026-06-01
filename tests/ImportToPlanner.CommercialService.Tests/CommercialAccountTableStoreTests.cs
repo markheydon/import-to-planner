@@ -2,10 +2,10 @@ using Azure;
 using Azure.Core;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
-using ImportToPlanner.CommercialService.CommercialAccounts.Models;
-using ImportToPlanner.CommercialService.CommercialAccounts.Services;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
 
-namespace ImportToPlanner.Tests;
+namespace ImportToPlanner.CommercialService.Tests;
 
 public sealed class CommercialAccountTableStoreTests
 {

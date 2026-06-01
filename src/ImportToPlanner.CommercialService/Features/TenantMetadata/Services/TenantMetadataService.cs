@@ -3,7 +3,7 @@ using Azure.Data.Tables;
 using ImportToPlanner.Application.Consent.Models;
 using ImportToPlanner.Application.TenantContext.Models;
 
-namespace ImportToPlanner.CommercialService.TenantMetadata.Services;
+namespace ImportToPlanner.CommercialService.Features.TenantMetadata.Services;
 
 /// <summary>
 /// Handles tenant operational metadata stored in Azure Table Storage.

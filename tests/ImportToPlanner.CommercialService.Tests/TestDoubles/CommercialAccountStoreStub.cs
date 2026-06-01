@@ -1,7 +1,7 @@
-using ImportToPlanner.CommercialService.CommercialAccounts.Models;
-using ImportToPlanner.CommercialService.CommercialAccounts.Services;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
 
-namespace ImportToPlanner.Tests.TestDoubles;
+namespace ImportToPlanner.CommercialService.Tests.TestDoubles;
 
 public sealed class CommercialAccountStoreStub : CommercialAccountsService
 {

@@ -1,8 +1,8 @@
 using Azure;
 using Azure.Data.Tables;
-using ImportToPlanner.CommercialService.CommercialAccounts.Models;
+using ImportToPlanner.CommercialService.Features.CommercialAccess.Models;
 
-namespace ImportToPlanner.CommercialService.CommercialAccounts.Services;
+namespace ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
 
 /// <summary>
 /// Handles commercial audit events stored in Azure Table Storage.

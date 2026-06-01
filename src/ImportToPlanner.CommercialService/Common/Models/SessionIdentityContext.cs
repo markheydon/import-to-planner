@@ -1,4 +1,4 @@
-namespace ImportToPlanner.CommercialService.CommercialAccounts.Models;
+namespace ImportToPlanner.CommercialService.Common.Models;
 
 /// <summary>
 /// Represents the signed-in identity context used to resolve commercial account access.
