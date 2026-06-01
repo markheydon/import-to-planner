@@ -1,5 +1,6 @@
 using System.Diagnostics;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Consent.Models;
+using ImportToPlanner.Application.TenantContext.Models;
 using ImportToPlanner.Web.Features.Authentication;
 using ImportToPlanner.Web.Infrastructure;
 

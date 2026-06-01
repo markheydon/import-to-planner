@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.TenantContext.Abstractions;
 
 namespace ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 

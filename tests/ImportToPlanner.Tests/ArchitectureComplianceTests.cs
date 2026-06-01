@@ -18,7 +18,6 @@ public sealed class ArchitectureComplianceTests
             "Microsoft.Graph",
             "Microsoft.Kiota",
             "MudBlazor",
-            "CsvHelper",
             "PlannerGraph",
             "Microsoft.AspNetCore.Http",
             "System.Security.Claims",
@@ -43,12 +42,14 @@ public sealed class ArchitectureComplianceTests
             rootPath,
             "src",
             "ImportToPlanner.Application",
+            "TenantContext",
             "Abstractions",
             "ICurrentTenantContextAccessor.cs");
         var tenantMetadataStorePath = Path.Combine(
             rootPath,
             "src",
             "ImportToPlanner.Application",
+            "TenantContext",
             "Abstractions",
             "ITenantOperationalMetadataStore.cs");
 

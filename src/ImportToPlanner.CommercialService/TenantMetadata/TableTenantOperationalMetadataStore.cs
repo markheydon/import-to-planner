@@ -1,7 +1,8 @@
 using Azure;
 using Azure.Data.Tables;
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Consent.Models;
+using ImportToPlanner.Application.TenantContext.Abstractions;
+using ImportToPlanner.Application.TenantContext.Models;
 
 namespace ImportToPlanner.CommercialService.TenantMetadata;
 

@@ -125,7 +125,7 @@ internal sealed class CommercialApiServiceClient(HttpClient httpClient)
             .ConfigureAwait(false);
     }
 
-    public async Task<ImportToPlanner.Application.Models.TenantOperationalMetadata?> GetTenantOperationalMetadataAsync(
+    public async Task<ImportToPlanner.Application.TenantContext.Models.TenantOperationalMetadata?> GetTenantOperationalMetadataAsync(
         GetTenantOperationalMetadataRequest request,
         CancellationToken cancellationToken)
     {
@@ -137,7 +137,7 @@ internal sealed class CommercialApiServiceClient(HttpClient httpClient)
 
         response.EnsureSuccessStatusCode();
         return await response.Content
-            .ReadFromJsonAsync<ImportToPlanner.Application.Models.TenantOperationalMetadata>(cancellationToken)
+            .ReadFromJsonAsync<ImportToPlanner.Application.TenantContext.Models.TenantOperationalMetadata>(cancellationToken)
             .ConfigureAwait(false);
     }
 

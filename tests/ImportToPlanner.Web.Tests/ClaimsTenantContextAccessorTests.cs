@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.TenantContext.Abstractions;
+using ImportToPlanner.Application.TenantContext.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace ImportToPlanner.Web.Tests;

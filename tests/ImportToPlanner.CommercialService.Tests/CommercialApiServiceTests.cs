@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.CommercialService;
 using ImportToPlanner.CommercialService.CommercialAccounts;
 using Microsoft.Extensions.Configuration;

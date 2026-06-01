@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

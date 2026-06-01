@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.TenantContext.Models;
 
 namespace ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 

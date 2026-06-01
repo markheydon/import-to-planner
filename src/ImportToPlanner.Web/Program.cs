@@ -1,5 +1,5 @@
 using ImportToPlanner.Application;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Consent.Models;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web.Components;
 using ImportToPlanner.Web.Features.Authentication;

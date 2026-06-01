@@ -1,4 +1,5 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Common.Models;
+using ImportToPlanner.Application.ImportExecution.Models;
 
 namespace ImportToPlanner.Web.Tests;
 

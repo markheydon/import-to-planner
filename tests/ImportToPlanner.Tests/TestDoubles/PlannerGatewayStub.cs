@@ -1,5 +1,6 @@
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Common.Abstractions;
+using ImportToPlanner.Application.TenantContext.Abstractions;
+using ImportToPlanner.Application.TenantContext.Models;
 using ImportToPlanner.Domain;
 
 namespace ImportToPlanner.Tests.TestDoubles;

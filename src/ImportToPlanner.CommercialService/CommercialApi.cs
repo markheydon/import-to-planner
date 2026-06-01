@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.CommercialService.CommercialAccounts;
 using ImportToPlanner.CommercialService.Models;
 

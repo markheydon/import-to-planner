@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Consent.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;

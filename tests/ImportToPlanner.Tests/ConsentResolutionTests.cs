@@ -1,5 +1,6 @@
 using System.Reflection;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Consent.Models;
+using ImportToPlanner.Application.TenantContext.Models;
 
 namespace ImportToPlanner.Tests;
 

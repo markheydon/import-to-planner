@@ -1,4 +1,5 @@
-using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Common.Abstractions;
+using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Infrastructure.Graph.Planner;
 using Microsoft.Extensions.Configuration;

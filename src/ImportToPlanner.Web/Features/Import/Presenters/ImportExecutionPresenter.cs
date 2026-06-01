@@ -1,5 +1,5 @@
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.ImportExecution.Abstractions;
+using ImportToPlanner.Application.ImportExecution.Models;
 
 namespace ImportToPlanner.Web.Features.Import.Presenters;
 
