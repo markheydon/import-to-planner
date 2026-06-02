@@ -1,5 +1,7 @@
 using Bunit;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.CsvImport.Models;
+using ImportToPlanner.Application.ImportExecution.Models;
+using ImportToPlanner.Application.ImportPlanning.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
 using Microsoft.AspNetCore.Components;

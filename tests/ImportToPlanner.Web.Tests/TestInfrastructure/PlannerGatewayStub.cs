@@ -1,6 +1,8 @@
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Exceptions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Common.Abstractions;
+using ImportToPlanner.Application.Common.Exceptions;
+using ImportToPlanner.Application.Common.Models;
+using ImportToPlanner.Application.TenantContext.Abstractions;
+using ImportToPlanner.Application.TenantContext.Models;
 using ImportToPlanner.Domain;
 
 namespace ImportToPlanner.Web.Tests.TestInfrastructure;

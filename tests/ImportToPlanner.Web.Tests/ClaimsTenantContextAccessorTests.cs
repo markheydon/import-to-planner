@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.TenantContext.Abstractions;
+using ImportToPlanner.Application.TenantContext.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace ImportToPlanner.Web.Tests;
@@ -78,8 +78,8 @@ public sealed class ClaimsTenantContextAccessorTests
             },
         };
 
-        var accessorType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Features.Authentication.ClaimsTenantContextAccessor", throwOnError: true)!;
-        var failureDiagnosticsType = typeof(DependencyInjection).Assembly.GetType("ImportToPlanner.Web.Diagnostics.UserFacingFailureDiagnostics", throwOnError: true)!;
+        var accessorType = typeof(TenantAuthorityConfiguration).Assembly.GetType("ImportToPlanner.Web.Features.Authentication.ClaimsTenantContextAccessor", throwOnError: true)!;
+        var failureDiagnosticsType = typeof(TenantAuthorityConfiguration).Assembly.GetType("ImportToPlanner.Web.Diagnostics.UserFacingFailureDiagnostics", throwOnError: true)!;
         var failureDiagnostics = Activator.CreateInstance(failureDiagnosticsType, httpContextAccessor, authorityConfiguration)!;
         var nullLoggerType = typeof(Microsoft.Extensions.Logging.Abstractions.NullLogger<>).MakeGenericType(accessorType);
         var logger = Activator.CreateInstance(nullLoggerType)!;

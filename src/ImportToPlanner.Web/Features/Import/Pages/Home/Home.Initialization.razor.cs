@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Consent.Models;
 using ImportToPlanner.Web.Features.Import.Presenters;
 using ImportToPlanner.Web.Features.Import.Workflows;
 using Microsoft.AspNetCore.WebUtilities;

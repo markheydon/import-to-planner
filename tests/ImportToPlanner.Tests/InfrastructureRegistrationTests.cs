@@ -1,81 +1,15 @@
-using Azure.Data.Tables;
-using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Common.Abstractions;
+using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Infrastructure.Graph.Planner;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
 
 namespace ImportToPlanner.Tests;
 
 public sealed class InfrastructureRegistrationTests
 {
     [Fact]
-    public void AddInfrastructureStorageClients_WhenCommercialModeDisabled_DoesNotRegisterTableServiceClient()
-    {
-        var builder = Host.CreateApplicationBuilder();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Features:CommercialMode:Enabled"] = "false",
-        });
-
-        builder.AddInfrastructureStorageClients();
-
-        using var serviceProvider = builder.Services.BuildServiceProvider();
-        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
-        Assert.Null(tableServiceClient);
-    }
-
-    [Fact]
-    public void AddInfrastructureStorageClients_WhenCommercialModeEnabled_RegistersTableServiceClient()
-    {
-        var builder = Host.CreateApplicationBuilder();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Features:CommercialMode:Enabled"] = "true",
-            ["ConnectionStrings:tables"] = "UseDevelopmentStorage=true",
-        });
-
-        builder.AddInfrastructureStorageClients();
-
-        using var serviceProvider = builder.Services.BuildServiceProvider();
-        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
-        Assert.NotNull(tableServiceClient);
-    }
-
-    [Fact]
-    public void AddInfrastructure_WhenCommercialModeEnabled_RegistersGraphGatewayAndTableMetadataStore()
-    {
-        var services = new ServiceCollection();
-        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
-
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Features:CommercialMode:Enabled"] = "true",
-                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
-                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
-                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
-            })
-            .Build();
-
-        services.AddInfrastructure(configuration);
-
-        var plannerDescriptor = services.Single(descriptor => descriptor.ServiceType == typeof(IPlannerGateway));
-        Assert.Equal(ServiceLifetime.Scoped, plannerDescriptor.Lifetime);
-        Assert.Equal(typeof(GraphPlannerGateway), plannerDescriptor.ImplementationType);
-
-        using var serviceProvider = services.BuildServiceProvider();
-        var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
-        var commercialAccountsTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAccountsTableClientKey);
-        var commercialAuditTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAuditTableClientKey);
-
-        Assert.Equal("TableTenantOperationalMetadataStore", metadataStore.GetType().Name);
-        Assert.Equal("CommercialAccounts", commercialAccountsTableClient.Name);
-        Assert.Equal("CommercialAccountAuditEvents", commercialAuditTableClient.Name);
-    }
-
-    [Fact]
-    public void AddInfrastructure_WhenCommercialModeDisabled_RegistersNoOpCommercialStoresAndSelfHostMetadataStoreWithoutTables()
+    public void AddMicrosoftGraphInfrastructure_WhenCommercialModeDisabled_RegistersGraphGatewayAndSelfHostMetadataStore()
     {
         var services = new ServiceCollection();
 
@@ -86,17 +20,39 @@ public sealed class InfrastructureRegistrationTests
             })
             .Build();
 
-        services.AddInfrastructure(configuration);
+        services.AddMicrosoftGraphInfrastructure(configuration);
+
+        var plannerDescriptor = services.Single(descriptor => descriptor.ServiceType == typeof(IPlannerGateway));
+        Assert.Equal(ServiceLifetime.Scoped, plannerDescriptor.Lifetime);
+        Assert.Equal(typeof(GraphPlannerGateway), plannerDescriptor.ImplementationType);
 
         using var serviceProvider = services.BuildServiceProvider();
-        var accountStore = serviceProvider.GetRequiredService<ICommercialAccountStore>();
-        var auditStore = serviceProvider.GetRequiredService<ICommercialAuditStore>();
         var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
-        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
 
-        Assert.Equal("NoOpCommercialAccountStore", accountStore.GetType().Name);
-        Assert.Equal("NoOpCommercialAuditStore", auditStore.GetType().Name);
         Assert.Equal("SelfHostTenantOperationalMetadataStore", metadataStore.GetType().Name);
-        Assert.Null(tableServiceClient);
+    }
+
+    [Fact]
+    public void AddMicrosoftGraphInfrastructure_WhenCommercialModeEnabled_RegistersGraphGatewayAndSelfHostMetadataStore()
+    {
+        var services = new ServiceCollection();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Features:CommercialMode:Enabled"] = "true",
+            })
+            .Build();
+
+        services.AddMicrosoftGraphInfrastructure(configuration);
+
+        var plannerDescriptor = services.Single(descriptor => descriptor.ServiceType == typeof(IPlannerGateway));
+        Assert.Equal(ServiceLifetime.Scoped, plannerDescriptor.Lifetime);
+        Assert.Equal(typeof(GraphPlannerGateway), plannerDescriptor.ImplementationType);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+
+        Assert.Equal("SelfHostTenantOperationalMetadataStore", metadataStore.GetType().Name);
     }
 }

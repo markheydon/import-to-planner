@@ -66,24 +66,6 @@ public sealed class StartupValidationTests
     }
 
     [Fact]
-    public void Validate_WhenCommercialAccountTableMissing_ThrowsFriendlyError()
-    {
-        var configuration = BuildConfiguration(new Dictionary<string, string?>
-        {
-            ["AzureAd:TenantId"] = "organizations",
-            ["Features:CommercialMode:Enabled"] = "true",
-            ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
-            ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
-            ["Storage:DataProtectionContainer"] = "dataprotection",
-            ["Storage:DataProtectionBlob"] = "keys.xml",
-        });
-
-        var exception = Assert.Throws<InvalidOperationException>(() => StartupConfigurationValidator.Validate(configuration));
-
-        Assert.Contains("Storage:CommercialAccountsTable", exception.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public void Validate_WhenCommercialModeDisabled_AllowsMissingCommercialTables()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
@@ -100,21 +82,19 @@ public sealed class StartupValidationTests
     }
 
     [Fact]
-    public void Validate_WhenCommercialModeEnabledAndTenantMetadataTableMissing_ThrowsFriendlyError()
+    public void Validate_WhenCommercialModeEnabled_AllowsMissingCommercialTables()
     {
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["AzureAd:TenantId"] = "organizations",
             ["Features:CommercialMode:Enabled"] = "true",
-            ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
-            ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             ["Storage:DataProtectionContainer"] = "dataprotection",
             ["Storage:DataProtectionBlob"] = "keys.xml",
         });
 
-        var exception = Assert.Throws<InvalidOperationException>(() => StartupConfigurationValidator.Validate(configuration));
+        var exception = Record.Exception(() => StartupConfigurationValidator.Validate(configuration));
 
-        Assert.Contains("Storage:TenantMetadataTable", exception.Message, StringComparison.Ordinal);
+        Assert.Null(exception);
     }
 
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)

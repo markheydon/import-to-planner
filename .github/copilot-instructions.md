@@ -50,6 +50,14 @@ See `docs-internal/microsoft-graph-guidelines.md` for implementation guidance on
 
 See `tests/README.md` for test-running and coverage guidance. Mandatory testing standards (for example, validating startup configuration and authority-specific auth guards when planner behaviour is affected) remain in `.specify/memory/constitution.md`.
 
+Before proposing or finalising any code change, agents MUST run:
+
+```bash
+dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
+```
+
+CI enforces this check in `.github/workflows/ci.yml`, so skipping it will cause avoidable failures.
+
 
 ## PR Review Comment Handling
 

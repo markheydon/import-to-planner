@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.CsvImport.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Features.Import.Workflows;
 using Microsoft.AspNetCore.Components.Forms;
@@ -265,7 +265,7 @@ public partial class Home
         {
             await WorkflowCoordinator.ExecuteAsync(WorkflowState, CancellationToken.None);
         }
-        catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
+        catch (ImportToPlanner.Application.ImportExecution.Exceptions.StaleImportPreviewException ex)
         {
             isPreviewStale = true;
             HandleUserSafeFailure(ex, "workflow.execute.stale_preview", WorkflowStatusLevel.Warning);

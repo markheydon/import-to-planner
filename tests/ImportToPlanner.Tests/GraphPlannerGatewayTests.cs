@@ -1,6 +1,6 @@
 using System.Globalization;
-using ImportToPlanner.Application.Exceptions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Common.Exceptions;
+using ImportToPlanner.Application.Common.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Infrastructure.Graph.Planner;
 using Microsoft.Graph;

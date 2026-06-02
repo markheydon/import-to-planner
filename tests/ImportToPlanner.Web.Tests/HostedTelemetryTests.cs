@@ -1,4 +1,5 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Consent.Models;
+using ImportToPlanner.Application.TenantContext.Models;
 
 namespace ImportToPlanner.Web.Tests;
 

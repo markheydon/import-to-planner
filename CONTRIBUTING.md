@@ -42,6 +42,16 @@ For the full developer quick-start, including when to use Aspire versus plain lo
 
 ### Building and running tests
 
+Run formatting validation before every commit or pull request update. CI enforces formatting and will fail if this step is skipped.
+
+For coding agents and scripted workflows, treat the following command as mandatory after code edits:
+
+```bash
+dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
+```
+
+Then run the full baseline:
+
 ```bash
 dotnet restore ImportToPlanner.slnx
 dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal

@@ -1,5 +1,6 @@
 using System.Security.Claims;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Common.Models;
+using ImportToPlanner.Application.Consent.Models;
 using ImportToPlanner.Web.Diagnostics;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Identity.Client;

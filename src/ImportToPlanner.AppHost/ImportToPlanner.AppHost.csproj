@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.3.5">
+<Project Sdk="Aspire.AppHost.Sdk/13.4.0">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -15,7 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ImportToPlanner.ApiService.Commercial\ImportToPlanner.ApiService.Commercial.csproj" />
+    <ProjectReference Include="..\ImportToPlanner.CommercialService\ImportToPlanner.CommercialService.csproj" />
     <ProjectReference Include="..\ImportToPlanner.Web\ImportToPlanner.Web.csproj" />
   </ItemGroup>
 
