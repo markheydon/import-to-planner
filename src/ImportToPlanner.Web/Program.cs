@@ -1,5 +1,6 @@
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Consent.Models;
+using ImportToPlanner.Application.TenantContext.Abstractions;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web.Components;
 using ImportToPlanner.Web.Features.Authentication;
@@ -48,13 +49,18 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services
     .AddHostedAuthenticationServices(builder.Configuration)
     .AddApplication()
-    .AddMicrosoftGraphInfrastructure(builder.Configuration)
-    .AddCommercialBackendServices(builder.Configuration);
+    .AddMicrosoftGraphInfrastructure(builder.Configuration);
+
 builder.Services.AddScoped<ImportPlanningPresenter>();
 builder.Services.AddScoped<ImportExecutionPresenter>();
 builder.Services.AddScoped<SessionIdentityPresenter>();
 builder.Services.AddScoped<WorkflowCoordinationState>();
 builder.Services.AddScoped<ImportWorkflowCoordinator>();
+
+// Commercial mode.
+builder.Services.AddHttpClient<CommercialApiServiceClient>(static client => client.BaseAddress = new("https+http://commercialapiservice"));
+builder.Services.AddSingleton<ITenantOperationalMetadataStore, BackendTenantOperationalMetadataStore>();
+
 builder.Services.AddControllersWithViews()
     .AddMicrosoftIdentityUI();
 builder.Services.AddAuthorization();
@@ -83,6 +89,17 @@ app.MapStaticAssets();
 app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapGet("/debug/service-discovery", (IConfiguration config) =>
+{
+    return Results.Json(new
+    {
+        Https0 = config["Services:commercialapiservice:https:0"],
+        Http0 = config["Services:commercialapiservice:http:0"],
+        CommercialMode = config["Features:CommercialMode:Enabled"]
+    });
+});
+
 app.MapDefaultEndpoints();
 
 app.Run();

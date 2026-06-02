@@ -7,8 +7,8 @@ namespace ImportToPlanner.CommercialService.Features.CommercialAccess.Services;
 /// Resolves commercial access decisions for authenticated sessions.
 /// </summary>
 public sealed class CommercialAccessService(
-    CommercialAccountsService commercialAccountsService,
-    CommercialAuditService commercialAuditService)
+    ICommercialAccountsService commercialAccountsService,
+    ICommercialAuditService commercialAuditService)
 {
     private const string AccountCreatedOutcomeCode = "account_created";
     private const string SignInAllowedOutcomeCode = "sign_in_allowed";

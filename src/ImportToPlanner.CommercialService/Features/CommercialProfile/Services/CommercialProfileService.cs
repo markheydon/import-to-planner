@@ -9,8 +9,8 @@ namespace ImportToPlanner.CommercialService.Features.CommercialProfile.Services;
 /// Handles commercial profile and lifecycle operations.
 /// </summary>
 public sealed class CommercialProfileService(
-    CommercialAccountsService commercialAccountsService,
-    CommercialAuditService commercialAuditService)
+    ICommercialAccountsService commercialAccountsService,
+    ICommercialAuditService commercialAuditService)
 {
     private const string AccountDeletedOutcomeCode = "account_deleted";
     private const string AccountRestoredOutcomeCode = "account_restored";
