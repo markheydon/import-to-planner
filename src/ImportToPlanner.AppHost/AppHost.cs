@@ -1,3 +1,4 @@
+using Aspire.Hosting.Azure;
 using Microsoft.Extensions.Hosting;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -54,8 +55,28 @@ if (builder.Environment.IsDevelopment())
 var blobs = storage.AddBlobs("blobs");
 var dataProtectionContainer = storage.AddBlobContainer("dataprotection", blobContainerName: "dataprotection");
 
-// Table service stores hosted/commercial tenant operational metadata.
-var tables = commercialModeEnabled ? storage.AddTables("tables") : null;
+// The commercial API service is only required if commercial mode is enabled,
+// and depends on the same storage account for tenant metadata.
+IResourceBuilder<ProjectResource>? commercialApiService = null;
+IResourceBuilder<AzureTableStorageResource>? tables = null;
+if (commercialModeEnabled)
+{
+    // Table service stores hosted/commercial tenant operational metadata.
+    tables = storage.AddTables("tables");
+
+    commercialApiService = builder.AddProject<Projects.ImportToPlanner_CommercialService>("commercialapiservice")
+        .WithHttpHealthCheck("/health")
+        .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
+        .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
+        .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
+        .WithReference(tables)
+        .WaitFor(tables)
+        .PublishAsAzureContainerApp((_, app) =>
+        {
+            app.Template.Scale.MinReplicas = minCommercialApiServiceReplicas;
+            app.Template.Scale.MaxReplicas = 1;
+        });
+}
 
 // Configure the web service and wire all dependencies.
 var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
@@ -72,6 +93,7 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WithEnvironment("AzureAd__ClientCertificates__0__CertificatePassword", graphClientCertificatePassword)
     .WithEnvironment("AzureAd__ClientCertificates__0__CertificateBase64", graphClientCertificateBase64)
     .WithExternalHttpEndpoints()
+    .WithHttpHealthCheck("/health")
     .WithReference(blobs)
     .WaitFor(blobs)
     .WithReference(dataProtectionContainer)
@@ -89,21 +111,8 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
         }
     });
 
-// The commercial API service is only required if commercial mode is enabled, and depends on the same storage account for tenant metadata.
-if (commercialModeEnabled && tables is not null)
+if (commercialApiService is not null)
 {
-    var commercialApiService = builder.AddProject<Projects.ImportToPlanner_CommercialService>("commercialapiservice")
-        .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
-        .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
-        .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
-        .WithReference(tables)
-        .WaitFor(tables)
-        .PublishAsAzureContainerApp((_, app) =>
-        {
-            app.Template.Scale.MinReplicas = minCommercialApiServiceReplicas;
-            app.Template.Scale.MaxReplicas = 1;
-        });
-
     web.WithReference(commercialApiService)
         .WaitFor(commercialApiService);
 }
