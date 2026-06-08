@@ -35,7 +35,7 @@
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
 
     <!-- Azure SDKs -->
-    <PackageVersion Include="Aspire.Azure.Data.Tables" Version="13.3.5" />
+    <PackageVersion Include="Aspire.Azure.Data.Tables" Version="13.4.2" />
     <PackageVersion Include="Aspire.Azure.Storage.Blobs" Version="13.3.5" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.3" />
