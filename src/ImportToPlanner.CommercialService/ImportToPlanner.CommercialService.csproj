@@ -10,6 +10,7 @@
     <PackageReference Include="Aspire.Azure.Data.Tables" />
     <PackageReference Include="Azure.Data.Tables" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.OpenApi" />
   </ItemGroup>
 
   <ItemGroup>
