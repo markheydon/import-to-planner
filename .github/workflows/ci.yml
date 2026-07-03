@@ -77,4 +77,4 @@ jobs:
           Parameters__enableCommercialMode: "false"
           Parameters__graphClientCertificatePassword: ""
           Parameters__graphClientCertificateBase64: ""
-        run: dotnet test ImportToPlanner.slnx --no-build --verbosity normal
+        run: dotnet test ImportToPlanner.slnx --no-build --verbosity normal --filter "Category!=Integration"

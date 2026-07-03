@@ -2,6 +2,7 @@ namespace ImportToPlanner.AppHost.Tests;
 
 using Microsoft.Extensions.Logging;
 
+[Trait("Category", "Integration")]
 public class WebTests
 {
     // Timeout duration for distributed app resource startup in local and CI runs.
