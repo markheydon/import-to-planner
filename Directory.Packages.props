@@ -21,7 +21,7 @@
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
 
     <!-- Blazor UI (MudBlazor) -->
-    <PackageVersion Include="MudBlazor" Version="9.6.0" />
+    <PackageVersion Include="MudBlazor" Version="9.7.0" />
 
     <!-- Microsoft Graph & Kiota -->
     <PackageVersion Include="Microsoft.Graph" Version="6.2.0" />
