@@ -28,8 +28,8 @@
     <PackageVersion Include="Microsoft.Kiota.Abstractions" Version="2.0.0" />
 
     <!-- Identity / Authentication -->
-    <PackageVersion Include="Microsoft.Identity.Web" Version="4.13.0" />
-    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.13.0" />
+    <PackageVersion Include="Microsoft.Identity.Web" Version="4.13.2" />
+    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.13.2" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
