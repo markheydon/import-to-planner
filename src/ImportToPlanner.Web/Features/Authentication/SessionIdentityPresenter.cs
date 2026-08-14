@@ -1,4 +1,4 @@
-using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
+using ImportToPlanner.Commercial.Common.Models;
 
 namespace ImportToPlanner.Web.Features.Authentication;
 

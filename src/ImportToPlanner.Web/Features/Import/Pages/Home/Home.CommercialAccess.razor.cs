@@ -1,4 +1,7 @@
-using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
+using ImportToPlanner.Commercial.Features.CommercialAccess.Models;
+using ImportToPlanner.Commercial.Features.CommercialAccess.Services;
+using ImportToPlanner.Commercial.Features.CommercialProfile.Models;
+using ImportToPlanner.Commercial.Features.CommercialProfile.Services;
 using ImportToPlanner.Web.Features.Import.Workflows;
 
 namespace ImportToPlanner.Web.Features.Import.Pages;
@@ -18,7 +21,7 @@ public partial class Home
 
         try
         {
-            var accessDecision = await CommercialApiServiceClient.ResolveAccessAsync(
+            var accessDecision = await CommercialAccessService.ResolveAccessAsync(
                 sessionIdentity,
                 CommercialModeOptions.Enabled,
                 DateTimeOffset.UtcNow,
@@ -43,11 +46,9 @@ public partial class Home
 
             return accessDecision;
         }
-        catch (HttpRequestException)
+        catch (Exception ex)
         {
-            SetStatus(
-                "The commercial backend service is unavailable. If you are running locally, start the AppHost so service discovery can resolve commercialapiservice.",
-                WorkflowStatusLevel.Error);
+            HandleUserSafeFailure(ex, "workflow.commercial.resolve_access", WorkflowStatusLevel.Error);
             return null;
         }
     }
@@ -71,7 +72,7 @@ public partial class Home
         isRestoringCommercialAccount = true;
         try
         {
-            var restoreResult = await CommercialApiServiceClient.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+            var restoreResult = await CommercialProfileService.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
             switch (restoreResult)
             {
                 case CommercialAccountRestoreResult.Restored:

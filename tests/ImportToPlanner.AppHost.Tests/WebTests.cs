@@ -49,7 +49,7 @@ public class WebTests
     }
 
     [Fact]
-    public async Task CommercialModeStartsWebAndCommercialApiServiceResources()
+    public async Task CommercialModeStartsWebOnlyWithTablesReference()
     {
         using var _ = ConfigureRequiredAppHostParameters(enableCommercialMode: true);
 
@@ -78,11 +78,11 @@ public class WebTests
         // Act
         var httpClient = app.CreateHttpClient("web");
         await app.ResourceNotifications.WaitForResourceHealthyAsync("web", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
-        await app.ResourceNotifications.WaitForResourceHealthyAsync("commercialapiservice", cancellationToken).WaitAsync(DefaultTimeout, cancellationToken);
         var response = await httpClient.GetAsync("/", cancellationToken);
 
         // Assert
         Assert.NotEqual(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.ThrowsAny<Exception>(() => app.CreateHttpClient("commercialapiservice"));
     }
 
     private static EnvironmentVariableScope ConfigureRequiredAppHostParameters(bool enableCommercialMode = false)

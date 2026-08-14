@@ -10,8 +10,9 @@ self-hosted sign-in path without regressing self-hosted behaviour. The planned
 implementation adds an explicit commercial-mode parameter in Aspire and the
 staging deployment workflow, keeps mode selection as an outer-layer concern,
 persists commercial account and audit records in Azure Table Storage using the
-existing storage account, adds an optional hosted/commercial API service
-that owns the Table reference in AppHost topology, and defers Azure Functions
+existing storage account, adds an optional hosted/commercial module
+(`ImportToPlanner.Commercial`) registered in-process by `web` when commercial mode
+is enabled, and defers Azure Functions
 to an optional follow-on resource until scheduled retention and credits work
 justify a separate compute surface.
 
@@ -44,10 +45,9 @@ choices to Azure Tables or Blobs already modelled in the app; keep user-facing
 wording in UK English; preserve self-hosted viability; do not introduce
 scheduled compute unless clearly justified  
 **Scale/Scope**: One hosted commercial mode plus one self-hosted mode, one AppHost
-with `web`, optional `commercialapiservice` (commercial only), `storage`, `blobs`,
-`dataprotection`, and `tables` resources, and focused changes across AppHost,
-Web auth/UI, Application account-lifecycle use cases, Infrastructure storage
-adapters, tests, and deployment configuration
+with `web`, optional `tables` (commercial only), `storage`, `blobs`,
+`dataprotection`, and focused changes across AppHost,
+Web auth/UI, the `ImportToPlanner.Commercial` module, tests, and deployment configuration
 
 ## Constitution Check
 
@@ -184,10 +184,10 @@ Key design outcomes:
 - The AppHost adds a non-secret commercial-mode parameter and forwards it into
   the web project, while the staging workflow passes the corresponding parameter
   through environment variables.
-- In hosted/commercial topology, AppHost starts a separate `commercialapiservice`
-  resource and routes the `tables` resource reference and startup dependency
-  through `commercialapiservice` only; self-host topology keeps web-only startup
-  without `commercialapiservice`.
+- In hosted/commercial topology, AppHost wires the `tables` resource to `web`
+  when commercial mode is enabled; commercial table-backed behaviour is composed
+  in-process via `ImportToPlanner.Commercial`. Self-host topology keeps web-only
+  startup without `tables`.
 - Commercial account lifecycle, audit emission, and retention-state decisions are
   represented as application use cases with repository-owned request/response
   contracts.

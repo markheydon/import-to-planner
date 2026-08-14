@@ -8,11 +8,13 @@
   
   <ItemGroup>
     <ProjectReference Include="..\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
+    <ProjectReference Include="..\ImportToPlanner.Commercial\ImportToPlanner.Commercial.csproj" />
     <ProjectReference Include="..\ImportToPlanner.Infrastructure.Graph\ImportToPlanner.Infrastructure.Graph.csproj" />
     <ProjectReference Include="..\ImportToPlanner.ServiceDefaults\ImportToPlanner.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Azure.Data.Tables" />
     <PackageReference Include="Aspire.Azure.Storage.Blobs" />
     <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" />
     <PackageReference Include="Azure.Identity" />

@@ -1,11 +1,10 @@
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Consent.Models;
-using ImportToPlanner.Application.TenantContext.Abstractions;
+using ImportToPlanner.Commercial;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web.Components;
 using ImportToPlanner.Web.Features.Authentication;
 using ImportToPlanner.Web.Features.CommercialAccounts;
-using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 using ImportToPlanner.Web.Features.Import.Presenters;
 using ImportToPlanner.Web.Features.Import.Workflows;
 using ImportToPlanner.Web.Infrastructure;
@@ -28,6 +27,9 @@ AzureAdConfigurationNormalizer.Apply(builder.Configuration);
 // Pre-computed startup configuration models used across registration blocks.
 var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(builder.Configuration);
 var storageConfiguration = StorageConfiguration.FromConfiguration(builder.Configuration);
+var commercialModeOptions = builder.Configuration
+    .GetSection(CommercialModeOptions.ConfigurationSectionName)
+    .Get<CommercialModeOptions>() ?? new CommercialModeOptions();
 
 // Shared options and immutable startup state.
 builder.Services.AddSingleton(tenantAuthorityConfiguration);
@@ -57,9 +59,15 @@ builder.Services.AddScoped<SessionIdentityPresenter>();
 builder.Services.AddScoped<WorkflowCoordinationState>();
 builder.Services.AddScoped<ImportWorkflowCoordinator>();
 
-// Commercial mode.
-builder.Services.AddHttpClient<CommercialApiServiceClient>(static client => client.BaseAddress = new("https+http://commercialapiservice"));
-builder.Services.AddSingleton<ITenantOperationalMetadataStore, BackendTenantOperationalMetadataStore>();
+if (commercialModeOptions.Enabled)
+{
+    builder.AddAzureTableServiceClient(connectionName: "tables");
+    builder.Services.AddCommercialServices(commercialModeOptions.RetentionSweepEnabled);
+}
+else
+{
+    builder.Services.AddCommercialServiceStubs();
+}
 
 builder.Services.AddControllersWithViews()
     .AddMicrosoftIdentityUI();
@@ -89,16 +97,6 @@ app.MapStaticAssets();
 app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
-
-app.MapGet("/debug/service-discovery", (IConfiguration config) =>
-{
-    return Results.Json(new
-    {
-        Https0 = config["Services:commercialapiservice:https:0"],
-        Http0 = config["Services:commercialapiservice:http:0"],
-        CommercialMode = config["Features:CommercialMode:Enabled"]
-    });
-});
 
 app.MapDefaultEndpoints();
 

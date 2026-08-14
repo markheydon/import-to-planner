@@ -1,5 +1,5 @@
 using Bunit;
-using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
+using ImportToPlanner.Commercial.Features.CommercialAccess.Models;
 using ImportToPlanner.Web.Features.CommercialAccounts.Pages;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
 

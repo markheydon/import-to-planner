@@ -8,7 +8,9 @@
 @using ImportToPlanner.Application.Consent.Exceptions
 @using ImportToPlanner.Application.ImportExecution.Exceptions
 @using ImportToPlanner.Application.Common.Exceptions
-@using ImportToPlanner.Web.Features.CommercialAccounts.Backend
+@using ImportToPlanner.Commercial.Features.CommercialAccess.Models
+@using ImportToPlanner.Commercial.Features.CommercialAccess.Services
+@using ImportToPlanner.Commercial.Features.CommercialProfile.Services
 @using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
 @inject WorkflowCoordinationState WorkflowState
@@ -17,7 +19,8 @@
 @inject ILogger<Home> Logger
 @inject IConfiguration Configuration
 @inject UserFacingFailureDiagnostics FailureDiagnostics
-@inject CommercialApiServiceClient CommercialApiServiceClient
+@inject CommercialAccessService CommercialAccessService
+@inject CommercialProfileService CommercialProfileService
 @inject ISessionIdentityContextAccessor SessionIdentityContextAccessor
 @inject SessionIdentityPresenter SessionIdentityPresenter
 @inject CommercialModeOptions CommercialModeOptions

@@ -15,7 +15,6 @@ var appRuntimeEnvironment = builder.Environment.IsProduction()
 // Keep at least one web replica in production for availability;
 // allow scale-to-zero in non-production to reduce cost.
 var minWebReplicas = builder.Environment.IsProduction() ? 1 : 0;
-var minCommercialApiServiceReplicas = builder.Environment.IsProduction() ? 1 : 0;
 
 // Azure AD application parameters used by the web host to authenticate to Microsoft Graph.
 // Certificate values are secrets because they contain sensitive credential material.
@@ -55,27 +54,11 @@ if (builder.Environment.IsDevelopment())
 var blobs = storage.AddBlobs("blobs");
 var dataProtectionContainer = storage.AddBlobContainer("dataprotection", blobContainerName: "dataprotection");
 
-// The commercial API service is only required if commercial mode is enabled,
-// and depends on the same storage account for tenant metadata.
-IResourceBuilder<ProjectResource>? commercialApiService = null;
+// Table service stores hosted/commercial tenant metadata and account records when commercial mode is enabled.
 IResourceBuilder<AzureTableStorageResource>? tables = null;
 if (commercialModeEnabled)
 {
-    // Table service stores hosted/commercial tenant operational metadata.
     tables = storage.AddTables("tables");
-
-    commercialApiService = builder.AddProject<Projects.ImportToPlanner_CommercialService>("commercialapiservice")
-        .WithHttpHealthCheck("/health")
-        .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
-        .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
-        .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
-        .WithReference(tables)
-        .WaitFor(tables)
-        .PublishAsAzureContainerApp((_, app) =>
-        {
-            app.Template.Scale.MinReplicas = minCommercialApiServiceReplicas;
-            app.Template.Scale.MaxReplicas = 1;
-        });
 }
 
 // Configure the web service and wire all dependencies.
@@ -111,10 +94,10 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
         }
     });
 
-if (commercialApiService is not null)
+if (tables is not null)
 {
-    web.WithReference(commercialApiService)
-        .WaitFor(commercialApiService);
+    web.WithReference(tables)
+        .WaitFor(tables);
 }
 
 builder.Build().Run();

@@ -1,5 +1,6 @@
+using ImportToPlanner.Commercial.Features.CommercialAccess.Models;
+using ImportToPlanner.Commercial.Features.CommercialProfile.Services;
 using ImportToPlanner.Web.Features.Authentication;
-using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -15,7 +16,7 @@ public partial class Profile
     internal ISessionIdentityContextAccessor SessionIdentityContextAccessor { get; set; } = default!;
 
     [Inject]
-    internal CommercialApiServiceClient CommercialApiServiceClient { get; set; } = default!;
+    internal CommercialProfileService CommercialProfileService { get; set; } = default!;
 
     [Inject]
     internal CommercialModeOptions CommercialModeOptions { get; set; } = default!;
@@ -60,11 +61,11 @@ public partial class Profile
         isBusy = true;
         try
         {
-            account = await CommercialApiServiceClient.GetProfileAsync(sessionIdentity, CancellationToken.None);
+            account = await CommercialProfileService.GetProfileAsync(sessionIdentity, CancellationToken.None);
         }
-        catch (HttpRequestException)
+        catch (Exception)
         {
-            statusMessage = "The commercial backend service is unavailable. If you are running locally, start the AppHost so service discovery can resolve commercialapiservice.";
+            statusMessage = "We could not load your account details. Please try again.";
             statusSeverity = Severity.Error;
         }
         finally
@@ -107,11 +108,11 @@ public partial class Profile
         isDeletingAccount = true;
         try
         {
-            await CommercialApiServiceClient.DeleteAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+            await CommercialProfileService.DeleteAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
         }
-        catch (HttpRequestException)
+        catch (Exception)
         {
-            statusMessage = "The commercial backend service is unavailable. If you are running locally, start the AppHost so service discovery can resolve commercialapiservice.";
+            statusMessage = "We could not delete your account. Please try again.";
             statusSeverity = Severity.Error;
             return;
         }

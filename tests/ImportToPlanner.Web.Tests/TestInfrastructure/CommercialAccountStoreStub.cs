@@ -1,4 +1,4 @@
-using ImportToPlanner.Web.Features.CommercialAccounts.Backend;
+using ImportToPlanner.Commercial.Features.CommercialAccess.Models;
 
 namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
