@@ -14,6 +14,14 @@ public sealed class CommercialAccessService(
     private const string SignInAllowedOutcomeCode = "sign_in_allowed";
     private const string SignInBlockedDeletedOutcomeCode = "sign_in_blocked_deleted";
 
+    /// <summary>
+    /// Resolves the commercial access decision for a session, creating or auditing the account as required.
+    /// </summary>
+    /// <param name="sessionIdentity">The identity context for the current session.</param>
+    /// <param name="commercialModeEnabled"><see langword="true" /> when the host runs in commercial mode; otherwise, <see langword="false" /> to bypass account checks.</param>
+    /// <param name="occurredUtc">The UTC time the sign-in occurred.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <returns>The access decision for the session.</returns>
     public async Task<CommercialAccessDecision> ResolveAccessAsync(
         SessionIdentityContext sessionIdentity,
         bool commercialModeEnabled,

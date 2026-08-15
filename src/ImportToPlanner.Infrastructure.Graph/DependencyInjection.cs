@@ -1,5 +1,7 @@
 using ImportToPlanner.Application.Common.Abstractions;
+using ImportToPlanner.Application.CsvImport.Abstractions;
 using ImportToPlanner.Application.TenantContext.Abstractions;
+using ImportToPlanner.Infrastructure.Graph.CsvImport;
 using ImportToPlanner.Infrastructure.Graph.Planner;
 using ImportToPlanner.Infrastructure.Graph.TenantMetadata;
 using Microsoft.Extensions.Configuration;
@@ -13,7 +15,7 @@ namespace ImportToPlanner.Infrastructure.Graph;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Adds Graph-backed infrastructure services required for planner gateway access.
+    /// Adds infrastructure services required for CSV import and planner gateway access.
     /// </summary>
     /// <param name="services">The service collection to register dependencies with.</param>
     /// <param name="configuration">The application configuration.</param>
@@ -22,6 +24,8 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        services.AddScoped<ICsvImportParser, CsvImportParser>();
 
         services.AddSingleton<ITenantOperationalMetadataStore, SelfHostTenantOperationalMetadataStore>();
 

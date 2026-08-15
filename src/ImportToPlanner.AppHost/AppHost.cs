@@ -76,7 +76,6 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WithEnvironment("AzureAd__ClientCertificates__0__CertificatePassword", graphClientCertificatePassword)
     .WithEnvironment("AzureAd__ClientCertificates__0__CertificateBase64", graphClientCertificateBase64)
     .WithExternalHttpEndpoints()
-    .WithHttpHealthCheck("/health")
     .WithReference(blobs)
     .WaitFor(blobs)
     .WithReference(dataProtectionContainer)
@@ -93,6 +92,12 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
 #pragma warning restore ASPIREACADOMAINS001
         }
     });
+
+// Health endpoints are only mapped by the web app in development, so only gate readiness on them there.
+if (appRuntimeEnvironment == "Development")
+{
+    web.WithHttpHealthCheck("/health");
+}
 
 if (tables is not null)
 {

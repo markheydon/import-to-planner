@@ -153,7 +153,8 @@ public class CommercialAccountsService
         cancellationToken.ThrowIfCancellationRequested();
 
         return QueryAsync(
-            $"{nameof(CommercialAccount.Status)} eq {CommercialAccountStatus.Deleted} and {nameof(CommercialAccount.RetentionExpiresUtc)} le {asOfUtc}",
+            // Property names must be literal: interpolation holes are escaped as OData values.
+            $"Status eq {CommercialAccountStatus.Deleted.ToString()} and RetentionExpiresUtc le {asOfUtc}",
             batchSize,
             cancellationToken,
             model => model.RetentionExpiresUtc is not null);

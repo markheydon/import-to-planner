@@ -18,6 +18,7 @@ public sealed class ArchitectureComplianceTests
             "Microsoft.Graph",
             "Microsoft.Kiota",
             "MudBlazor",
+            "CsvHelper",
             "PlannerGraph",
             "Microsoft.AspNetCore.Http",
             "System.Security.Claims",

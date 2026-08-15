@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.CsvImport.Services;
+using ImportToPlanner.Infrastructure.Graph.CsvImport;
 using ImportToPlanner.Tests.TestData;
 
 namespace ImportToPlanner.Tests;

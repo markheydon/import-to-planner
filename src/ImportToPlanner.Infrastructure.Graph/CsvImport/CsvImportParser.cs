@@ -4,12 +4,12 @@ using CsvHelper.Configuration;
 using ImportToPlanner.Application.CsvImport.Abstractions;
 using ImportToPlanner.Application.CsvImport.Models;
 
-namespace ImportToPlanner.Application.CsvImport.Services;
+namespace ImportToPlanner.Infrastructure.Graph.CsvImport;
 
 /// <summary>
 /// Parses CSV files into normalised import rows.
 /// </summary>
-public sealed class CsvImportParser : ICsvImportParser
+internal sealed class CsvImportParser : ICsvImportParser
 {
     private const string TaskNameHeader = "task name";
     private const string DescriptionHeader = "description";

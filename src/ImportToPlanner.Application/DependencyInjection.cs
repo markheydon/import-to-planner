@@ -1,5 +1,3 @@
-using ImportToPlanner.Application.CsvImport.Abstractions;
-using ImportToPlanner.Application.CsvImport.Services;
 using ImportToPlanner.Application.ImportExecution.Abstractions;
 using ImportToPlanner.Application.ImportExecution.Services;
 using ImportToPlanner.Application.ImportPlanning.Abstractions;
@@ -22,7 +20,6 @@ public static class DependencyInjection
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        services.AddScoped<ICsvImportParser, CsvImportParser>();
         services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
         services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
 

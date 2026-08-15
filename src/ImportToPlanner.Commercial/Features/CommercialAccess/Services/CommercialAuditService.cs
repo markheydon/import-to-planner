@@ -60,7 +60,8 @@ public class CommercialAuditService
         cancellationToken.ThrowIfCancellationRequested();
 
         return QueryAsync(
-            $"{nameof(AccountAuditEvent.RetentionExpiresUtc)} le {asOfUtc}",
+            // Property names must be literal: interpolation holes are escaped as OData values.
+            $"RetentionExpiresUtc le {asOfUtc}",
             batchSize,
             cancellationToken);
     }

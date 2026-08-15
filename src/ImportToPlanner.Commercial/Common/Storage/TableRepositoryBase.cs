@@ -8,10 +8,11 @@ namespace ImportToPlanner.Commercial.Common.Storage;
 /// Derived classes are responsible for mapping between domain models and <see cref="TableEntity"/> instances.
 /// </summary>
 /// <typeparam name="TModel">The domain model stored in the table.</typeparam>
-public abstract class TableRepositoryBase<TModel>
+public abstract class TableRepositoryBase<TModel> : IDisposable
 {
     private readonly TableClient _tableClient;
-    private Task? _initialiseTask;
+    private readonly SemaphoreSlim _initialiseGate = new(1, 1);
+    private bool _tableCreated;
 
     /// <summary>
     /// Initialises a new instance of the <see cref="TableRepositoryBase{TModel}"/> class
@@ -44,13 +45,37 @@ public abstract class TableRepositoryBase<TModel>
 
     /// <summary>
     /// Ensures that the underlying table exists.
-    /// The creation call is only initiated once, even if called multiple times concurrently.
     /// </summary>
+    /// <remarks>
+    /// The creation call is only performed once per successful attempt, even when called concurrently.
+    /// A failed or cancelled attempt is not cached, so the next caller retries.
+    /// </remarks>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    protected Task EnsureTableAsync(CancellationToken cancellationToken)
+    protected async Task EnsureTableAsync(CancellationToken cancellationToken)
     {
-        return _initialiseTask ??= _tableClient.CreateIfNotExistsAsync(cancellationToken);
+        if (Volatile.Read(ref _tableCreated))
+        {
+            return;
+        }
+
+        await _initialiseGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            if (_tableCreated)
+            {
+                return;
+            }
+
+            await _tableClient.CreateIfNotExistsAsync(cancellationToken).ConfigureAwait(false);
+
+            Volatile.Write(ref _tableCreated, true);
+        }
+        finally
+        {
+            _initialiseGate.Release();
+        }
     }
 
     /// <summary>
@@ -206,6 +231,27 @@ public abstract class TableRepositoryBase<TModel>
         }
 
         return results;
+    }
+
+    /// <summary>
+    /// Releases the resources used by the repository.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Releases the resources used by the repository.
+    /// </summary>
+    /// <param name="disposing"><see langword="true" /> to release managed resources; otherwise, <see langword="false" />.</param>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _initialiseGate.Dispose();
+        }
     }
 
     /// <summary>
