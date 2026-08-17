@@ -27,7 +27,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
         var exception = await Assert.ThrowsAsync<GraphUnauthenticatedContextException>(() =>
-            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
+            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken));
 
         Assert.Contains("authenticated user context", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -43,7 +43,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         ], authenticationType: "test-auth"));
         var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
-        _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"));
+        _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(tokenAcquisition.CapturedUser);
         Assert.Equal("object-id", tokenAcquisition.CapturedUser!.FindFirst("uid")?.Value);
@@ -63,7 +63,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         ], authenticationType: "test-auth"));
         var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
-        _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"));
+        _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(tokenAcquisition.CapturedUser);
         Assert.Equal("tenant-self-hosted", tokenAcquisition.CapturedUser!.FindFirst("tid")?.Value);
@@ -82,7 +82,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         ], authenticationType: "test-auth"));
         var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
 
-        _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"));
+        _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(tokenAcquisition.CapturedUser);
         Assert.Equal("person@contoso.com", tokenAcquisition.CapturedUser!.FindFirst("preferred_username")?.Value);
@@ -108,7 +108,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration, logger);
 
         var exception = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
-            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
+            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken));
 
         var entry = Assert.Single(logger.Entries);
         Assert.Same(challengeException, exception);
@@ -152,7 +152,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
         var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration, logger);
 
         _ = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
-            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me")));
+            provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken));
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(false, entry.State["PreferredUsernamePresent"]);
