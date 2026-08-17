@@ -28,7 +28,7 @@ updates:
           - "OpenTelemetry.*"
       test-packages:
         patterns:
-          - "xunit"
+          - "xunit.v3"
           - "xunit.*"
           - "Moq*"
           - "Microsoft.NET.Test.Sdk"

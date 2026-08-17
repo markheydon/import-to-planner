@@ -13,11 +13,11 @@
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="MessagePack" Version="2.5.302" />
-    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.v3" Version="4.0.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.4.6" />
     <PackageVersion Include="AngleSharp" Version="1.7.1" />
-    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.10" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.11" />
 
     <!-- CSV parsing -->
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
@@ -32,10 +32,10 @@
     <!-- Identity / Authentication -->
     <PackageVersion Include="Microsoft.Identity.Web" Version="4.14.2" />
     <PackageVersion Include="Microsoft.Identity.Web.UI" Version="4.14.2" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
-    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
 
     <!-- Azure SDKs -->
     <PackageVersion Include="Aspire.Azure.Data.Tables" Version="13.4.6" />
@@ -51,8 +51,8 @@
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.4.6" />
 
     <!-- Resilience & Service Discovery -->
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.8.0" />
-    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.8.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.9.0" />
+    <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.9.0" />
 
     <!-- OpenTelemetry exporters and instrumentation -->
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.17.0" />
