@@ -1,6 +1,6 @@
 ---
 name: repo-readme-generator
-description: 'Intelligent README.md generation prompt that analyses project documentation structure and creates comprehensive repository documentation. Scans repository documentation files and copilot-instructions.md to extract project information, technology stack, architecture, development workflow, coding standards, and testing approaches while generating well-structured markdown documentation with proper formatting, cross-references, and developer-focused content.'
+description: 'Intelligent README.md generation prompt that analyses project documentation structure and creates comprehensive repository documentation. Scans repository documentation files and AGENTS.md to extract project information, technology stack, architecture, development workflow, coding standards, and testing approaches while generating well-structured markdown documentation with proper formatting, cross-references, and developer-focused content.'
 ---
 
 # README Generator Prompt
@@ -17,9 +17,8 @@ Generate a comprehensive README.md for this repository by analysing repository-n
    - `contracts/*`
 
 2. Review repository governance and contributor guidance.
-   - `.github/copilot-instructions.md`
-   - `.specify/memory/constitution.md`
    - `AGENTS.md`
+   - `.specify/memory/constitution.md`
    - `tests/README.md`
 
 3. Create a README.md with the following sections, grounding each section in the sources above (and broader repository files where relevant).
@@ -60,7 +59,7 @@ Generate a comprehensive README.md for this repository by analysing repository-n
 
 ## Coding Standards
 - Summarise key coding standards and conventions.
-- Source from `.github/copilot-instructions.md` and `.github/instructions/*.instructions.md` files.
+- Source from `AGENTS.md` and `.github/instructions/*.instructions.md` files.
 
 ## Testing
 - Explain testing approach and tools.
@@ -69,7 +68,7 @@ Generate a comprehensive README.md for this repository by analysing repository-n
 ## Contributing
 - Guidelines for contributing to the project.
 - Reference any code exemplars for guidance.
-- Source from `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `AGENTS.md`, and `.github/copilot-instructions.md`.
+- Source from `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, and `AGENTS.md`.
 
 ## Licence
 - Include license information if available.

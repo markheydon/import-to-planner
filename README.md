@@ -129,7 +129,6 @@ Projects in solution:
 Architecture and governance references:
 
 - [.specify/memory/constitution.md](.specify/memory/constitution.md)
-- [.github/copilot-instructions.md](.github/copilot-instructions.md)
 - [AGENTS.md](AGENTS.md)
 - [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md)
 
@@ -286,8 +285,7 @@ Repository areas:
 This repository uses specification-led delivery and explicit governance:
 
 - Feature requirements, plans, and tasks live in `specs/`.
-- Repository-wide policy is in [.github/copilot-instructions.md](.github/copilot-instructions.md).
-- Agent and skill delegation rules are in [AGENTS.md](AGENTS.md).
+- Repository-wide agent policy and skill delegation are in [AGENTS.md](AGENTS.md).
 - Architecture governance is in [.specify/memory/constitution.md](.specify/memory/constitution.md).
 - Operational policies are in [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md).
 
@@ -314,7 +312,7 @@ Key standards:
 
 Standards references:
 
-- [.github/copilot-instructions.md](.github/copilot-instructions.md)
+- [AGENTS.md](AGENTS.md)
 - [.github/instructions/blazor-csharp.instructions.md](.github/instructions/blazor-csharp.instructions.md)
 - [.github/instructions/csharp-clean-architecture.instructions.md](.github/instructions/csharp-clean-architecture.instructions.md)
 - [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md)

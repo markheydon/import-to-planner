@@ -29,7 +29,7 @@ folder. Recommended locations for internal developer docs:
 
 For automation and AI agents: treat `docs/` as public content. Avoid placing internal-only
 instructions or credentials here. If you add project-level policies that affect agents,
-update `.github/copilot-instructions.md` or `AGENTS.md` as appropriate.
+update `AGENTS.md` as appropriate.
 
 If you want to contribute to the codebase or debug the application locally, use the internal
 developer guidance in `docs-internal/` instead of adding contributor-only setup detail here.
