@@ -167,40 +167,34 @@ When invoked:
 
 ## Test framework-specific guidance
 
-- **Use the framework already in the solution** (xUnit/NUnit/MSTest) for new tests.
-
-### xUnit
-
-- Packages: `Microsoft.NET.Test.Sdk`, `xunit`, `xunit.runner.visualstudio`
-- No class attribute; use `[Fact]`
-- Parameterized tests: `[Theory]` with `[InlineData]`
-- Setup/teardown: constructor and `IDisposable`
+- **Use xUnit v3** for all new tests in this repository.
 
 ### xUnit v3
 
-- Packages: `xunit.v3`, `xunit.runner.visualstudio` 3.x, `Microsoft.NET.Test.Sdk`
+- Packages: `xunit.v3`, `xunit.runner.visualstudio` 4.x, `Microsoft.NET.Test.Sdk`
+- No class attribute; use `[Fact]`
+- Parameterized tests: `[Theory]` with `[InlineData]`, `[MemberData]`, or `[ClassData]`
+- Setup/teardown: constructor and `IDisposable`
 - `ITestOutputHelper` and `[Theory]` are in `Xunit`
-
-### NUnit
-
-- Packages: `Microsoft.NET.Test.Sdk`, `NUnit`, `NUnit3TestAdapter`
-- Class `[TestFixture]`, test `[Test]`
-- Parameterized tests: **use `[TestCase]`**
-
-### MSTest
-
-- Class `[TestClass]`, test `[TestMethod]`
-- Setup/teardown: `[TestInitialize]`, `[TestCleanup]`
-- Parameterized tests: **use `[TestMethod]` + `[DataRow]`**
+- Test projects inherit `TreatWarningsAsErrors`; compile without warning suppressions
 
 ### Assertions
 
-- If **FluentAssertions/AwesomeAssertions** are already used, prefer them.
-- Otherwise, use the framework’s asserts.
-- Use `Throws/ThrowsAsync` (or MSTest `Assert.ThrowsException`) for exceptions.
+- Use built-in xUnit `Assert` methods only.
+- Use `Assert.Throws<T>` or `await Assert.ThrowsAsync<T>` for exceptions.
+
+Do not introduce FluentAssertions, AwesomeAssertions, Shouldly, NUnit, or MSTest.
 
 ## Mocking
 
-- Avoid mocks/Fakes if possible
+- Use **NSubstitute** for mocks, stubs, and test doubles.
+- Prefer handwritten stateful doubles when they model real behaviour.
+- Avoid mocks when a simple fake or stub is clearer.
 - External dependencies can be mocked. Never mock code whose implementation is part of the solution under test.
 - Try to verify that the outputs (e.g. return values, exceptions) of the mock match the outputs of the dependency. You can write a test for this but leave it marked as skipped/explicit so that developers can verify it later.
+
+## AppHost and end-to-end testing
+
+- Do not test .NET Aspire AppHost modelling or orchestration.
+- Use Playwright only when a complete user journey explicitly requires end-to-end coverage.
+- Do not use Playwright as a replacement for unit tests or bUnit component tests.

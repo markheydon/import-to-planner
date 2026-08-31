@@ -17,10 +17,9 @@ updates:
         patterns:
           - "xunit*"
           - "bunit"
-          - "Moq*"
+          - "NSubstitute*"
           - "Microsoft.NET.Test.Sdk"
           - "coverlet*"
-          - "Aspire.Hosting.Testing"
         update-types:
           - "minor"
           - "patch"

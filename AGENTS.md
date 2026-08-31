@@ -118,7 +118,9 @@ Expected delegation:
   `csharp-docs`, `csharp-xunit`, `dotnet-best-practices-repo`) for .NET/C#
   implementation, refactoring, async/reliability fixes, documentation updates, and
   unit/integration test work; do not use this path for non-.NET stacks unless
-  explicitly requested
+  explicitly requested. Generated tests MUST follow `docs-internal/engineering-policies.md`
+  (xUnit v3, NSubstitute, built-in Assert; no AppHost tests; Playwright only for
+  explicit end-to-end journeys)
 - Blazor UI work → C# Expert agent using the `mudblazor` skill for all component
   implementation, layout, theming, dialogs, and troubleshooting; refer to the skill's
   decision order and reference files before writing any custom CSS or HTML

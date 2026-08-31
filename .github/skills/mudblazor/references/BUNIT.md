@@ -13,7 +13,6 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 using MudBlazor.Services;
-using Moq;
 using Xunit;
 
 public class ItemsPageTests : BunitContext
@@ -34,14 +33,16 @@ public class ItemsPageTests : BunitContext
 ## Rendering a Page Component
 
 ```csharp
+using NSubstitute;
+
 [Fact]
 public void ItemsPage_RendersDataGrid_WhenItemsLoaded()
 {
     // Arrange
-    var mockService = new Mock<IItemService>();
-    mockService.Setup(s => s.GetItemsAsync(It.IsAny<CancellationToken>()))
-               .ReturnsAsync([new ItemDto("Sample item", "#d73a4a", "Example description", [])]);
-    Services.AddSingleton(mockService.Object);
+    var itemService = Substitute.For<IItemService>();
+    itemService.GetItemsAsync(Arg.Any<CancellationToken>())
+        .Returns([new ItemDto("Sample item", "#d73a4a", "Example description", [])]);
+    Services.AddSingleton(itemService);
 
     // Act
     var cut = RenderComponent<Items>();
@@ -76,20 +77,21 @@ public async Task CreateButton_OpensCreateDialog()
 
 ## Testing Snackbar Messages
 
-`ISnackbar` is registered by `AddMudServices()`. You can verify calls via mock injection if needed:
+`ISnackbar` is registered by `AddMudServices()`. You can verify calls via NSubstitute if needed:
 
 ```csharp
-var snackbarMock = new Mock<ISnackbar>();
-Services.AddSingleton(snackbarMock.Object);
+using NSubstitute;
+
+var snackbar = Substitute.For<ISnackbar>();
+Services.AddSingleton(snackbar);
 
 // ... trigger action ...
 
-snackbarMock.Verify(s => s.Add(
-    It.Is<string>(m => m.Contains("created")),
+snackbar.Received(1).Add(
+    Arg.Is<string>(m => m.Contains("created")),
     Severity.Success,
-    It.IsAny<Action<SnackbarOptions>>(),
-    It.IsAny<string>()),
-    Times.Once);
+    Arg.Any<Action<SnackbarOptions>>(),
+    Arg.Any<string>());
 ```
 
 ---

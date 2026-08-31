@@ -10,13 +10,15 @@ Your goal is to help me write effective unit tests with XUnit, covering both sta
 ## Project Setup
 
 - Use a separate test project with naming convention `[ProjectName].Tests`
-- Reference Microsoft.NET.Test.Sdk, xunit, and xunit.runner.visualstudio packages
+- Reference `Microsoft.NET.Test.Sdk`, `xunit.v3`, and `xunit.runner.visualstudio` packages
+- Add `NSubstitute` for mocks, stubs, and test doubles
 - Create test classes that match the classes being tested (e.g., `CalculatorTests` for `Calculator`)
 - Use .NET SDK test commands: `dotnet test` for running tests
+- Test projects inherit `TreatWarningsAsErrors`; compile test code without warning suppressions
 
 ## Test Structure
 
-- No test class attributes required (unlike MSTest/NUnit)
+- No test class attributes required
 - Use fact-based tests with `[Fact]` attribute for simple tests
 - Follow the Arrange-Act-Assert (AAA) pattern
 - Name tests using the pattern `MethodName_Scenario_ExpectedBehavior`
@@ -44,20 +46,26 @@ Your goal is to help me write effective unit tests with XUnit, covering both sta
 
 ## Assertions
 
+- Use built-in xUnit `Assert` methods only
 - Use `Assert.Equal` for value equality
 - Use `Assert.Same` for reference equality
 - Use `Assert.True`/`Assert.False` for boolean conditions
 - Use `Assert.Contains`/`Assert.DoesNotContain` for collections
 - Use `Assert.Matches`/`Assert.DoesNotMatch` for regex pattern matching
 - Use `Assert.Throws<T>` or `await Assert.ThrowsAsync<T>` to test exceptions
-- Use fluent assertions library for more readable assertions
+
+Do not introduce FluentAssertions, AwesomeAssertions, Shouldly, or other assertion libraries.
 
 ## Mocking and Isolation
 
-- Consider using Moq or NSubstitute alongside XUnit
+- Use **NSubstitute** for mocks, stubs, and test doubles
+- Prefer handwritten stateful doubles when they model real behaviour (for example,
+  in-memory stores or adapter subclasses)
 - Mock dependencies to isolate units under test
 - Use interfaces to facilitate mocking
 - Consider using a DI container for complex test setups
+
+Do not introduce Moq, NUnit, MSTest, or AppHost testing harnesses.
 
 ## Test Organization
 
@@ -66,3 +74,10 @@ Your goal is to help me write effective unit tests with XUnit, covering both sta
 - Use collection fixtures to group tests with shared dependencies
 - Consider output helpers (`ITestOutputHelper`) for test diagnostics
 - Skip tests conditionally with `Skip = "reason"` in fact/theory attributes
+
+## End-to-end testing
+
+- Use Playwright only when a complete user journey explicitly requires end-to-end
+  coverage
+- Do not use Playwright as a replacement for unit tests
+- AppHost modelling and orchestration are not tested in this repository
