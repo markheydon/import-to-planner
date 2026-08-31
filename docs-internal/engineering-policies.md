@@ -3,6 +3,38 @@
 This document preserves repository policies that govern delivery quality, operations,
 and workflow but are intentionally outside the architecture constitution.
 
+Stack-named rules (projects, packages, SDKs, UI libraries, and concrete
+architecture tests) belong here, in `docs-internal/microsoft-graph-guidelines.md`,
+or in decision logs. The constitution states the yes/no architecture rules; this
+file records how those rules are applied in this repository.
+
+## Repository Layer Map
+
+Allowed dependency direction for this solution:
+
+- Outer adapters MAY depend on Application and Domain:
+  `ImportToPlanner.Web`, `ImportToPlanner.Infrastructure.Graph`, and
+  `ImportToPlanner.Commercial`.
+- Application MAY depend on Domain.
+- Domain MUST NOT depend on any outer project.
+
+Web owns UI, authentication composition, and host configuration.
+`Infrastructure.Graph` owns CSV parsing and Microsoft Graph planner adapters.
+`Commercial` owns hosted commercial-account persistence and related adapters.
+Application and Domain own policy using repository-owned types only.
+
+## Architecture Evidence Gates
+
+Pull requests that add or change code MUST include evidence for:
+
+- Dependency direction (Web / Infrastructure.Graph / Commercial → Application → Domain).
+- Forbidden-reference validation for Domain and Application (no provider, UI,
+  or delivery packages in inner layers). The automated check lives in
+  `tests/ImportToPlanner.Tests/ArchitectureComplianceTests.cs`.
+- Boundary leakage checks: use-case outputs and domain models MUST NOT carry
+  provider payload residue, SDK exception taxonomies, UI component types, or
+  delivery-specific wording.
+
 ## Testing and Runtime Behaviour
 
 - Every behaviour change MUST be verified by automated tests at the smallest practical
@@ -37,8 +69,10 @@ and workflow but are intentionally outside the architecture constitution.
 
 ## External Integration and Scope Constraints
 
-- External-provider implementation details (including Graph and Kiota specifics) MUST stay
-  in adapter/infrastructure layers.
+- External-provider implementation details MUST stay in adapter/infrastructure
+  layers. That includes Microsoft Graph API shapes, Kiota models, UI component
+  behaviours, SDK exception taxonomies, and API payload residue. Map those at
+  the adapter boundary before they reach Application or Domain.
 - Because supported Planner scenarios currently rely on Microsoft Graph beta endpoints,
   Graph contract changes MUST include compatibility notes and mitigation guidance.
 - The repository supports two explicit authority modes only: self-hosted single-tenant and
@@ -62,4 +96,6 @@ and workflow but are intentionally outside the architecture constitution.
 
 - Pull requests MUST include quality evidence for testing, UX impact, operational safety,
   and performance impact when the change affects those areas.
+- Pull requests that change architecture-relevant code MUST also include the
+  architecture evidence gates listed above.
 - Large or risky changes SHOULD be delivered incrementally with verifiable checkpoints.

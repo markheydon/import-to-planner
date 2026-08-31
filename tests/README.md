@@ -27,7 +27,10 @@ Repository testing notes
 ------------------------
 - Mock `IPlannerGateway` for unit tests covering orchestration logic.
 - Use explicit boundary doubles for planner and tenant metadata abstractions in integration-style tests.
-- See `.specify/memory/constitution.md` for mandatory testing standards and architecture evidence expectations.
+- See `docs-internal/engineering-policies.md` for mandatory testing standards and
+  architecture evidence gates. The constitution states the stack-independent
+  testability and quality rules; this repository's named checks and packages
+  live in engineering policies.
 
 Guidance and skills
 -------------------

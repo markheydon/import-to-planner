@@ -1,9 +1,9 @@
 # AGENTS.md — Repository agent policy
 
 This file is the single source of repository-wide policy for AI agents, regardless of
-which product loads it. GitHub Copilot still reads
-`.github/copilot-instructions.md`; that file is a pointer only and MUST NOT hold
-independent policy.
+which product loads it. GitHub Copilot auto-loads
+`.github/copilot-instructions.md`; that file is a pointer to this one and MUST NOT
+hold independent policy.
 
 ## Precedence (authoritative)
 

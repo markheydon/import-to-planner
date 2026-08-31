@@ -337,7 +337,7 @@ dotnet tool install -g dotnet-coverage
 dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test ImportToPlanner.slnx
 ```
 
-Testing expectations include regression coverage for changed behaviour, startup validation, and authority-specific auth handling. See [tests/README.md](tests/README.md) and [.specify/memory/constitution.md](.specify/memory/constitution.md).
+Testing expectations include regression coverage for changed behaviour, startup validation, and authority-specific auth handling. See [tests/README.md](tests/README.md) and [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md). Architecture rules that tests must satisfy live in [.specify/memory/constitution.md](.specify/memory/constitution.md).
 
 ## Contributing
 
