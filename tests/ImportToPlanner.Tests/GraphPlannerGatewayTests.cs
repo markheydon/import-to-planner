@@ -32,8 +32,8 @@ public sealed class GraphPlannerGatewayTests
             {
                 Value =
                 [
-                    new Group { Id = "group-1", DisplayName = "Alpha" },
-                    new Group { Id = "group-1", DisplayName = "Alpha duplicate" },
+                    new Group { Id = "group-1", DisplayName = "Alpha", GroupTypes = ["Unified"] },
+                    new Group { Id = "group-1", DisplayName = "Alpha duplicate", GroupTypes = ["Unified"] },
                 ],
             });
 
@@ -49,6 +49,38 @@ public sealed class GraphPlannerGatewayTests
         Assert.Single(result, container =>
             container.Type == ContainerType.Group &&
             container.Id == "group-1");
+    }
+
+    [Fact]
+    public async Task GetAvailableContainersAsync_ExcludesNonMicrosoft365Groups()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<User>(
+            "me",
+            request => request.URI?.AbsolutePath.EndsWith("/me", StringComparison.OrdinalIgnoreCase) == true,
+            new User { Id = "user-1", DisplayName = "Mark" });
+        adapter.QueueSendAsyncResponse<GroupCollectionResponse>(
+            "memberOf",
+            request => request.URI?.AbsolutePath.Contains("/memberOf/", StringComparison.OrdinalIgnoreCase) == true,
+            new GroupCollectionResponse
+            {
+                Value =
+                [
+                    new Group { Id = "group-unified", DisplayName = "Project Team", GroupTypes = ["Unified"] },
+                    new Group { Id = "group-security", DisplayName = "Security Only", GroupTypes = [] },
+                ],
+            });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.GetAvailableContainersAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Single(result, container => container.Type == ContainerType.Group);
+        Assert.Contains(result, container => container.Id == "group-unified");
+        Assert.DoesNotContain(result, container => container.Id == "group-security");
     }
 
     [Fact]
@@ -399,7 +431,7 @@ public sealed class GraphPlannerGatewayTests
             "memberOf",
             request => request.URI?.AbsolutePath.Contains("/memberOf/", StringComparison.OrdinalIgnoreCase) == true,
             CreateApiException(429, retryAfterSeconds: 0),
-            new GroupCollectionResponse { Value = [new Group { Id = "group-1", DisplayName = "Alpha" }] });
+            new GroupCollectionResponse { Value = [new Group { Id = "group-1", DisplayName = "Alpha", GroupTypes = ["Unified"] }] });
 
         var gateway = CreateGateway(adapter);
 
