@@ -1,18 +1,19 @@
 <!--
 Sync Impact Report
-- Version change: 2.1.0 -> 2.1.1
+- Version change: 2.0.1 -> 2.1.0
 - Modified principles:
 	- None
 - Added sections:
-	- None
+	- Core Principles: VI. Self-Hosted Viability Is Non-Negotiable
 - Removed sections:
 	- None
-- Other:
-	- Governance conflict-resolution pointer now names AGENTS.md only
 - Templates requiring updates:
-	- None
+	- ⚠ deferred by repository choice: .specify/templates/plan-template.md
+	- ⚠ deferred by repository choice: .specify/templates/spec-template.md
+	- ⚠ deferred by repository choice: .specify/templates/tasks-template.md
+	- ⚠ not present: .specify/templates/commands/*.md
 - Follow-up TODOs:
-	- None
+	- Reconfirm upstream-safe template customisation approach before changing .specify/templates/*.
 -->
 
 # Import To Planner Constitution
@@ -107,8 +108,8 @@ hosted-service dependants when the codebase is explicitly intended to remain sel
 ## Governance
 
 This constitution defines the Spec Kit governance baseline for this repository.
-Where guidance conflicts, repository precedence defined in `AGENTS.md`
-governs conflict resolution.
+Where guidance conflicts, repository precedence defined in `.github/copilot-instructions.md`
+and `AGENTS.md` governs conflict resolution.
 
 Amendment process:
 1. Propose the amendment with a clear rationale and impacted principles/sections.
@@ -124,4 +125,4 @@ Compliance review expectations:
 - Constitution compliance MUST be checked in planning and pull request review.
 - Non-compliance MUST be tracked as explicit follow-up work or resolved before release.
 
-**Version**: 2.1.1 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-08-31
+**Version**: 2.1.0 | **Ratified**: 2026-05-09 | **Last Amended**: 2026-05-28
