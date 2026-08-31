@@ -69,8 +69,10 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             innerToken => graphClient.Me.MemberOf.GraphGroup.GetAsync(
                 requestConfiguration =>
                 {
-                    requestConfiguration.QueryParameters.Select = ["id", "displayName"];
-                    requestConfiguration.QueryParameters.Filter = "groupTypes/any(c:c eq 'Unified')";
+                    // Filter Microsoft 365 groups in-process. Server-side $filter on memberOf
+                    // requires advanced-query headers and has returned 403 for otherwise consented tokens.
+                    // All membership pages are fetched via OdataNextLink before filtering.
+                    requestConfiguration.QueryParameters.Select = ["id", "displayName", "groupTypes"];
                     requestConfiguration.QueryParameters.Top = MaxGroupPageSize;
                 },
                 innerToken),
@@ -81,6 +83,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             if (groupsResponse.Value is not null)
             {
                 containers.AddRange(groupsResponse.Value
+                    .Where(IsMicrosoft365Group)
                     .Where(group => !string.IsNullOrWhiteSpace(group.Id))
                     .Select(group => new PlannerContainer(
                         group.Id!,
@@ -538,6 +541,13 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         }
 
         return null;
+    }
+
+    private static bool IsMicrosoft365Group(Microsoft.Graph.Models.Group group)
+    {
+        ArgumentNullException.ThrowIfNull(group);
+
+        return group.GroupTypes?.Any(groupType => string.Equals(groupType, "Unified", StringComparison.OrdinalIgnoreCase)) == true;
     }
 
     private static string EscapeODataLiteral(string value)

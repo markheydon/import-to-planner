@@ -27,7 +27,12 @@ If you want repeatable CI/CD from GitHub Actions, complete every section.
 - Deployment target: Azure Container Apps (ACA)
 - Deployment command: `aspire deploy --environment Staging`
 - CI/CD entrypoint: `.github/workflows/deploy-staging.yml`
+- Aspire CLI and AppHost SDK: **13.5.3** (keep these aligned in the workflow and `ImportToPlanner.AppHost.csproj`)
 - Current app shape: one `web` compute resource in one ACA environment (`aca-env`)
+
+The GitHub Actions workflow runs `aspire deploy --environment Staging --non-interactive` so missing parameters fail immediately instead of waiting on stdin. In-flight staging deploys are **not** cancelled when a newer `main` push triggers another run; later runs queue until the current deploy finishes.
+
+When CI on `main` completes, the deploy workflow checks out the exact commit that passed (`workflow_run.head_sha`), not the default branch tip. Before deploying, it compares that commit to the current `main` tip: if `main` has moved on, the run exits successfully without deploying so only the latest queued run publishes staging. Manual `workflow_dispatch` deploys are unaffected and always run.
 
 ## Manual deployment path (one-off deploy)
 
@@ -314,7 +319,7 @@ Important:
 2. Run the `Deploy Staging` workflow using `workflow_dispatch`.
 3. Verify the Azure login step succeeded using OIDC.
 4. Confirm the shared Azure values are present in the workflow environment (`AZURE_SUBSCRIPTION_ID`, `AZURE_LOCATION`, and `AZURE_RESOURCE_GROUP`).
-5. Confirm `aspire deploy --environment Staging` completed without errors.
+5. Confirm `aspire deploy --environment Staging --non-interactive` completed without errors.
 6. Capture deployment output and resulting ACA endpoint URL.
 
 If deployment fails at `Azure login (OIDC)` with `AADSTS70025`, verify the three federated credential values above and confirm they are configured on the app registration identified by `AZURE_CLIENT_ID`.
