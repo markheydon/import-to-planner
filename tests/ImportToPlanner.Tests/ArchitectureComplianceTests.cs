@@ -57,14 +57,13 @@ public sealed class ArchitectureComplianceTests
     }
 
     [Fact]
-    public void Application_ContainsCommercialAccountBoundaryContracts()
+    public void Application_DoesNotContainCommercialAccountBoundaryContracts()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
         var applicationRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Application");
 
-        var requiredPaths = new[]
+        var forbiddenPaths = new[]
         {
-            Path.Combine(applicationRoot, "Models", "SessionIdentityContext.cs"),
             Path.Combine(applicationRoot, "Models", "CommercialAccount.cs"),
             Path.Combine(applicationRoot, "Models", "CommercialAccessDecision.cs"),
             Path.Combine(applicationRoot, "Models", "AccountAuditEvent.cs"),
@@ -74,27 +73,28 @@ public sealed class ArchitectureComplianceTests
             Path.Combine(applicationRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
         };
 
-        foreach (var requiredPath in requiredPaths)
+        foreach (var forbiddenPath in forbiddenPaths)
         {
-            Assert.True(File.Exists(requiredPath));
+            Assert.False(File.Exists(forbiddenPath));
         }
+
+        Assert.True(File.Exists(Path.Combine(applicationRoot, "Models", "SessionIdentityContext.cs")));
     }
 
     [Fact]
     public void CommercialAccountContracts_AreProviderNeutral()
     {
         var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
-        var applicationRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Application");
+        var commercialRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Commercial");
         var commercialFiles = new[]
         {
-            Path.Combine(applicationRoot, "Models", "SessionIdentityContext.cs"),
-            Path.Combine(applicationRoot, "Models", "CommercialAccount.cs"),
-            Path.Combine(applicationRoot, "Models", "CommercialAccessDecision.cs"),
-            Path.Combine(applicationRoot, "Models", "AccountAuditEvent.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccountStore.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialAuditStore.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialAccessUseCase.cs"),
-            Path.Combine(applicationRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
+            Path.Combine(commercialRoot, "Models", "CommercialAccount.cs"),
+            Path.Combine(commercialRoot, "Models", "CommercialAccessDecision.cs"),
+            Path.Combine(commercialRoot, "Models", "AccountAuditEvent.cs"),
+            Path.Combine(commercialRoot, "Abstractions", "ICommercialAccountStore.cs"),
+            Path.Combine(commercialRoot, "Abstractions", "ICommercialAuditStore.cs"),
+            Path.Combine(commercialRoot, "Abstractions", "ICommercialAccessUseCase.cs"),
+            Path.Combine(commercialRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
         };
 
         var forbiddenTokens = new[]
@@ -110,12 +110,107 @@ public sealed class ArchitectureComplianceTests
 
         foreach (var commercialFile in commercialFiles)
         {
+            Assert.True(File.Exists(commercialFile));
             var content = File.ReadAllText(commercialFile);
             foreach (var forbiddenToken in forbiddenTokens)
             {
                 Assert.DoesNotContain(forbiddenToken, content, StringComparison.OrdinalIgnoreCase);
             }
         }
+    }
+
+    [Fact]
+    public void Commercial_DoesNotReferenceForbiddenOuterDependencies()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var commercialProjectPath = Path.Combine(rootPath, "src", "ImportToPlanner.Commercial", "ImportToPlanner.Commercial.csproj");
+        var commercialSourceFiles = Directory.EnumerateFiles(
+                Path.Combine(rootPath, "src", "ImportToPlanner.Commercial"),
+                "*.cs",
+                SearchOption.AllDirectories)
+            .Where(path => !path.Contains("/bin/", StringComparison.Ordinal) && !path.Contains("/obj/", StringComparison.Ordinal));
+
+        var projectContent = File.ReadAllText(commercialProjectPath);
+        Assert.DoesNotContain("ImportToPlanner.Infrastructure.Graph", projectContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Microsoft.Graph", projectContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("MudBlazor", projectContent, StringComparison.Ordinal);
+
+        var forbiddenTokens = new[]
+        {
+            "ImportToPlanner.Infrastructure.Graph",
+            "Microsoft.Graph",
+            "Microsoft.Kiota",
+            "MudBlazor",
+        };
+
+        foreach (var file in commercialSourceFiles)
+        {
+            var content = File.ReadAllText(file);
+            foreach (var token in forbiddenTokens)
+            {
+                Assert.DoesNotContain(token, content, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
+
+    [Fact]
+    public void GraphDependencyInjection_DoesNotRegisterCommercialTableStores()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var dependencyInjectionPath = Path.Combine(
+            rootPath,
+            "src",
+            "ImportToPlanner.Infrastructure.Graph",
+            "DependencyInjection.cs");
+        var content = File.ReadAllText(dependencyInjectionPath);
+
+        Assert.DoesNotContain("ICommercialAccountStore", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("ICommercialAuditStore", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("TableCommercialAccountStore", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("TableCommercialAuditStore", content, StringComparison.Ordinal);
+        Assert.DoesNotContain("AddAzureTableServiceClient", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RuntimeAdapters_DoNotConstructAzureStorageServiceClients()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var adapterRoots = new[]
+        {
+            Path.Combine(rootPath, "src", "ImportToPlanner.Commercial"),
+            Path.Combine(rootPath, "src", "ImportToPlanner.Infrastructure.Graph"),
+        };
+
+        foreach (var adapterRoot in adapterRoots)
+        {
+            var files = Directory.EnumerateFiles(adapterRoot, "*.cs", SearchOption.AllDirectories)
+                .Where(path => !path.Contains("/bin/", StringComparison.Ordinal) && !path.Contains("/obj/", StringComparison.Ordinal));
+
+            foreach (var file in files)
+            {
+                var content = File.ReadAllText(file);
+                Assert.DoesNotContain("new TableServiceClient", content, StringComparison.Ordinal);
+                Assert.DoesNotContain("new BlobServiceClient", content, StringComparison.Ordinal);
+            }
+        }
+    }
+
+    [Fact]
+    public void HostedCommercialTopology_DoesNotReferenceSeparateCommercialApiService()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var appHostPath = Path.Combine(rootPath, "src", "ImportToPlanner.AppHost", "AppHost.cs");
+        var appHostProjectPath = Path.Combine(rootPath, "src", "ImportToPlanner.AppHost", "ImportToPlanner.AppHost.csproj");
+        var solutionPath = Path.Combine(rootPath, "ImportToPlanner.slnx");
+
+        var appHostContent = File.ReadAllText(appHostPath);
+        var appHostProjectContent = File.ReadAllText(appHostProjectPath);
+        var solutionContent = File.ReadAllText(solutionPath);
+
+        Assert.DoesNotContain("commercialapiservice", appHostContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ApiService.Commercial", appHostContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ApiService.Commercial", appHostProjectContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("ApiService.Commercial", solutionContent, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

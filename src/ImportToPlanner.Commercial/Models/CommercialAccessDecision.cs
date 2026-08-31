@@ -1,4 +1,4 @@
-namespace ImportToPlanner.Application.Models;
+namespace ImportToPlanner.Commercial.Models;
 
 /// <summary>
 /// Represents an access decision for the current commercial account session.

@@ -1,5 +1,7 @@
 using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Commercial;
+using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Infrastructure.Graph.Planner;
 using Microsoft.Extensions.Configuration;
@@ -10,32 +12,15 @@ namespace ImportToPlanner.Tests;
 public sealed class InfrastructureRegistrationTests
 {
     [Fact]
-    public void AddInfrastructureStorageClients_WhenCommercialModeDisabled_DoesNotRegisterTableServiceClient()
+    public void AddCommercialStorageClients_RegistersTableServiceClient()
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Features:CommercialMode:Enabled"] = "false",
-        });
-
-        builder.AddInfrastructureStorageClients();
-
-        using var serviceProvider = builder.Services.BuildServiceProvider();
-        var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
-        Assert.Null(tableServiceClient);
-    }
-
-    [Fact]
-    public void AddInfrastructureStorageClients_WhenCommercialModeEnabled_RegistersTableServiceClient()
-    {
-        var builder = Host.CreateApplicationBuilder();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Features:CommercialMode:Enabled"] = "true",
             ["ConnectionStrings:tables"] = "UseDevelopmentStorage=true",
         });
 
-        builder.AddInfrastructureStorageClients();
+        builder.AddCommercialStorageClients();
 
         using var serviceProvider = builder.Services.BuildServiceProvider();
         var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
@@ -43,7 +28,7 @@ public sealed class InfrastructureRegistrationTests
     }
 
     [Fact]
-    public void AddInfrastructure_WhenCommercialModeEnabled_RegistersGraphGatewayAndTableMetadataStore()
+    public void AddCommercial_RegistersCommercialStoresAndUseCases()
     {
         var services = new ServiceCollection();
         services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
@@ -51,31 +36,30 @@ public sealed class InfrastructureRegistrationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Features:CommercialMode:Enabled"] = "true",
                 ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
                 ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
                 ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
             })
             .Build();
 
-        services.AddInfrastructure(configuration);
-
-        var plannerDescriptor = services.Single(descriptor => descriptor.ServiceType == typeof(IPlannerGateway));
-        Assert.Equal(ServiceLifetime.Scoped, plannerDescriptor.Lifetime);
-        Assert.Equal(typeof(GraphPlannerGateway), plannerDescriptor.ImplementationType);
+        services.AddCommercial(configuration);
 
         using var serviceProvider = services.BuildServiceProvider();
         var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
-        var commercialAccountsTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAccountsTableClientKey);
-        var commercialAuditTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(DependencyInjection.CommercialAuditTableClientKey);
+        var commercialAccountsTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(ImportToPlanner.Commercial.DependencyInjection.CommercialAccountsTableClientKey);
+        var commercialAuditTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(ImportToPlanner.Commercial.DependencyInjection.CommercialAuditTableClientKey);
+        var accessUseCase = serviceProvider.GetRequiredService<ICommercialAccessUseCase>();
+        var profileUseCase = serviceProvider.GetRequiredService<ICommercialProfileUseCase>();
 
         Assert.Equal("TableTenantOperationalMetadataStore", metadataStore.GetType().Name);
         Assert.Equal("CommercialAccounts", commercialAccountsTableClient.Name);
         Assert.Equal("CommercialAccountAuditEvents", commercialAuditTableClient.Name);
+        Assert.Equal("CommercialAccessUseCase", accessUseCase.GetType().Name);
+        Assert.Equal("GetCommercialProfileUseCase", profileUseCase.GetType().Name);
     }
 
     [Fact]
-    public void AddInfrastructure_WhenCommercialModeDisabled_RegistersNoOpCommercialStoresAndSelfHostMetadataStoreWithoutTables()
+    public void AddInfrastructure_RegistersGraphGatewayAndSelfHostMetadataStoreWithoutTables()
     {
         var services = new ServiceCollection();
 
@@ -88,15 +72,17 @@ public sealed class InfrastructureRegistrationTests
 
         services.AddInfrastructure(configuration);
 
+        var plannerDescriptor = services.Single(descriptor => descriptor.ServiceType == typeof(IPlannerGateway));
+        Assert.Equal(ServiceLifetime.Scoped, plannerDescriptor.Lifetime);
+        Assert.Equal(typeof(GraphPlannerGateway), plannerDescriptor.ImplementationType);
+
         using var serviceProvider = services.BuildServiceProvider();
-        var accountStore = serviceProvider.GetRequiredService<ICommercialAccountStore>();
-        var auditStore = serviceProvider.GetRequiredService<ICommercialAuditStore>();
         var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
         var tableServiceClient = serviceProvider.GetService<TableServiceClient>();
+        var commercialAccountStore = serviceProvider.GetService<ICommercialAccountStore>();
 
-        Assert.Equal("NoOpCommercialAccountStore", accountStore.GetType().Name);
-        Assert.Equal("NoOpCommercialAuditStore", auditStore.GetType().Name);
         Assert.Equal("SelfHostTenantOperationalMetadataStore", metadataStore.GetType().Name);
         Assert.Null(tableServiceClient);
+        Assert.Null(commercialAccountStore);
     }
 }

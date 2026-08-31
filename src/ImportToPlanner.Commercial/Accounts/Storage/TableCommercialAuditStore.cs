@@ -1,14 +1,14 @@
 using Azure;
 using Azure.Data.Tables;
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Abstractions;
+using ImportToPlanner.Commercial.Models;
 
-namespace ImportToPlanner.Infrastructure.Graph.CommercialAccounts.Storage;
+namespace ImportToPlanner.Commercial.Accounts.Storage;
 
 /// <summary>
 /// Persists commercial account audit events in Azure Table Storage.
 /// </summary>
-internal sealed class TableCommercialAuditStore(TableClient tableClient) : ICommercialAuditStore, IDisposable
+public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommercialAuditStore, IDisposable
 {
     private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);

@@ -1,4 +1,4 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Web.Features.Import.Workflows;
 
 namespace ImportToPlanner.Web.Features.Import.Pages;
