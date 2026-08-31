@@ -47,7 +47,7 @@
     <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.1" />
 
     <!-- Aspire AppHost -->
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.5.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.5.3" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.5.2" />
 
     <!-- Resilience & Service Discovery -->
