@@ -6,6 +6,12 @@
 
 <!-- Link the related GitHub issue, discussion, or write N/A. -->
 
+## Traceability
+
+<!-- Required for behaviour changes. Name the spec, user story, task id, or defect this change satisfies. -->
+
+- Spec / task / defect:
+
 ## Change Type
 
 - [ ] Bug fix
