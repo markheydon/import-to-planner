@@ -22,6 +22,13 @@
           "speckit.git.initialize",
           "speckit.git.commit"
         ],
+        "copilot": [
+          "speckit.git.feature",
+          "speckit.git.validate",
+          "speckit.git.remote",
+          "speckit.git.initialize",
+          "speckit.git.commit"
+        ],
         "cursor-agent": [
           "speckit.git.feature",
           "speckit.git.validate",
@@ -30,13 +37,7 @@
           "speckit.git.commit"
         ]
       },
-      "registered_skills": [
-        "speckit-git-feature",
-        "speckit-git-validate",
-        "speckit-git-remote",
-        "speckit-git-initialize",
-        "speckit-git-commit"
-      ],
+      "registered_skills": [],
       "installed_at": "2026-05-29T13:48:29.796701+00:00"
     }
   }
