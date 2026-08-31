@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: deploy-staging-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy-staging:
@@ -35,10 +35,13 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Restore dependencies
+        run: dotnet restore ImportToPlanner.slnx
+
       - name: Install Aspire CLI
         shell: bash
         run: |
-          dotnet tool install --global aspire.cli --version 13.3.5
+          dotnet tool install --global aspire.cli --version 13.5.3
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           aspire --version
 
@@ -52,15 +55,16 @@ jobs:
       - name: Deploy Aspire AppHost to staging
         shell: bash
         env:
+          ASPIRE_CLI_TELEMETRY_OPTOUT: 1
           Azure__SubscriptionId: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           Azure__Location: ${{ vars.AZURE_LOCATION }}
           Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
           Parameters__azureAdTenantId: ${{ secrets.AZURE_TENANT_ID }}
           Parameters__azureAdClientId: ${{ secrets.AZURE_CLIENT_ID }}
           Parameters__azureAdHomeTenantId: ${{ vars.HOME_TENANT_ID }}
-          Parameters__enableCommercialMode: ${{ vars.ENABLE_COMMERCIAL_MODE }}
+          Parameters__enableCommercialMode: ${{ vars.ENABLE_COMMERCIAL_MODE || 'false' }}
           Parameters__graphClientCertificatePassword: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_PASSWORD }}
           Parameters__graphClientCertificateBase64: ${{ secrets.GRAPH_CLIENT_CERTIFICATE_BASE64 }}
           Parameters__customDomain: ${{ vars.CUSTOM_DOMAIN }}
           Parameters__customDomainCertificateName: ${{ vars.CUSTOM_DOMAIN_CERTIFICATE_NAME }}
-        run: aspire deploy --environment Staging
+        run: aspire deploy --environment Staging --non-interactive

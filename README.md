@@ -90,7 +90,7 @@ Primary feature sources:
   - Microsoft.Identity.Web 4.10.0
   - Microsoft.Identity.Web.UI 4.10.0
 - Hosting and observability:
-  - Aspire AppHost SDK 13.3.5
+  - Aspire AppHost SDK 13.5.3
   - OpenTelemetry 1.15.x packages
   - Shared service defaults for resilience and telemetry
 - Testing:
