@@ -45,6 +45,56 @@ Pull requests that add or change code MUST include evidence for:
 - Graph-facing behaviour changes SHOULD include integration-style verification using the
   established repository test patterns and approved test doubles.
 
+### Testing Standards
+
+Unless explicitly requested otherwise, all automated tests in this repository MUST follow
+these standards.
+
+#### Unit testing
+
+- Use **xUnit v3** for all automated tests.
+- Use **NSubstitute** for mocks, stubs, and test doubles.
+- Use built-in xUnit `Assert` methods only.
+- Keep test dependencies to a minimum.
+- Test projects inherit `TreatWarningsAsErrors` from `Directory.Build.props`. New test
+  code MUST compile without warnings; do not add test-only warning suppressions.
+
+Do not introduce:
+
+- FluentAssertions
+- AwesomeAssertions
+- Shouldly
+- Moq
+- NUnit
+- MSTest
+
+Prefer handwritten stateful doubles when they model real behaviour (for example, in-memory
+stores or adapter subclasses that NSubstitute cannot replace). Use NSubstitute for thin
+interface doubles and new mocks.
+
+Blazor component unit tests use **bUnit** with xUnit v3 in
+`tests/ImportToPlanner.Web.Tests/`. bUnit is not a substitute for end-to-end testing.
+
+#### AppHost testing
+
+.NET Aspire AppHost modelling and orchestration MUST NOT be tested. Validate AppHost
+changes through solution restore/build and manual or deployment workflows, not through
+`Aspire.Hosting.Testing` or equivalent AppHost test harnesses.
+
+#### End-to-end testing
+
+Where end-to-end testing is required, use **Playwright**.
+
+- Focus on key user journeys and business-critical workflows.
+- Do not use Playwright as a replacement for unit tests or bUnit component tests.
+- Prefer a small number of high-value end-to-end tests over large numbers of brittle UI
+  tests.
+- End-to-end tests MUST validate complete user workflows rather than individual UI
+  elements.
+
+This repository does not currently include a Playwright suite. Add one only when a
+complete user journey explicitly requires end-to-end coverage.
+
 ## User Experience and Accessibility
 
 - User-facing workflows MUST keep consistent semantics across validation, preview,

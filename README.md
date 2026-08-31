@@ -94,9 +94,10 @@ Primary feature sources:
   - OpenTelemetry 1.15.x packages
   - Shared service defaults for resilience and telemetry
 - Testing:
-  - xUnit 2.9.3
-  - bUnit 2.7.2
-  - Microsoft.NET.Test.Sdk 18.6.0
+  - xUnit v3 4.0.0
+  - NSubstitute
+  - bUnit 2.9.0
+  - Microsoft.NET.Test.Sdk 18.9.0
 
 Primary version sources:
 

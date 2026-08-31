@@ -67,11 +67,17 @@ Use this file as baseline guidance for Blazor projects that include Razor UI and
 
 ## Testing Guidance
 
-- Use the testing framework already used in the repository.
+- Use **xUnit v3** with built-in `Assert` methods and **NSubstitute** for interface doubles.
+- Blazor component unit tests use **bUnit** in `tests/ImportToPlanner.Web.Tests/`.
+- Do not introduce FluentAssertions, AwesomeAssertions, Shouldly, Moq, NUnit, or MSTest.
+- Do not test .NET Aspire AppHost modelling or orchestration.
+- Use Playwright only when a complete user journey explicitly requires end-to-end coverage.
 - Add or update tests for changed behaviour, especially public-facing behaviour.
 - Keep tests deterministic and independent.
 - Follow existing naming conventions in the repository instead of imposing a global pattern.
-- Mock only external dependencies when isolation is necessary.
+- Prefer handwritten stateful doubles when they model real behaviour; use NSubstitute for thin interface doubles.
+- Test projects inherit `TreatWarningsAsErrors`; compile without warning suppressions.
+- See `docs-internal/engineering-policies.md` for the full testing standard.
 
 ## Security and Observability
 
