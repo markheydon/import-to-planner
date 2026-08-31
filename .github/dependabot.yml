@@ -13,30 +13,44 @@ updates:
     assignees:
       - "markheydon"
     groups:
-      microsoft-graph:
-        patterns:
-          - "Microsoft.Graph*"
-          - "Microsoft.Identity.Web*"
-      microsoft-extensions:
-        patterns:
-          - "Microsoft.Extensions.*"
-      azure:
-        patterns:
-          - "Azure.*"
-      opentelemetry:
-        patterns:
-          - "OpenTelemetry.*"
       test-packages:
         patterns:
-          - "xunit.v3"
-          - "xunit.*"
+          - "xunit*"
+          - "bunit"
           - "Moq*"
           - "Microsoft.NET.Test.Sdk"
           - "coverlet*"
+          - "Aspire.Hosting.Testing"
+        update-types:
+          - "minor"
+          - "patch"
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+        update-types:
+          - "minor"
+          - "patch"
+      azure:
+        patterns:
+          - "Azure.*"
+          - "Aspire.Azure.*"
+          - "Aspire.Hosting.Azure.*"
+        update-types:
+          - "minor"
+          - "patch"
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry.*"
+        update-types:
+          - "minor"
+          - "patch"
       analyzers:
         patterns:
           - "*Analyzers*"
           - "Microsoft.CodeAnalysis.*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -50,3 +64,30 @@ updates:
       - "dependencies"
     assignees:
       - "markheydon"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+  - package-ecosystem: "devcontainers"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Europe/London"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    assignees:
+      - "markheydon"
+    groups:
+      devcontainers:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
