@@ -29,6 +29,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
+
+      - name: Verify deploy commit is current main tip
+        if: github.event_name == 'workflow_run'
+        id: verify_tip
+        shell: bash
+        run: |
+          DEPLOY_SHA='${{ github.event.workflow_run.head_sha }}'
+          git fetch origin main --depth=1
+          MAIN_TIP="$(git rev-parse origin/main)"
+          if [ "$DEPLOY_SHA" != "$MAIN_TIP" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping deploy: commit $DEPLOY_SHA is no longer the tip of main ($MAIN_TIP)."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v6
@@ -41,7 +58,8 @@ jobs:
       - name: Install Aspire CLI
         shell: bash
         run: |
-          dotnet tool install --global aspire.cli --version 13.5.3
+          dotnet tool install --global aspire.cli --version 13.5.3 \
+            || dotnet tool update --global aspire.cli --version 13.5.3
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           aspire --version
 
@@ -53,6 +71,7 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy Aspire AppHost to staging
+        if: github.event_name == 'workflow_dispatch' || steps.verify_tip.outputs.skip != 'true'
         shell: bash
         env:
           ASPIRE_CLI_TELEMETRY_OPTOUT: 1

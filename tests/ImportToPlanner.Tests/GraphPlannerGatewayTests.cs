@@ -84,6 +84,69 @@ public sealed class GraphPlannerGatewayTests
     }
 
     [Fact]
+    public async Task GetAvailableContainersAsync_ExcludesGroupsWithMissingGroupTypes()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<User>(
+            "me",
+            request => request.URI?.AbsolutePath.EndsWith("/me", StringComparison.OrdinalIgnoreCase) == true,
+            new User { Id = "user-1", DisplayName = "Mark" });
+        adapter.QueueSendAsyncResponse<GroupCollectionResponse>(
+            "memberOf",
+            request => request.URI?.AbsolutePath.Contains("/memberOf/", StringComparison.OrdinalIgnoreCase) == true,
+            new GroupCollectionResponse
+            {
+                Value =
+                [
+                    new Group { Id = "group-unified", DisplayName = "Project Team", GroupTypes = ["Unified"] },
+                    new Group { Id = "group-missing-types", DisplayName = "Unknown Group", GroupTypes = null },
+                ],
+            });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.GetAvailableContainersAsync(CancellationToken.None);
+
+        // Assert
+        Assert.Single(result, container => container.Type == ContainerType.Group);
+        Assert.Contains(result, container => container.Id == "group-unified");
+        Assert.DoesNotContain(result, container => container.Id == "group-missing-types");
+    }
+
+    [Fact]
+    public async Task GetAvailableContainersAsync_MemberOfRequest_DoesNotApplyServerSideGroupFilter()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<User>(
+            "me",
+            request => request.URI?.AbsolutePath.EndsWith("/me", StringComparison.OrdinalIgnoreCase) == true,
+            new User { Id = "user-1", DisplayName = "Mark" });
+        adapter.QueueSendAsyncResponse<GroupCollectionResponse>(
+            "memberOf",
+            request => request.URI?.AbsolutePath.Contains("/memberOf/", StringComparison.OrdinalIgnoreCase) == true,
+            new GroupCollectionResponse
+            {
+                Value = [new Group { Id = "group-1", DisplayName = "Alpha", GroupTypes = ["Unified"] }],
+            });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        await gateway.GetAvailableContainersAsync(CancellationToken.None);
+
+        // Assert
+        var memberOfRequest = Assert.Single(
+            adapter.CapturedRequestUris,
+            uri => uri?.AbsolutePath.Contains("/memberOf/", StringComparison.OrdinalIgnoreCase) == true);
+        var query = memberOfRequest?.Query ?? string.Empty;
+        Assert.DoesNotContain("$filter", query, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("groupTypes", query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task GetPlansAsync_WithNoPlans_ReturnsEmptyList()
     {
         // Arrange
@@ -516,8 +579,11 @@ public sealed class GraphPlannerGatewayTests
     {
         private readonly List<ResponseRule> sendAsyncRules = [];
         private readonly Dictionary<string, int> callCounts = new(StringComparer.OrdinalIgnoreCase);
+        private readonly List<Uri?> capturedRequestUris = [];
 
         public string? BaseUrl { get; set; } = "https://graph.microsoft.com/beta";
+
+        public IReadOnlyList<Uri?> CapturedRequestUris => capturedRequestUris;
 
         public ISerializationWriterFactory SerializationWriterFactory { get; } = SerializationWriterFactoryRegistry.DefaultInstance;
 
@@ -544,6 +610,7 @@ public sealed class GraphPlannerGatewayTests
             }
 
             callCounts[matchingRule.Key] = callCounts.GetValueOrDefault(matchingRule.Key) + 1;
+            capturedRequestUris.Add(requestInfo.URI);
             if (matchingRule.Results.Count == 0)
             {
                 throw new InvalidOperationException($"No queued response remaining for rule '{matchingRule.Key}'.");

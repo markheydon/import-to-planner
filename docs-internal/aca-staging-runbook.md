@@ -32,6 +32,8 @@ If you want repeatable CI/CD from GitHub Actions, complete every section.
 
 The GitHub Actions workflow runs `aspire deploy --environment Staging --non-interactive` so missing parameters fail immediately instead of waiting on stdin. In-flight staging deploys are **not** cancelled when a newer `main` push triggers another run; later runs queue until the current deploy finishes.
 
+When CI on `main` completes, the deploy workflow checks out the exact commit that passed (`workflow_run.head_sha`), not the default branch tip. Before deploying, it compares that commit to the current `main` tip: if `main` has moved on, the run exits successfully without deploying so only the latest queued run publishes staging. Manual `workflow_dispatch` deploys are unaffected and always run.
+
 ## Manual deployment path (one-off deploy)
 
 If you forked this repository and want a straightforward path:

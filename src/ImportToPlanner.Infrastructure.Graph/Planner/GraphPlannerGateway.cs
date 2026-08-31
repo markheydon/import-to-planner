@@ -71,6 +71,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                 {
                     // Filter Microsoft 365 groups in-process. Server-side $filter on memberOf
                     // requires advanced-query headers and has returned 403 for otherwise consented tokens.
+                    // All membership pages are fetched via OdataNextLink before filtering.
                     requestConfiguration.QueryParameters.Select = ["id", "displayName", "groupTypes"];
                     requestConfiguration.QueryParameters.Top = MaxGroupPageSize;
                 },
