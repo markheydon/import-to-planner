@@ -1,5 +1,6 @@
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial;
 using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web;
 using ImportToPlanner.Web.Components;
@@ -12,7 +13,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddWebStorageClients();
-builder.AddInfrastructureStorageClients();
+
+var commercialModeEnabled = builder.Configuration.GetValue<bool>("Features:CommercialMode:Enabled");
+if (commercialModeEnabled)
+{
+    builder.AddCommercialStorageClients();
+}
 
 ApplyLegacyCertificatePathOverrides(builder.Configuration);
 ApplyCertificateBase64Overrides(builder.Configuration);
@@ -32,7 +38,10 @@ builder.Services
     .Bind(builder.Configuration.GetSection(CommercialModeOptions.ConfigurationSectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
-builder.Services.AddHostedService<CommercialAccountRetentionHostedService>();
+if (commercialModeEnabled && builder.Configuration.GetValue<bool>("Features:CommercialMode:RetentionSweepEnabled"))
+{
+    builder.Services.AddHostedService<CommercialAccountRetentionHostedService>();
+}
 
 // Add services to the container.
 builder.Services
@@ -40,6 +49,11 @@ builder.Services
     .AddApplication()
     .AddImportWorkflow()
     .AddInfrastructure(builder.Configuration);
+
+if (commercialModeEnabled)
+{
+    builder.Services.AddCommercial(builder.Configuration);
+}
 
 HostedDataProtectionConfigurator.Configure(builder.Services, storageConfiguration);
 

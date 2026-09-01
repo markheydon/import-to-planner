@@ -1,12 +1,28 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Abstractions;
+using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Web.Features.Import.Workflows;
+using Microsoft.AspNetCore.Components;
 
 namespace ImportToPlanner.Web.Features.Import.Pages;
 
 public partial class Home
 {
+    [Inject]
+    internal IServiceProvider ServiceProvider { get; set; } = default!;
+
+    private ICommercialAccessUseCase? CommercialAccessUseCase =>
+        ServiceProvider.GetService<ICommercialAccessUseCase>();
+
+    private ICommercialProfileUseCase? CommercialProfileUseCase =>
+        ServiceProvider.GetService<ICommercialProfileUseCase>();
+
     private async Task<CommercialAccessDecision?> ResolveCommercialAccessDecisionAsync()
     {
+        if (CommercialAccessUseCase is null)
+        {
+            throw new InvalidOperationException("Commercial access services are not registered.");
+        }
+
         var sessionIdentity = SessionIdentityContextAccessor.TryGetCurrent();
         if (sessionIdentity is null)
         {
@@ -18,7 +34,6 @@ public partial class Home
 
         var accessDecision = await CommercialAccessUseCase.ResolveAccessAsync(
             sessionIdentity,
-            CommercialModeOptions.Enabled,
             DateTimeOffset.UtcNow,
             CancellationToken.None);
 
@@ -47,6 +62,11 @@ public partial class Home
         if (isRestoringCommercialAccount)
         {
             return;
+        }
+
+        if (CommercialProfileUseCase is null)
+        {
+            throw new InvalidOperationException("Commercial profile services are not registered.");
         }
 
         var sessionIdentity = SessionIdentityContextAccessor.TryGetCurrent();

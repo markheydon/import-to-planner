@@ -1,9 +1,9 @@
 using Azure;
 using Azure.Data.Tables;
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Abstractions;
+using ImportToPlanner.Commercial.Models;
 
-namespace ImportToPlanner.Infrastructure.Graph.CommercialAccounts.Storage;
+namespace ImportToPlanner.Commercial.Accounts.Storage;
 
 /// <summary>
 /// Persists commercial account audit events in Azure Table Storage.

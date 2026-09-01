@@ -139,10 +139,13 @@ Storage account.
 
 Decisions:
 
-- Use one Aspire `tables` reference and dedicated table names for accounts and
-  audits.
+- Use one Aspire `tables` reference on `web` only (commercial mode) and dedicated
+  table names for accounts, audits, and tenant operational metadata.
+- Commercial table adapters and store contracts live in `ImportToPlanner.Commercial`,
+  registered by `web` when commercial mode is enabled.
 - Keep blob storage out of structured account persistence.
-- Keep keyed client registration optional, not required.
+- Resolve `TableServiceClient` from Aspire client integration (`AddAzureTableServiceClient`);
+  adapters use `GetTableClient` only.
 
 Suggested adapter responsibilities:
 

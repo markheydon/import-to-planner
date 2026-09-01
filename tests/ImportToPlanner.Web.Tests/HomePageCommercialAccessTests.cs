@@ -1,5 +1,4 @@
 using Bunit;
-using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
 
 namespace ImportToPlanner.Web.Tests;

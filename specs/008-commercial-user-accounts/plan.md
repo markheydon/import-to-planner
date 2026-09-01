@@ -44,10 +44,10 @@ choices to Azure Tables or Blobs already modelled in the app; keep user-facing
 wording in UK English; preserve self-hosted viability; do not introduce
 scheduled compute unless clearly justified  
 **Scale/Scope**: One hosted commercial mode plus one self-hosted mode, one AppHost
-with `web`, optional `commercialapiservice` (commercial only), `storage`, `blobs`,
-`dataprotection`, and `tables` resources, and focused changes across AppHost,
-Web auth/UI, Application account-lifecycle use cases, Infrastructure storage
-adapters, tests, and deployment configuration
+with `web`, `storage`, `blobs`, `dataprotection`, and `tables` resources (tables
+attached to `web` only when commercial mode is enabled), and focused changes across
+AppHost, Web auth/UI, the `ImportToPlanner.Commercial` outer capability, tests,
+and deployment configuration
 
 ## Constitution Check
 
@@ -184,13 +184,12 @@ Key design outcomes:
 - The AppHost adds a non-secret commercial-mode parameter and forwards it into
   the web project, while the staging workflow passes the corresponding parameter
   through environment variables.
-- In hosted/commercial topology, AppHost starts a separate `commercialapiservice`
-  resource and routes the `tables` resource reference and startup dependency
-  through `commercialapiservice` only; self-host topology keeps web-only startup
-  without `commercialapiservice`.
+- In hosted/commercial topology, AppHost attaches the `tables` resource to `web`
+  only; there is no separate commercial API service. Self-host topology keeps
+  web-only startup without `tables` or commercial persistence.
 - Commercial account lifecycle, audit emission, and retention-state decisions are
-  represented as application use cases with repository-owned request/response
-  contracts.
+  represented as use cases in `ImportToPlanner.Commercial` with store contracts
+  owned by that outer capability.
 - Azure Table Storage holds both account and audit records in separate tables on
   the existing storage account, preserving Blob storage for data protection only.
 - Self-hosted behaviour remains the regression baseline: the web layer branches

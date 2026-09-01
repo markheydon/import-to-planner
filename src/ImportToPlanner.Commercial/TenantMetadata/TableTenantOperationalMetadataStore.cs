@@ -3,12 +3,12 @@ using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 
-namespace ImportToPlanner.Infrastructure.Graph.TenantMetadata;
+namespace ImportToPlanner.Commercial.TenantMetadata;
 
 /// <summary>
 /// Provides Azure Table Storage persistence for tenant-scoped operational metadata.
 /// </summary>
-internal sealed class TableTenantOperationalMetadataStore : ITenantOperationalMetadataStore, IDisposable
+public sealed class TableTenantOperationalMetadataStore : ITenantOperationalMetadataStore, IDisposable
 {
     private const string OperationalMetadataRowKey = "operational";
     private readonly TableClient tableClient;

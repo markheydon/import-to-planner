@@ -1,6 +1,6 @@
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Models;
 
-namespace ImportToPlanner.Application.Abstractions;
+namespace ImportToPlanner.Commercial.Abstractions;
 
 /// <summary>
 /// Defines persistence operations for commercial account audit events.

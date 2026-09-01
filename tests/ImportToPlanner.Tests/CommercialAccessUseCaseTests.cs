@@ -1,6 +1,7 @@
-using ImportToPlanner.Application;
-using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Abstractions;
+using ImportToPlanner.Commercial.Models;
+using ImportToPlanner.Commercial.Services;
 using ImportToPlanner.Tests.TestDoubles;
 
 namespace ImportToPlanner.Tests;
@@ -18,7 +19,6 @@ public sealed class CommercialAccessUseCaseTests
 
         var decision = await useCase.ResolveAccessAsync(
             new SessionIdentityContext("tenant-001", "user-001", "user@contoso.com", "Contoso"),
-            commercialModeEnabled: true,
             occurredUtc,
             CancellationToken.None);
 
@@ -62,7 +62,6 @@ public sealed class CommercialAccessUseCaseTests
 
         var decision = await useCase.ResolveAccessAsync(
             new SessionIdentityContext("tenant-001", "user-001", "user@contoso.com", "Contoso"),
-            commercialModeEnabled: true,
             occurredUtc: new DateTimeOffset(2026, 5, 28, 10, 45, 0, TimeSpan.Zero),
             CancellationToken.None);
 
@@ -75,39 +74,6 @@ public sealed class CommercialAccessUseCaseTests
         Assert.Equal("sign_in_allowed", signInOutcomeEvent.Outcome);
     }
 
-    [Fact]
-    public async Task ResolveAccessAsync_WhenCommercialModeDisabled_ReturnsSelfHostedBypassWithoutPersistingAccountData()
-    {
-        var accountStore = new CommercialAccountStoreStub();
-        var auditStore = new CommercialAuditStoreStub();
-        await accountStore.CreateAsync(
-            new CommercialAccount(
-                "tenant-existing",
-                "user-existing",
-                new DateTimeOffset(2026, 2, 1, 8, 0, 0, TimeSpan.Zero),
-                CommercialAccountStatus.Active,
-                DeletedUtc: null,
-                RetentionExpiresUtc: null,
-                RestoredUtc: null,
-                LastSignInOutcomeUtc: null),
-            CancellationToken.None);
-
-        using var serviceProvider = BuildServiceProvider(accountStore, auditStore);
-        var useCase = serviceProvider.GetRequiredService<ICommercialAccessUseCase>();
-
-        var decision = await useCase.ResolveAccessAsync(
-            new SessionIdentityContext("tenant-001", "user-001", "user@contoso.com", "Contoso"),
-            commercialModeEnabled: false,
-            occurredUtc: new DateTimeOffset(2026, 5, 28, 11, 0, 0, TimeSpan.Zero),
-            CancellationToken.None);
-
-        Assert.Equal(CommercialAccessDecisionType.SelfHostedBypass, decision.Decision);
-        Assert.Null(decision.AccountStatus);
-        Assert.False(decision.ShouldSignOut);
-        Assert.Single(accountStore.Accounts);
-        Assert.Empty(auditStore.Events);
-    }
-
     private static ServiceProvider BuildServiceProvider(CommercialAccountStoreStub accountStore, CommercialAuditStoreStub auditStore)
     {
         ArgumentNullException.ThrowIfNull(accountStore);
@@ -116,7 +82,7 @@ public sealed class CommercialAccessUseCaseTests
         var services = new ServiceCollection();
         services.AddScoped<ICommercialAccountStore>(_ => accountStore);
         services.AddScoped<ICommercialAuditStore>(_ => auditStore);
-        services.AddApplication();
+        services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
 
         return services.BuildServiceProvider();
     }

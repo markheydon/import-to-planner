@@ -1,5 +1,5 @@
-using ImportToPlanner.Application.Abstractions;
-using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Abstractions;
+using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Web.Features.Authentication;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -16,7 +16,10 @@ public partial class Profile
     internal ISessionIdentityContextAccessor SessionIdentityContextAccessor { get; set; } = default!;
 
     [Inject]
-    internal ICommercialProfileUseCase CommercialProfileUseCase { get; set; } = default!;
+    internal IServiceProvider ServiceProvider { get; set; } = default!;
+
+    private ICommercialProfileUseCase? CommercialProfileUseCase =>
+        ServiceProvider.GetService<ICommercialProfileUseCase>();
 
     [Inject]
     internal CommercialModeOptions CommercialModeOptions { get; set; } = default!;
@@ -58,6 +61,13 @@ public partial class Profile
             return;
         }
 
+        if (CommercialProfileUseCase is null)
+        {
+            statusMessage = "Commercial profile services are not available in this deployment.";
+            statusSeverity = Severity.Error;
+            return;
+        }
+
         isBusy = true;
         try
         {
@@ -95,6 +105,14 @@ public partial class Profile
         if (sessionIdentity is null)
         {
             statusMessage = "We could not resolve your signed-in identity. Sign out and sign in again.";
+            statusSeverity = Severity.Warning;
+            showDeleteConfirmation = false;
+            return;
+        }
+
+        if (CommercialProfileUseCase is null)
+        {
+            statusMessage = "Commercial profile services are not available in this deployment.";
             statusSeverity = Severity.Warning;
             showDeleteConfirmation = false;
             return;
