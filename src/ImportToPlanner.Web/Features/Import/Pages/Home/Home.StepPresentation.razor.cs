@@ -92,14 +92,43 @@ public partial class Home
         viewedStep = ActiveStep ?? viewedStep;
     }
 
-    private void FocusSetupStepIfReviewingLaterSteps(int setupStep)
+    private bool FocusSetupStepIfReviewingLaterSteps(int setupStep)
     {
         if (!viewedStepInitialized || viewedStep <= 3 || setupStep is < 1 or > 3)
+        {
+            return false;
+        }
+
+        viewedStep = setupStep;
+        return true;
+    }
+
+    private void SyncViewedStepAfterWorkflowInvalidation()
+    {
+        if (!viewedStepInitialized)
         {
             return;
         }
 
-        viewedStep = setupStep;
+        if (!IsStepLocked(viewedStep))
+        {
+            return;
+        }
+
+        viewedStep = ActiveStep ?? GetHighestReachableStep();
+    }
+
+    private int GetHighestReachableStep()
+    {
+        for (var step = 5; step >= 1; step--)
+        {
+            if (!IsStepLocked(step))
+            {
+                return step;
+            }
+        }
+
+        return 1;
     }
 
     private bool GetMudStepCompleted(int step) => IsStepComplete(step);
@@ -174,11 +203,6 @@ public partial class Home
             5 => new HomeWorkflowStepPresentation(5, "Report", HomeWorkflowStepState.Upcoming, "5", null, null),
             _ => throw new ArgumentOutOfRangeException(nameof(step), step, "Unknown step."),
         };
-
-    private Color GetStepSummaryColour(int step)
-        => step == 5 && executionResult?.Errors.Count > 0
-            ? Color.Warning
-            : Color.Success;
 
     private string? GetStepSecondaryText(int step)
     {

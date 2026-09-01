@@ -553,6 +553,200 @@ public sealed class HomePageWorkflowTests
         });
     }
 
+    [Fact]
+    public async Task HomePage_WhenPreviewReady_Step5RemainsLockedUntilImportRuns()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() =>
+        {
+            var steps = cut.FindComponents<MudStep>();
+            Assert.True(steps[4].Instance.GetState(static x => x.Disabled));
+            Assert.Contains("Preview ready — confirm to import.", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenPreviewIsStale_ShowsWarningAndBlocksConfirmImport()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        state.IsPreviewStale = true;
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 4));
+        cut.FindAll(".mud-step")[3].Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains(
+                "Preview is stale because Planner state changed. Generate a fresh preview before import.",
+                cut.Markup,
+                StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Confirm import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenPlanSwappedOnPreviewStep_FocusesPlanSelectionStep()
+    {
+        await using var ctx = new HomePageTestContext();
+        ctx.Gateway.Plans =
+        [
+            new PlannerPlan("plan-1", "Test Plan", "container-1", ContainerType.Group),
+            new PlannerPlan("plan-2", "Other Plan", "container-1", ContainerType.Group),
+        ];
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 4));
+        cut.FindAll(".mud-step")[3].Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex)));
+
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[1]));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(1, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.Contains("Select plan", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Confirm import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenRefreshRemovesSelectedPlan_MovesViewToReachableStep()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        await coordinator.ExecuteAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 5));
+        cut.FindAll(".mud-step")[4].Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(4, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex)));
+
+        ctx.Gateway.Plans = [];
+        var refreshPlansButton = cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Refresh plans", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => refreshPlansButton.Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(1, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.True(cut.FindComponents<MudStep>()[4].Instance.GetState(static x => x.Disabled));
+            Assert.DoesNotContain("Execution Report", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenCoordinatorMarksPreviewStaleWithoutPreview_ShowsStaleStatusInSummaryRail()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        ctx.Gateway.Plans = [];
+        await coordinator.LoadPlansAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.True(state.IsPreviewStale);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Contains("Stale — regenerate preview", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_SummaryRail_IsHiddenBelowMediumBreakpoint()
+    {
+        await using var ctx = new HomePageTestContext();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            var summaryColumn = cut.FindAll(".summary-rail-column");
+            Assert.Single(summaryColumn);
+            var classAttribute = summaryColumn[0].GetAttribute("class") ?? string.Empty;
+            Assert.Contains("d-none", classAttribute, StringComparison.Ordinal);
+            Assert.Contains("d-md-block", classAttribute, StringComparison.Ordinal);
+        });
+    }
+
     private static MicrosoftIdentityWebChallengeUserException CreateChallengeException()
         => new(
             new MsalUiRequiredException("invalid_grant", "Interactive sign-in is required to acquire the downstream Graph token."),

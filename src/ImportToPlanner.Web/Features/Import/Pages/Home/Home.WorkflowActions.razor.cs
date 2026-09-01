@@ -21,6 +21,7 @@ public partial class Home
             await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
 
             SetStatus("Location list refreshed.", WorkflowStatusLevel.Success);
+            SyncViewedStepAfterWorkflowInvalidation();
         }
         catch (Exception ex)
         {
@@ -49,6 +50,7 @@ public partial class Home
         {
             await WorkflowCoordinator.LoadPlansAsync(WorkflowState, CancellationToken.None);
             SetStatus("Plan list refreshed.", WorkflowStatusLevel.Success);
+            SyncViewedStepAfterWorkflowInvalidation();
         }
         catch (Exception ex)
         {
@@ -81,8 +83,10 @@ public partial class Home
         csvContent = await reader.ReadToEndAsync();
 
         SetStatus("CSV file loaded. Click Preview import.", WorkflowStatusLevel.Info);
-        FocusSetupStepIfReviewingLaterSteps(3);
-        MaybeAdvanceViewedStep();
+        if (!FocusSetupStepIfReviewingLaterSteps(3))
+        {
+            MaybeAdvanceViewedStep();
+        }
     }
 
     private async Task ClearSelectedCsv()
@@ -101,8 +105,10 @@ public partial class Home
         selectedFileName = WorkflowCoordinationState.NoFileSelectedText;
         ResetFlowState();
         SetStatus("CSV selection cleared.", WorkflowStatusLevel.Info);
-        FocusSetupStepIfReviewingLaterSteps(3);
-        MaybeAdvanceViewedStep();
+        if (!FocusSetupStepIfReviewingLaterSteps(3))
+        {
+            MaybeAdvanceViewedStep();
+        }
     }
 
     private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
@@ -119,7 +125,7 @@ public partial class Home
         parseErrors.Clear();
         ResetExecutionState();
         InvalidatePreviewAfterSetupChange("Preview cleared because your selected location changed. Generate a new preview before import.");
-        FocusSetupStepIfReviewingLaterSteps(1);
+        var focusedSetupStep = FocusSetupStepIfReviewingLaterSteps(1);
 
         if (selectedContainer is null)
         {
@@ -148,7 +154,10 @@ public partial class Home
         finally
         {
             isBusy = false;
-            MaybeAdvanceViewedStep();
+            if (!focusedSetupStep)
+            {
+                MaybeAdvanceViewedStep();
+            }
         }
     }
 
@@ -164,13 +173,16 @@ public partial class Home
         parseErrors.Clear();
         ResetExecutionState();
         InvalidatePreviewAfterSetupChange("Preview cleared because your selected plan changed. Generate a new preview before import.");
-        FocusSetupStepIfReviewingLaterSteps(2);
+        var focusedSetupStep = FocusSetupStepIfReviewingLaterSteps(2);
         if (!hadPreview)
         {
             SetStatus(selectedPlan is null ? "Select a plan to continue." : null, WorkflowStatusLevel.Info);
         }
 
-        MaybeAdvanceViewedStep();
+        if (!focusedSetupStep)
+        {
+            MaybeAdvanceViewedStep();
+        }
         return Task.CompletedTask;
     }
 
@@ -228,17 +240,6 @@ public partial class Home
         {
             SetStatus(messageWhenPreviewExisted, WorkflowStatusLevel.Warning);
         }
-    }
-
-    private void MarkPreviewAsStale(string message)
-    {
-        if (preview is null || currentRequest is null)
-        {
-            return;
-        }
-
-        isPreviewStale = true;
-        SetStatus(message, WorkflowStatusLevel.Warning);
     }
 
     private async Task BuildPreviewAsync()
