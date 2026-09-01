@@ -12,7 +12,7 @@
 
 ### User Story 1 - Focus on one import step at a time (Priority: P1)
 
-A signed-in user who may import tasks opens the Home page and sees a persistent header (theme, identity, sign out, and Profile when commercial hosting is on) plus a vertical step list. Only the current step’s working area is shown in the main pane. Completed steps show a tick and a short label summary in the step list. Locked later steps stay visible in the list but cannot be opened until earlier requirements are met. The user still completes location → plan → CSV → preview → confirm and import without changing what those steps allow or when they become available.
+A signed-in user who may import tasks opens the Home page and sees a persistent header (theme, identity, sign out, and Profile when commercial hosting is on) plus a vertical step list. Only the current step’s working area is shown in the main pane. Completed steps show a tick and a short label summary in the step list. Locked later steps stay visible in the list but cannot be opened until earlier requirements are met. The user still completes location → plan → CSV → preview and confirm → report without changing what those steps allow or when they become available.
 
 **Why this priority**: This is the minimum change that removes the long always-expanded card stack and delivers the core usability win. Later polish (collapsible setup, summary rail, report layout, narrow screens) can land on top of this skeleton.
 
@@ -20,12 +20,12 @@ A signed-in user who may import tasks opens the Home page and sees a persistent 
 
 **Acceptance Scenarios**:
 
-1. **Given** the user is signed in and allowed to use the import workflow, **When** they open Home, **Then** they see a vertical step list for the five existing steps (Select Planner location, Select plan, Upload CSV, Preview import, Confirm and import) and only the active step’s detailed content occupies the main working area.
+1. **Given** the user is signed in and allowed to use the import workflow, **When** they open Home, **Then** they see a vertical step list for the five steps (Select Planner location, Select plan, Upload CSV, Preview and confirm, and Report) and only the active step’s detailed content occupies the main working area.
 2. **Given** a later step is still locked, **When** the user tries to open it from the step list, **Then** it remains unavailable and the current step’s content stays on screen.
 3. **Given** an earlier step is complete, **When** the user views the step list, **Then** that step shows a completed indicator and a compact summary of the choice made (for example location name, plan name, or file name).
-4. **Given** the user is on preview or confirm and import, **When** they look at the page, **Then** they are not forced to scroll through the full forms of earlier steps to reach the current action.
-5. **Given** a valid preview exists and the confirm action is allowed today, **When** the user confirms the import, **Then** the import still runs and the existing execution report still appears in the confirm-and-import step.
-6. **Given** preview is stale, invalid, or execute is not yet allowed, **When** the user is on the confirm step, **Then** the confirm action stays unavailable and the existing stale-preview or blocking guidance still appears.
+4. **Given** the user is on preview and confirm or report, **When** they look at the page, **Then** they are not forced to scroll through the full forms of earlier steps to reach the current action.
+5. **Given** a valid preview exists and the confirm action is allowed today, **When** the user confirms the import from the preview-and-confirm step, **Then** the import still runs and the existing execution report still appears in the report step.
+6. **Given** preview is stale, invalid, or execute is not yet allowed, **When** the user is on the preview-and-confirm step, **Then** the confirm action stays unavailable and the existing stale-preview or blocking guidance still appears.
 
 ---
 
@@ -59,11 +59,11 @@ Once the stepper skeleton exists, a user who has chosen location, plan, and CSV 
 
 **Acceptance Scenarios**:
 
-1. **Given** steps 1–3 are complete and the user is on preview or confirm and import, **When** they view the main pane, **Then** the three setup steps are collapsed by default and do not show their full forms.
+1. **Given** steps 1–3 are complete and the user is on preview and confirm or report, **When** they view the main pane, **Then** the three setup steps are collapsed by default and do not show their full forms.
 2. **Given** a setup step is collapsed, **When** the user expands it, **Then** they can review or change the previous choice and the rest of the workflow still respects existing lock and validity rules.
 3. **Given** a wide viewport and the wizard is visible, **When** the user has made any import choices, **Then** a sticky summary rail shows the current location, plan, CSV file name (when chosen), and preview or execution status.
 4. **Given** a plan or a successful preview is available, **When** the user views the summary, **Then** they can open the plan in Planner from that rail using the same destination the page already offers.
-5. **Given** the user changes location, plan, or file after a preview, **When** they view preview or confirm, **Then** execute remains blocked until a fresh valid preview exists, as it does today.
+5. **Given** the user changes location, plan, or file after a preview, **When** they view preview and confirm or report, **Then** execute remains blocked until a fresh valid preview exists, as it does today, and the wizard returns focus to the affected setup step when appropriate.
 
 ---
 
@@ -79,7 +79,7 @@ After a successful or partial import, the user can scan outcome totals (created,
 
 1. **Given** an import has finished, **When** the user opens the report summary, **Then** they see created, skipped, manual, and error counts before any detailed tables.
 2. **Given** the report includes manual follow-up items, **When** the user views those items, **Then** action type is visually distinct (for example coloured labels) without changing the underlying classification.
-3. **Given** a successful preview, **When** the user is on the preview step, **Then** they may see compact counts of planned actions before the full preview tables; expanding or scrolling still reveals the same tables as today.
+3. **Given** a successful preview, **When** the user is on the preview-and-confirm step, **Then** they may see compact counts of planned actions before the full preview tables; expanding or scrolling still reveals the same tables as today.
 
 ---
 
@@ -115,7 +115,7 @@ On small viewports, the user can still complete the import: the step list may be
 ### Functional Requirements
 
 - **FR-001**: Home MUST present the import workflow as a vertical step list with a single active working pane whenever the user is allowed to import, replacing the current pattern of five always-expanded step cards stacked on one page.
-- **FR-002**: The five steps MUST remain the existing sequence and titles: Select Planner location, Select plan, Upload CSV, Preview import, and Confirm and import.
+- **FR-002**: The five steps MUST remain the existing sequence with these titles: Select Planner location, Select plan, Upload CSV, Preview and confirm, and Report. Step 4 combines preview generation, preview review, and confirm import; step 5 shows the execution report only.
 - **FR-003**: Only the active step’s detailed content MUST occupy the main working area; inactive step forms MUST NOT consume vertical space as full expanded cards.
 - **FR-004**: Completed steps MUST show a completion indicator and a compact summary in the step list.
 - **FR-005**: Steps MUST remain locked until existing prerequisites are met; users MUST NOT be able to skip ahead of current availability rules (including preview-available and execute-available rules).
@@ -131,7 +131,7 @@ On small viewports, the user can still complete the import: the step list may be
 - **FR-015**: On wide viewports, Home MUST show a sticky summary of current location, plan, CSV file name, and preview or execution status while the wizard is visible (Story 3).
 - **FR-016**: When a plan or preview is available, the summary MUST offer the existing Open in Planner action (Story 3).
 - **FR-017**: After import, the execution report MUST present created, skipped, manual, and error counts before detailed tables, without changing what those outcomes mean (Story 4).
-- **FR-018**: Preview MAY show compact planned-action counts before full preview tables; those tables MUST still be available in the preview step (Story 4).
+- **FR-018**: Preview MAY show compact planned-action counts before full preview tables; those tables MUST still be available in the preview-and-confirm step (Story 4).
 - **FR-019**: On narrow viewports, the step list MAY collapse to a drawer or compact stacked layout; theme, Sign out, and Profile (when shown) MUST remain reachable (Story 5, optional).
 - **FR-020**: Keyboard and screen-reader users MUST be able to determine step state, move between available steps, and reach theme, Profile, and Sign out.
 - **FR-021**: The same success message or informational warning MUST NOT appear twice (once globally and once inside the active step) for a single condition.
@@ -150,9 +150,9 @@ On small viewports, the user can still complete the import: the step list may be
 
 ### Measurable Outcomes
 
-- **SC-001**: After completing an import, a reviewer comparing the confirm-and-import screen with today’s always-expanded five-card layout finds the page materially shorter — specifically, earlier step forms are not fully expanded below the header — in 100% of reviewed runs.
+- **SC-001**: After completing an import, a reviewer comparing the report step with today’s always-expanded five-card layout finds the page materially shorter — specifically, earlier step forms are not fully expanded below the header — in 100% of reviewed runs.
 - **SC-002**: In a screenshot of any in-progress import, a reviewer who does not know the product can correctly identify the current step, completed steps, and locked steps in at least 9 out of 10 samples.
-- **SC-003**: Users can still complete location → plan → CSV → preview → import on the first attempt when inputs are valid, with no extra mandatory screens compared with today.
+- **SC-003**: Users can still complete location → plan → CSV → preview and confirm → report on the first attempt when inputs are valid, with no extra mandatory screens compared with today.
 - **SC-004**: Preview remains blocked until existing preview-ready conditions are met, and confirm remains blocked until existing execute-ready conditions are met, in 100% of automated workflow scenarios covering happy path, stale preview, and commercial blocking states.
 - **SC-005**: With commercial hosting off, 100% of reviewed Home sessions show no Profile control and no commercial login or deleted-account gate, while the import wizard remains available after normal sign-in.
 - **SC-006**: With commercial hosting on, signed-out and deleted-account sessions never show the wizard; signed-in active-account sessions always show Profile in the header and can still open the existing profile page.
@@ -167,6 +167,7 @@ On small viewports, the user can still complete the import: the step list may be
 - The existing UI component library remains the presentation toolkit; this feature does not introduce a second styling system or a page-level rewrite of the profile route.
 - Desktop (wide) layout is the primary target for Stories 1–3. Story 5 is optional if stacking already keeps the wizard usable on small screens.
 - Delivery may land as incremental slices aligned to the user stories (stepper skeleton, then collapsible setup and summary, then report polish, then optional narrow layout).
+- **Amendment (2026-09-01, dogfooding)**: Step 4 and step 5 titles and pane responsibilities were refined after stepper testing. Preview and confirm import now share step 4; step 5 is report-only. Primary actions remain **Preview import** and **Confirm import** on step 4. Workflow gating (`canValidate`, `canExecute`, staleness) is unchanged.
 - Header chrome may stay in the current title row or move to a dedicated top bar, provided it stays full-width above the wizard and remains reachable.
 - End-user help screenshots and copy under public docs may need a later update if the visible layout changes; that documentation refresh is follow-on unless wording on Home itself changes.
 - Source of product intent: GitHub issue #117. Related commercial behaviour is already specified in commercial account features; this spec does not reopen those rules.

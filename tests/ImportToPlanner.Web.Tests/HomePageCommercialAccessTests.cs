@@ -1,5 +1,6 @@
 using Bunit;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
+using MudBlazor;
 
 namespace ImportToPlanner.Web.Tests;
 
@@ -21,6 +22,7 @@ public sealed class HomePageCommercialAccessTests
             Assert.Contains("Sign in", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("CSV to Planner Import", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("Select Planner location", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Empty(cut.FindComponents<MudStepper>());
         });
     }
 

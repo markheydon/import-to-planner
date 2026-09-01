@@ -1,5 +1,6 @@
 using Bunit;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
+using MudBlazor;
 
 namespace ImportToPlanner.Web.Tests;
 
@@ -34,6 +35,8 @@ public sealed class HomePageCommercialRetentionTests
             Assert.Contains("retention period", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.Contains("Restore account", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("Select Planner location", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Empty(cut.FindComponents<MudStepper>());
+            Assert.DoesNotContain("Your import", cut.Markup, StringComparison.OrdinalIgnoreCase);
         });
     }
 

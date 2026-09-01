@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
 using MudBlazor;
+using MudBlazor.Extensions;
 
 namespace ImportToPlanner.Web.Tests;
 
@@ -44,6 +45,29 @@ public sealed class HomePageWorkflowTests
         Assert.Contains("Execution Report", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Manual Actions", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Alpha Task", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Created: 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Manual: 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task HomeExecutionReport_WithNoCreatedItems_OmitsEmptyCreatedSection()
+    {
+        await using var ctx = new HomePageTestContext();
+        var report = new ImportExecutionReportViewModel(
+            "plan-1",
+            [],
+            ["Task: Review architecture", "Task: Prepare release notes"],
+            [],
+            [],
+            new ImportExecutionOutcomeSummary(0, 2, 0, 0, false, false));
+
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, report));
+
+        Assert.Contains("Created: 0", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Reused or skipped", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Review architecture", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Single(cut.FindComponents<MudDataGrid<string>>());
     }
 
     [Fact]
@@ -51,18 +75,22 @@ public sealed class HomePageWorkflowTests
     {
         await using var ctx = new HomePageTestContext();
         var cut = ctx.Render<Home>();
-        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
-        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
 
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
         await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
         await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
 
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("Upload CSV", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.Equal(2, cut.FindAll(".step-card--completed").Count);
-            Assert.Single(cut.FindAll(".step-card--current"));
-            Assert.Equal(2, cut.FindAll(".step-card--upcoming").Count);
+            var steps = cut.FindComponents<MudStep>();
+            Assert.Equal(2, steps.Count(step => step.Instance.GetState(static x => x.Completed)));
+            Assert.Equal(2, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.Single(steps, step => !step.Instance.GetState(static x => x.Completed) && !step.Instance.GetState(static x => x.Disabled));
         });
     }
 
@@ -73,10 +101,13 @@ public sealed class HomePageWorkflowTests
         var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
         var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
         var cut = ctx.Render<Home>();
-        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
-        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
 
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
         await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
         await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
 
         state.CsvContent = "Task Name\nTask A";
@@ -85,16 +116,34 @@ public sealed class HomePageWorkflowTests
 
         await coordinator.BuildPreviewAsync(state, CancellationToken.None);
         await coordinator.ExecuteAsync(state, CancellationToken.None);
+        cut.Render();
 
-        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(null));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".mud-step")));
+        cut.FindAll(".mud-step")[0].Click();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var clearedContainerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => clearedContainerAutocomplete.ValueChanged.InvokeAsync(null));
 
         cut.WaitForAssertion(() =>
         {
-            var chooseButton = cut.FindAll("button").Single(button => button.TextContent.Contains("Choose CSV file", StringComparison.OrdinalIgnoreCase));
-            var clearButton = cut.FindAll("button").Single(button => button.TextContent.Contains("Clear CSV", StringComparison.OrdinalIgnoreCase));
+            Assert.NotNull(state.CsvContent);
+            Assert.Equal("import.csv", state.SelectedFileName);
+        });
 
-            Assert.True(chooseButton.HasAttribute("disabled"));
-            Assert.False(clearButton.HasAttribute("disabled"));
+        await cut.InvokeAsync(() => clearedContainerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var restoredPlanAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => restoredPlanAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 3));
+        cut.FindAll(".mud-step")[2].Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var clearButtons = cut.FindAll("button").Where(button => button.TextContent.Contains("Clear CSV", StringComparison.OrdinalIgnoreCase)).ToArray();
+            Assert.Single(clearButtons);
+            Assert.False(clearButtons[0].HasAttribute("disabled"));
         });
 
         var csvClearButton = cut.FindAll("button").Single(button => button.TextContent.Contains("Clear CSV", StringComparison.OrdinalIgnoreCase));
@@ -309,8 +358,9 @@ public sealed class HomePageWorkflowTests
 
         specificAuthorityCut.WaitForAssertion(() => Assert.Contains("Select Planner location", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
         sharedAuthorityCut.WaitForAssertion(() => Assert.Contains("Select Planner location", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase));
-        Assert.Contains("Confirm and import", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Confirm and import", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Preview and confirm", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Report", specificAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Report", sharedAuthorityCut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -321,9 +371,172 @@ public sealed class HomePageWorkflowTests
 
         cut.WaitForAssertion(() =>
         {
-            Assert.Single(cut.FindAll(".step-card--current"));
-            Assert.Empty(cut.FindAll(".step-card--completed"));
-            Assert.Equal(4, cut.FindAll(".step-card--upcoming").Count);
+            var stepper = cut.FindComponent<MudStepper>();
+            Assert.Equal(0, stepper.Instance.GetState(static x => x.ActiveIndex));
+            var steps = cut.FindComponents<MudStep>();
+            Assert.DoesNotContain(steps, step => step.Instance.GetState(static x => x.Completed));
+            Assert.Equal(4, steps.Count(step => step.Instance.GetState(static x => x.Disabled)));
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenOnPreviewStep_ShowsSummaryRailAndCollapsesSetupPanels()
+    {
+        await using var ctx = new HomePageTestContext();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Your import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Not generated", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 4));
+        cut.FindAll(".mud-step")[3].Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Preview and confirm", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Your import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("import.csv", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenPreviewReadyOnStep4_ShowsConfirmImportAndAdvancesToReport()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 4));
+        cut.FindAll(".mud-step")[3].Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            var confirmButton = cut.FindAll("button").Single(button =>
+                button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase));
+            Assert.False(confirmButton.HasAttribute("disabled"));
+        });
+
+        var confirmImportButton = cut.FindAll("button").Single(button =>
+            button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => confirmImportButton.Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(4, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.Contains("Execution Report", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.NotNull(state.ExecutionReport);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenSetupChangesAfterPreview_ClearsPreviewAndRequiresRegeneration()
+    {
+        await using var ctx = new HomePageTestContext();
+        ctx.Gateway.Plans =
+        [
+            new PlannerPlan("plan-1", "Test Plan", "container-1", ContainerType.Group),
+            new PlannerPlan("plan-2", "Other Plan", "container-1", ContainerType.Group),
+        ];
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.NotNull(state.PlanningViewModel));
+        cut.FindAll(".mud-step")[3].Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Confirm import", cut.Markup, StringComparison.OrdinalIgnoreCase));
+
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[1]));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.CurrentPlanningRequest);
+            Assert.False(state.IsPreviewStale);
+            Assert.DoesNotContain("Confirm import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Preview cleared because your selected plan changed", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenSetupChangesOnPreviewStep_ResetsViewToAffectedSetupStep()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 4));
+        cut.FindAll(".mud-step")[3].Click();
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex)));
+
+        cut.FindAll(".mud-step")[0].Click();
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var clearedContainerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => clearedContainerAutocomplete.ValueChanged.InvokeAsync(null));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(0, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.DoesNotContain("Confirm import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Select Planner location", cut.Markup, StringComparison.OrdinalIgnoreCase);
         });
     }
 

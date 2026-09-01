@@ -80,6 +80,7 @@ public partial class Home
         try
         {
             await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
+            InitialiseViewedStep();
 
             if (hasTokenReauthenticationQuery)
             {
