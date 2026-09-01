@@ -32,7 +32,7 @@ public sealed class HomePageIdentityContextTests
     }
 
     [Fact]
-    public async Task HomePage_WhenCommercialModeEnabledAndSignedIn_ShowsProfileLink()
+    public async Task HomePage_WhenCommercialModeEnabledAndSignedIn_ShowsProfileControl()
     {
         var commercialAccountStore = new CommercialAccountStoreStub();
         await commercialAccountStore.CreateAsync(
@@ -56,8 +56,10 @@ public sealed class HomePageIdentityContextTests
 
         cut.WaitForAssertion(() =>
         {
-            Assert.Contains("/profile", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.Contains("Profile", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            var profileLinks = cut.FindAll("a").Where(link =>
+                string.Equals(link.GetAttribute("href"), "/profile", StringComparison.OrdinalIgnoreCase)).ToArray();
+            Assert.Single(profileLinks);
+            Assert.Contains("aria-label=\"Profile\"", profileLinks[0].OuterHtml, StringComparison.OrdinalIgnoreCase);
         });
     }
 }

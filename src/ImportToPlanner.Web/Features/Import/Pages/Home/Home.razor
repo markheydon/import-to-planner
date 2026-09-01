@@ -53,13 +53,8 @@
                 </MudItem>
                 <MudItem xs="12" md="5">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Spacing="1" Wrap="Wrap.Wrap">
-                        <MudMenu Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode" Disabled="@(ThemeState is null)">
-                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
-                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
-                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
-                        </MudMenu>
                         <AuthorizeView>
-                            <Authorized Context="authState">
+                            <Authorized>
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
                                     <MudStack Spacing="0">
                                         <MudText Typo="Typo.body2">@IdentityPresentation.EmailAddress</MudText>
@@ -68,15 +63,26 @@
                                             <MudText Typo="Typo.caption">@IdentityPresentation.TenantName</MudText>
                                         }
                                     </MudStack>
-                                    @if (CommercialModeOptions.Enabled)
-                                    {
-                                        <MudButton Variant="Variant.Text" Color="Color.Inherit" Size="Size.Small" Href="/profile">Profile</MudButton>
-                                    }
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                        @RenderThemeMenu()
+                                        @if (CommercialModeOptions.Enabled)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.AccountCircle"
+                                                           Href="/profile"
+                                                           Color="Color.Inherit"
+                                                           Size="Size.Small"
+                                                           aria-label="Profile"
+                                                           title="Profile" />
+                                        }
+                                    </MudStack>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small" OnClick="OnSignOutClicked">Sign out</MudButton>
                                 </MudStack>
                             </Authorized>
                             <NotAuthorized>
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="OnSignInClicked">Sign in</MudButton>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                    @RenderThemeMenu()
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="OnSignInClicked">Sign in</MudButton>
+                                </MudStack>
                             </NotAuthorized>
                         </AuthorizeView>
                     </MudStack>
@@ -173,256 +179,106 @@
                 </MudAlert>
             }
 
-            <MudPaper Elevation="@GetStepElevation(1)" Outlined="true" Class="@GetStepClass(1)">
-                @{ var step1Presentation = GetWorkflowStepPresentation(1); }
-                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                    <MudAvatar Color="@GetStepAvatarColour(1)">@step1Presentation.BadgeContent</MudAvatar>
-                    <MudText Typo="Typo.h6">@step1Presentation.Title</MudText>
-                </MudStack>
-                @if (IsStepComplete(1))
-                {
-                    <MudChip T="string" Color="@GetStepSummaryColour(1)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
-                        @step1Presentation.Summary
-                    </MudChip>
-                }
+            <MudGrid Spacing="2" Class="wizard-layout">
+                <MudItem xs="12" md="3" lg="3">
+                    @RenderWizardStepper()
+                </MudItem>
 
-                <MudStack Spacing="2" Class="mt-3">
-                    <MudAlert Severity="Severity.Info" Dense="true">
-                        Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
-                    </MudAlert>
-                    <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                        <MudAutocomplete T="PlannerContainer"
-                                         Value="@selectedContainer"
-                                         ValueChanged="OnSelectedContainerChangedAsync"
-                                         SearchFunc="SearchContainers"
-                                         ToStringFunc="FormatContainer"
-                                         Label="Location"
-                                         Placeholder="Search or select a location"
-                                         Variant="Variant.Outlined"
-                                         Clearable="true"
-                                         Dense="true"
-                                         CoerceValue="false"
-                                         ResetValueOnEmptyText="true"
-                                         Disabled="@isBusy" />
-                        <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
-                            Refresh locations
-                        </MudButton>
-                    </MudStack>
+                <MudItem xs="12" md="6" lg="6">
+                    <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6 wizard-working-pane">
+                        @if (GetVisibleSetupPanelCount() > 0)
+                        {
+                            <MudExpansionPanels MultiExpansion="true" Class="@(viewedStep > 3 ? "mb-3" : null)">
+                                @for (var setupStep = 1; setupStep <= GetVisibleSetupPanelCount(); setupStep++)
+                                {
+                                    var panelStep = setupStep;
+                                    <MudExpansionPanel Text="@GetSetupPanelTitle(panelStep)"
+                                                       Expanded="@IsSetupPanelExpanded(panelStep)">
+                                        @RenderSetupStepContent(panelStep)
+                                    </MudExpansionPanel>
+                                }
+                            </MudExpansionPanels>
+                        }
 
-                    @if (noGroupsFound)
-                    {
-                        <MudAlert Severity="Severity.Info" Dense="true">
-                            No groups found. Ensure you are a member of at least one Microsoft 365 group.
-                        </MudAlert>
+                        @if (viewedStep == 4)
+                        {
+                            @RenderPreviewStepContent()
+                        }
+                        else if (viewedStep == 5)
+                        {
+                            @RenderReportStepContent()
+                        }
+                    </MudPaper>
+                </MudItem>
+
+                <MudItem xs="12" md="3" lg="3" Class="d-none d-md-block summary-rail-column">
+                    @{
+                        var summary = GetImportContextSummary();
                     }
-                </MudStack>
-            </MudPaper>
-
-            <MudPaper Elevation="@GetStepElevation(2)" Outlined="true" Class="@GetStepClass(2)">
-        @{ var step2Presentation = GetWorkflowStepPresentation(2); }
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(2)">@step2Presentation.BadgeContent</MudAvatar>
-            <MudText Typo="Typo.h6">@step2Presentation.Title</MudText>
-        </MudStack>
-        @if (IsStepComplete(2))
-        {
-            <MudChip T="string" Color="@GetStepSummaryColour(2)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
-                @step2Presentation.Summary
-            </MudChip>
-        }
-
-        <MudStack Spacing="2" Class="mt-3">
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
-                <MudAutocomplete T="PlannerPlan"
-                                 Value="@selectedPlan"
-                                 ValueChanged="OnSelectedPlanChangedAsync"
-                                 SearchFunc="SearchPlans"
-                                 ToStringFunc="FormatPlan"
-                                 Label="Plan"
-                                 Placeholder="Search or select a plan"
-                                 Variant="Variant.Outlined"
-                                 Clearable="true"
-                                 Dense="true"
-                                 CoerceValue="false"
-                                 ResetValueOnEmptyText="true"
-                                 Disabled="@(isBusy || selectedContainer is null)" />
-                <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@(isBusy || selectedContainer is null)" OnClick="@RefreshPlansAsync">
-                    Refresh plans
-                </MudButton>
-            </MudStack>
-
-            @if (selectedContainer is not null && plans.Count == 0)
-            {
-                <MudAlert Severity="Severity.Warning" Dense="true">
-                    No plans were found for this location. Create a plan in Planner, then click Refresh plans.
-                </MudAlert>
-            }
-        </MudStack>
-    </MudPaper>
-
-            <MudPaper Elevation="@GetStepElevation(3)" Outlined="true" Class="@GetStepClass(3)">
-        @{ var step3Presentation = GetWorkflowStepPresentation(3); }
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(3)">@step3Presentation.BadgeContent</MudAvatar>
-            <MudText Typo="Typo.h6">@step3Presentation.Title</MudText>
-        </MudStack>
-        @if (IsStepComplete(3))
-        {
-            <MudChip T="string" Color="@GetStepSummaryColour(3)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
-                @step3Presentation.Summary
-            </MudChip>
-        }
-
-        <MudStack Spacing="2" Class="mt-3">
-            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
-                <MudFileUpload T="IBrowserFile"
-                               @ref="csvFileUpload"
-                               FilesChanged="OnFileChangedAsync"
-                               Accept=".csv,text/csv"
-                               MaximumFileCount="1"
-                               Hidden="true"
-                               Disabled="@(isBusy || IsStepLocked(3))">
-                    <CustomContent>
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Primary"
-                                   StartIcon="@Icons.Material.Filled.UploadFile"
-                                   OnClick="OpenCsvFilePickerAsync"
-                                   Disabled="@(isBusy || IsStepLocked(3))">
-                            Choose CSV file
-                        </MudButton>
-                    </CustomContent>
-                    <SelectedTemplate>
-                        @if (context is not null)
-                        {
-                            <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
-                                @context.Name
-                            </MudChip>
-                        }
-                    </SelectedTemplate>
-                </MudFileUpload>
-
-                <MudButton Variant="Variant.Text"
-                           Color="Color.Inherit"
-                           StartIcon="@Icons.Material.Filled.Clear"
-                           OnClick="ClearSelectedCsv"
-                           Disabled="@(isBusy || !hasSelectedCsv)">
-                    Clear CSV
-                </MudButton>
-            </MudStack>
-            <MudText Typo="Typo.body2">Selected file: @selectedFileName</MudText>
-            <MudSwitch T="bool"
-                       Value="@ignoreExtraColumns"
-                       ValueChanged="@OnIgnoreExtraColumnsChanged"
-                       Color="Color.Primary"
-                       Label="Ignore extra columns"
-                       Disabled="@(isBusy || IsStepLocked(3))" />
-        </MudStack>
-    </MudPaper>
-
-            <MudPaper Elevation="@GetStepElevation(4)" Outlined="true" Class="@GetStepClass(4)">
-        @{ var step4Presentation = GetWorkflowStepPresentation(4); }
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(4)">@step4Presentation.BadgeContent</MudAvatar>
-            <MudText Typo="Typo.h6">@step4Presentation.Title</MudText>
-        </MudStack>
-        @if (IsStepComplete(4))
-        {
-            <MudChip T="string" Color="@GetStepSummaryColour(4)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
-                @step4Presentation.Summary
-            </MudChip>
-        }
-
-        <MudStack Spacing="2" Class="mt-3">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
-                @step4Presentation.PrimaryActionLabel
-            </MudButton>
-
-            @if (isPreviewStale)
-            {
-                <MudAlert Severity="Severity.Warning" Dense="true">
-                    Preview is stale because Planner state changed. Generate a fresh preview before import.
-                </MudAlert>
-            }
-
-            @if (parseErrors.Count > 0)
-            {
-                <MudText Typo="Typo.subtitle2">Validation errors</MudText>
-                <MudDataGrid Items="@parseErrors" T="ImportValidationError" Dense="true" ReadOnly="true">
-                    <Columns>
-                        <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
-                        <PropertyColumn Property="@(error => error.Field)" Title="Field" />
-                        <PropertyColumn Property="@(error => error.Message)" Title="Message" />
-                    </Columns>
-                </MudDataGrid>
-            }
-
-            @if (preview is not null)
-            {
-                <MudText Typo="Typo.subtitle2">Dry-run preview</MudText>
-                <MudText Typo="Typo.body2">Plan action: Reuse existing plan</MudText>
-
-                @if (preview.Preview.PlanId is not null)
-                {
-                    <MudAlert Severity="Severity.Info" Dense="true">
-                        Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.Preview.PlanId" target="_blank"
-                                          rel="noopener noreferrer">Open in Planner</a>
-                    </MudAlert>
-                }
-
-                <MudText Typo="Typo.subtitle2">Bucket actions</MudText>
-                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
-                    <thead>
-                        <tr>
-                            <th>Bucket</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var action in preview.BucketActions)
-                        {
-                            <tr>
-                                <td>@action.BucketName</td>
-                                <td>@action.Action</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
-
-                <MudText Typo="Typo.subtitle2">Task actions</MudText>
-                <MudDataGrid Items="@preview.TaskActions" T="ImportTaskActionViewModel" Dense="true" ReadOnly="true">
-                    <Columns>
-                        <PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
-                        <PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
-                        <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
-                        <PropertyColumn Property="@(task => task.Goals)" Title="Goals" />
-                        <PropertyColumn Property="@(task => task.Action)" Title="Action" />
-                        <PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
-                    </Columns>
-                </MudDataGrid>
-            }
-        </MudStack>
-    </MudPaper>
-
-            <MudPaper Elevation="@GetStepElevation(5)" Outlined="true" Class="@GetStepClass(5)">
-        @{ var step5Presentation = GetWorkflowStepPresentation(5); }
-        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-            <MudAvatar Color="@GetStepAvatarColour(5)">@step5Presentation.BadgeContent</MudAvatar>
-            <MudText Typo="Typo.h6">@step5Presentation.Title</MudText>
-        </MudStack>
-        @if (IsStepComplete(5))
-        {
-            <MudChip T="string" Color="@GetStepSummaryColour(5)" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.CheckCircle" Class="mt-1 step-card__summary">
-                @step5Presentation.Summary
-            </MudChip>
-        }
-
-        <MudStack Spacing="2" Class="mt-3">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canExecute)" OnClick="@ExecuteAsync">
-                @step5Presentation.PrimaryActionLabel
-            </MudButton>
-            <HomeExecutionReport ExecutionResult="@executionResult" />
-        </MudStack>
-    </MudPaper>
+                    <MudPaper Elevation="1" Outlined="true" Class="pa-4 summary-rail">
+                        <MudStack Spacing="2">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                <MudIcon Icon="@Icons.Material.Filled.FactCheck" Color="Color.Primary" Size="Size.Small" />
+                                <MudText Typo="Typo.subtitle1">Your import</MudText>
+                            </MudStack>
+                            <MudDivider Class="my-1" />
+                            <MudStack Spacing="2">
+                                <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Place" Size="Size.Small" Class="mt-1" Color="Color.Primary" />
+                                    <MudStack Spacing="0" Class="flex-grow-1">
+                                        <MudText Typo="Typo.caption">Location</MudText>
+                                        <MudText Typo="Typo.body2">@summary.LocationLabel</MudText>
+                                    </MudStack>
+                                </MudStack>
+                                <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Assignment" Size="Size.Small" Class="mt-1" Color="Color.Primary" />
+                                    <MudStack Spacing="0" Class="flex-grow-1">
+                                        <MudText Typo="Typo.caption">Plan</MudText>
+                                        <MudText Typo="Typo.body2">@summary.PlanLabel</MudText>
+                                    </MudStack>
+                                </MudStack>
+                                <MudStack Row="true" AlignItems="AlignItems.Start" Spacing="2">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Description" Size="Size.Small" Class="mt-1" Color="Color.Primary" />
+                                    <MudStack Spacing="0" Class="flex-grow-1">
+                                        <MudText Typo="Typo.caption">CSV file</MudText>
+                                        <MudText Typo="Typo.body2">@summary.CsvFileName</MudText>
+                                    </MudStack>
+                                </MudStack>
+                                <MudDivider Class="my-1" />
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                    <MudChip T="string"
+                                             Variant="Variant.Filled"
+                                             Size="Size.Small"
+                                             Color="@GetSummaryPreviewChipColour()"
+                                             Icon="@Icons.Material.Filled.Preview">
+                                        Preview: @summary.PreviewStatus
+                                    </MudChip>
+                                    <MudChip T="string"
+                                             Variant="Variant.Filled"
+                                             Size="Size.Small"
+                                             Color="@GetSummaryExecutionChipColour()"
+                                             Icon="@Icons.Material.Filled.TaskAlt">
+                                        Import: @summary.ExecutionStatus
+                                    </MudChip>
+                                </MudStack>
+                            </MudStack>
+                            @if (!string.IsNullOrWhiteSpace(summary.PlannerUrl))
+                            {
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Href="@summary.PlannerUrl"
+                                           Target="_blank"
+                                           Rel="noopener noreferrer"
+                                           StartIcon="@Icons.Material.Filled.OpenInNew"
+                                           FullWidth="true"
+                                           Size="Size.Small">
+                                    Open in Planner
+                                </MudButton>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
             }
         </MudStack>
     </MudStack>
@@ -586,5 +442,237 @@
             return null;
         }
     }
+
+    private RenderFragment RenderThemeMenu()
+        => @<MudMenu Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode" Disabled="@(ThemeState is null)">
+            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
+            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
+        </MudMenu>;
+
+    private RenderFragment RenderWizardStepper()
+        => @<MudStepper Vertical="true"
+                       NonLinear="true"
+                       ShowResetButton="false"
+                       @bind-ActiveIndex="StepperActiveIndex"
+                       OnPreviewInteraction="OnStepperPreviewInteraction">
+            <ActionContent />
+            <ChildContent>
+            <MudStep Title="@GetWorkflowStepPresentation(1).Title"
+                     SecondaryText="@GetStepSecondaryText(1)"
+                     Completed="@GetMudStepCompleted(1)"
+                     Disabled="@GetMudStepDisabled(1)" />
+            <MudStep Title="@GetWorkflowStepPresentation(2).Title"
+                     SecondaryText="@GetStepSecondaryText(2)"
+                     Completed="@GetMudStepCompleted(2)"
+                     Disabled="@GetMudStepDisabled(2)" />
+            <MudStep Title="@GetWorkflowStepPresentation(3).Title"
+                     SecondaryText="@GetStepSecondaryText(3)"
+                     Completed="@GetMudStepCompleted(3)"
+                     Disabled="@GetMudStepDisabled(3)" />
+            <MudStep Title="@GetWorkflowStepPresentation(4).Title"
+                     SecondaryText="@GetStepSecondaryText(4)"
+                     Completed="@GetMudStepCompleted(4)"
+                     Disabled="@GetMudStepDisabled(4)" />
+            <MudStep Title="@GetWorkflowStepPresentation(5).Title"
+                     SecondaryText="@GetStepSecondaryText(5)"
+                     Completed="@GetMudStepCompleted(5)"
+                     Disabled="@GetMudStepDisabled(5)" />
+            </ChildContent>
+        </MudStepper>;
+
+    private RenderFragment RenderSetupStepContent(int step)
+        => step switch
+        {
+            1 => @<MudStack Spacing="2">
+                <MudAlert Severity="Severity.Info" Dense="true">
+                    Create your target plan first in Planner (Personal or Microsoft 365 Group), then select it below.
+                </MudAlert>
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudAutocomplete T="PlannerContainer"
+                                     Value="@selectedContainer"
+                                     ValueChanged="OnSelectedContainerChangedAsync"
+                                     SearchFunc="SearchContainers"
+                                     ToStringFunc="FormatContainer"
+                                     Label="Location"
+                                     Placeholder="Search or select a location"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     Dense="true"
+                                     CoerceValue="false"
+                                     ResetValueOnEmptyText="true"
+                                     Disabled="@isBusy" />
+                    <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@isBusy" OnClick="@RefreshContainersAsync">
+                        Refresh locations
+                    </MudButton>
+                </MudStack>
+                @if (noGroupsFound)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        No groups found. Ensure you are a member of at least one Microsoft 365 group.
+                    </MudAlert>
+                }
+            </MudStack>,
+            2 => @<MudStack Spacing="2">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                    <MudAutocomplete T="PlannerPlan"
+                                     Value="@selectedPlan"
+                                     ValueChanged="OnSelectedPlanChangedAsync"
+                                     SearchFunc="SearchPlans"
+                                     ToStringFunc="FormatPlan"
+                                     Label="Plan"
+                                     Placeholder="Search or select a plan"
+                                     Variant="Variant.Outlined"
+                                     Clearable="true"
+                                     Dense="true"
+                                     CoerceValue="false"
+                                     ResetValueOnEmptyText="true"
+                                     Disabled="@(isBusy || selectedContainer is null)" />
+                    <MudButton Variant="Variant.Text" Color="Color.Inherit" Disabled="@(isBusy || selectedContainer is null)" OnClick="@RefreshPlansAsync">
+                        Refresh plans
+                    </MudButton>
+                </MudStack>
+                @if (selectedContainer is not null && plans.Count == 0)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true">
+                        No plans were found for this location. Create a plan in Planner, then click Refresh plans.
+                    </MudAlert>
+                }
+            </MudStack>,
+            3 => @<MudStack Spacing="2">
+                <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Wrap="Wrap.Wrap">
+                    <MudFileUpload T="IBrowserFile"
+                                   @ref="csvFileUpload"
+                                   FilesChanged="OnFileChangedAsync"
+                                   Accept=".csv,text/csv"
+                                   MaximumFileCount="1"
+                                   Hidden="true"
+                                   Disabled="@(isBusy || IsStepLocked(3))">
+                        <CustomContent>
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.UploadFile"
+                                       OnClick="OpenCsvFilePickerAsync"
+                                       Disabled="@(isBusy || IsStepLocked(3))">
+                                Choose CSV file
+                            </MudButton>
+                        </CustomContent>
+                        <SelectedTemplate>
+                            @if (context is not null)
+                            {
+                                <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
+                                    @context.Name
+                                </MudChip>
+                            }
+                        </SelectedTemplate>
+                    </MudFileUpload>
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.Clear"
+                               OnClick="ClearSelectedCsv"
+                               Disabled="@(isBusy || !hasSelectedCsv)">
+                        Clear CSV
+                    </MudButton>
+                </MudStack>
+                <MudText Typo="Typo.body2">Selected file: @selectedFileName</MudText>
+                <MudSwitch T="bool"
+                           Value="@ignoreExtraColumns"
+                           ValueChanged="@OnIgnoreExtraColumnsChanged"
+                           Color="Color.Primary"
+                           Label="Ignore extra columns"
+                           Disabled="@(isBusy || IsStepLocked(3))" />
+            </MudStack>,
+            _ => __builder => { },
+        };
+
+    private RenderFragment RenderPreviewStepContent()
+        => @<MudStack Spacing="2">
+            <MudText Typo="Typo.h6">@GetWorkflowStepPresentation(4).Title</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!canValidate)" OnClick="@BuildPreviewAsync">
+                @GetWorkflowStepPresentation(4).PrimaryActionLabel
+            </MudButton>
+            @if (isPreviewStale)
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Preview is stale because Planner state changed. Generate a fresh preview before import.
+                </MudAlert>
+            }
+            @if (parseErrors.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle2">Validation errors</MudText>
+                <MudDataGrid Items="@parseErrors" T="ImportValidationError" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(error => error.RowNumber)" Title="Row" />
+                        <PropertyColumn Property="@(error => error.Field)" Title="Field" />
+                        <PropertyColumn Property="@(error => error.Message)" Title="Message" />
+                    </Columns>
+                </MudDataGrid>
+            }
+            @if (preview is not null)
+            {
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap" Class="mb-2">
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small">Create: @CountPreviewActions("Create")</MudChip>
+                    <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small">Reuse: @CountPreviewActions("Reuse")</MudChip>
+                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small">Manual: @CountPreviewActions("Manual")</MudChip>
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined" Size="Size.Small">Skip: @CountPreviewActions("Skip")</MudChip>
+                </MudStack>
+                <MudText Typo="Typo.subtitle2">Dry-run preview</MudText>
+                <MudText Typo="Typo.body2">Plan action: Reuse existing plan</MudText>
+                @if (preview.Preview.PlanId is not null)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true">
+                        Plan selected. <a href="https://planner.cloud.microsoft/webui/plan/@preview.Preview.PlanId" target="_blank"
+                                          rel="noopener noreferrer">Open in Planner</a>
+                    </MudAlert>
+                }
+                <MudText Typo="Typo.subtitle2">Bucket actions</MudText>
+                <MudSimpleTable Dense="true" Hover="true" Elevation="0">
+                    <thead>
+                        <tr>
+                            <th>Bucket</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var action in preview.BucketActions)
+                        {
+                            <tr>
+                                <td>@action.BucketName</td>
+                                <td>@action.Action</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+                <MudText Typo="Typo.subtitle2">Task actions</MudText>
+                <MudDataGrid Items="@preview.TaskActions" T="ImportTaskActionViewModel" Dense="true" ReadOnly="true">
+                    <Columns>
+                        <PropertyColumn Property="@(task => task.RowNumber)" Title="Row" />
+                        <PropertyColumn Property="@(task => task.TaskName)" Title="Task" />
+                        <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
+                        <PropertyColumn Property="@(task => task.Goals)" Title="Goals" />
+                        <PropertyColumn Property="@(task => task.Action)" Title="Action" />
+                        <PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
+                    </Columns>
+                </MudDataGrid>
+                @if (canExecute)
+                {
+                    <MudDivider Class="my-2" />
+                    <MudText Typo="Typo.body2">When you are happy with the preview, confirm to run the import.</MudText>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Class="mt-2"
+                               Disabled="@(!canExecute)"
+                               OnClick="@ExecuteAsync">
+                        @GetWorkflowStepPresentation(4).SecondaryActionLabel
+                    </MudButton>
+                }
+            }
+        </MudStack>;
+
+    private RenderFragment RenderReportStepContent()
+        => @<MudStack Spacing="2">
+            <MudText Typo="Typo.h6">@GetWorkflowStepPresentation(5).Title</MudText>
+            <HomeExecutionReport ExecutionResult="@executionResult" />
+        </MudStack>;
 
 }

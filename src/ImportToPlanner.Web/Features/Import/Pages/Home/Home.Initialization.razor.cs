@@ -95,5 +95,9 @@ public partial class Home
 
             HandleUserSafeFailure(ex, "workflow.initialise.load_containers", WorkflowStatusLevel.Error);
         }
+        finally
+        {
+            InitialiseViewedStep();
+        }
     }
 }

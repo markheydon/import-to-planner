@@ -1,5 +1,7 @@
 using Bunit;
+using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
+using Microsoft.Extensions.DependencyInjection;
 using MudBlazor;
 
 namespace ImportToPlanner.Web.Tests;
@@ -30,12 +32,14 @@ public sealed class HomePageSmokeTests
         var cut = ctx.Render<Home>();
 
         // Assert — verify key structural elements are present
-        Assert.Equal(5, cut.FindAll(".step-card").Count);
+        Assert.Single(cut.FindComponents<MudStepper>());
+        Assert.Equal(5, cut.FindComponents<MudStep>().Count);
         Assert.Contains("Select Planner location", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Select plan", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Upload CSV", cut.Markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Confirm and import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Preview and confirm", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Report", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Confirm and import", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Step 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Step 5", cut.Markup, StringComparison.OrdinalIgnoreCase);
     }
@@ -66,15 +70,35 @@ public sealed class HomePageSmokeTests
     {
         // Arrange
         await using var ctx = new HomePageTestContext();
-
-        // Act
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
         var cut = ctx.Render<Home>();
 
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+        state.CsvContent = "Task Name\nTask A";
+        state.SelectedFileName = "import.csv";
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 4));
+        cut.FindAll(".mud-step")[3].Click();
+
         // Assert
-        Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("Confirm and import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Confirm import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
         Assert.DoesNotContain("Validate and preview", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Confirm and execute", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Confirm and import", cut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -102,6 +126,20 @@ public sealed class HomePageSmokeTests
 
         // Assert
         Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task HomePage_WhenCommercialModeDisabled_DoesNotShowProfileLink()
+    {
+        await using var ctx = new HomePageTestContext(commercialModeEnabled: false, isAuthenticated: true);
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Select Planner location", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("href=\"/profile\"", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     [Fact]

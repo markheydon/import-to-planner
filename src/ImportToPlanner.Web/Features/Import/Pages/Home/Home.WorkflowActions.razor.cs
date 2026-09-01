@@ -21,6 +21,7 @@ public partial class Home
             await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
 
             SetStatus("Location list refreshed.", WorkflowStatusLevel.Success);
+            SyncViewedStepAfterWorkflowInvalidation();
         }
         catch (Exception ex)
         {
@@ -49,6 +50,7 @@ public partial class Home
         {
             await WorkflowCoordinator.LoadPlansAsync(WorkflowState, CancellationToken.None);
             SetStatus("Plan list refreshed.", WorkflowStatusLevel.Success);
+            SyncViewedStepAfterWorkflowInvalidation();
         }
         catch (Exception ex)
         {
@@ -81,6 +83,10 @@ public partial class Home
         csvContent = await reader.ReadToEndAsync();
 
         SetStatus("CSV file loaded. Click Preview import.", WorkflowStatusLevel.Info);
+        if (!FocusSetupStepIfReviewingLaterSteps(3))
+        {
+            MaybeAdvanceViewedStep();
+        }
     }
 
     private async Task ClearSelectedCsv()
@@ -99,6 +105,10 @@ public partial class Home
         selectedFileName = WorkflowCoordinationState.NoFileSelectedText;
         ResetFlowState();
         SetStatus("CSV selection cleared.", WorkflowStatusLevel.Info);
+        if (!FocusSetupStepIfReviewingLaterSteps(3))
+        {
+            MaybeAdvanceViewedStep();
+        }
     }
 
     private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
@@ -114,7 +124,8 @@ public partial class Home
         plans.Clear();
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because your selected location changed. Generate a fresh preview before import.");
+        InvalidatePreviewAfterSetupChange("Preview cleared because your selected location changed. Generate a new preview before import.");
+        var focusedSetupStep = FocusSetupStepIfReviewingLaterSteps(1);
 
         if (selectedContainer is null)
         {
@@ -143,6 +154,10 @@ public partial class Home
         finally
         {
             isBusy = false;
+            if (!focusedSetupStep)
+            {
+                MaybeAdvanceViewedStep();
+            }
         }
     }
 
@@ -157,12 +172,17 @@ public partial class Home
         selectedPlan = plan;
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because your selected plan changed. Generate a fresh preview before import.");
+        InvalidatePreviewAfterSetupChange("Preview cleared because your selected plan changed. Generate a new preview before import.");
+        var focusedSetupStep = FocusSetupStepIfReviewingLaterSteps(2);
         if (!hadPreview)
         {
             SetStatus(selectedPlan is null ? "Select a plan to continue." : null, WorkflowStatusLevel.Info);
         }
 
+        if (!focusedSetupStep)
+        {
+            MaybeAdvanceViewedStep();
+        }
         return Task.CompletedTask;
     }
 
@@ -176,7 +196,8 @@ public partial class Home
         ignoreExtraColumns = value;
         parseErrors.Clear();
         ResetExecutionState();
-        MarkPreviewAsStale("Preview is stale because CSV options changed. Generate a fresh preview before import.");
+        InvalidatePreviewAfterSetupChange("Preview cleared because CSV options changed. Generate a new preview before import.");
+        FocusSetupStepIfReviewingLaterSteps(3);
         return Task.CompletedTask;
     }
 
@@ -208,15 +229,17 @@ public partial class Home
         SetStatus(message, WorkflowStatusLevel.Warning);
     }
 
-    private void MarkPreviewAsStale(string message)
+    private void InvalidatePreviewAfterSetupChange(string messageWhenPreviewExisted)
     {
-        if (preview is null || currentRequest is null)
-        {
-            return;
-        }
+        var hadPreview = preview is not null || currentRequest is not null;
+        parseErrors.Clear();
+        ResetPreviewState();
+        ResetExecutionState();
 
-        isPreviewStale = true;
-        SetStatus(message, WorkflowStatusLevel.Warning);
+        if (hadPreview)
+        {
+            SetStatus(messageWhenPreviewExisted, WorkflowStatusLevel.Warning);
+        }
     }
 
     private async Task BuildPreviewAsync()
@@ -249,6 +272,7 @@ public partial class Home
         finally
         {
             isBusy = false;
+            MaybeAdvanceViewedStep();
         }
     }
 
@@ -292,6 +316,7 @@ public partial class Home
         finally
         {
             isBusy = false;
+            MaybeAdvanceViewedStep();
         }
     }
 

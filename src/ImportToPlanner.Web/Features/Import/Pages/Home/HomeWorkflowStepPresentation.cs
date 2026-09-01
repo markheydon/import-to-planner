@@ -6,4 +6,5 @@ internal sealed record HomeWorkflowStepPresentation(
     HomeWorkflowStepState State,
     string BadgeContent,
     string? Summary,
-    string? PrimaryActionLabel);
+    string? PrimaryActionLabel,
+    string? SecondaryActionLabel = null);

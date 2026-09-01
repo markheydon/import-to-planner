@@ -1,4 +1,5 @@
 @namespace ImportToPlanner.Web.Features.Import.Pages
+@using ImportToPlanner.Web.Features.Import.Presenters
 
 @if (ExecutionResult is not null)
 {
@@ -15,6 +16,13 @@
 
         <MudTabs Rounded="false" ApplyEffectsToContainer="false">
             <MudTabPanel Text="Summary">
+                <MudStack Row="true" Spacing="2" Wrap="Wrap.Wrap" Class="mb-3">
+                    <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Size="Size.Small">Created: @ExecutionResult.Created.Count</MudChip>
+                    <MudChip T="string" Color="Color.Info" Variant="Variant.Outlined" Size="Size.Small">Skipped: @ExecutionResult.ReusedOrSkipped.Count</MudChip>
+                    <MudChip T="string" Color="Color.Warning" Variant="Variant.Outlined" Size="Size.Small">Manual: @ExecutionResult.ManualActions.Count</MudChip>
+                    <MudChip T="string" Color="Color.Error" Variant="Variant.Outlined" Size="Size.Small">Errors: @ExecutionResult.Errors.Count</MudChip>
+                </MudStack>
+
                 <MudSimpleTable Dense="true" Hover="true" Elevation="0">
                     <thead>
                         <tr>
@@ -42,19 +50,25 @@
                     </tbody>
                 </MudSimpleTable>
 
-                <MudText Typo="Typo.subtitle2" Class="mt-3">Created</MudText>
-                <MudDataGrid Items="@ExecutionResult.Created" T="string" Dense="true" ReadOnly="true">
-                    <Columns>
-                        <PropertyColumn Property="@(item => item)" Title="Item" />
-                    </Columns>
-                </MudDataGrid>
+                @if (ExecutionResult.Created.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-3">Created</MudText>
+                    <MudDataGrid Items="@ExecutionResult.Created" T="string" Dense="true" ReadOnly="true">
+                        <Columns>
+                            <PropertyColumn Property="@(item => item)" Title="Item" />
+                        </Columns>
+                    </MudDataGrid>
+                }
 
-                <MudText Typo="Typo.subtitle2" Class="mt-3">Reused or skipped</MudText>
-                <MudDataGrid Items="@ExecutionResult.ReusedOrSkipped" T="string" Dense="true" ReadOnly="true">
-                    <Columns>
-                        <PropertyColumn Property="@(item => item)" Title="Item" />
-                    </Columns>
-                </MudDataGrid>
+                @if (ExecutionResult.ReusedOrSkipped.Count > 0)
+                {
+                    <MudText Typo="Typo.subtitle2" Class="mt-3">Reused or skipped</MudText>
+                    <MudDataGrid Items="@ExecutionResult.ReusedOrSkipped" T="string" Dense="true" ReadOnly="true">
+                        <Columns>
+                            <PropertyColumn Property="@(item => item)" Title="Item" />
+                        </Columns>
+                    </MudDataGrid>
+                }
             </MudTabPanel>
 
             <MudTabPanel Text="@($"Manual Actions ({ExecutionResult.ManualActions.Count})")">
@@ -71,7 +85,13 @@
                 {
                     <MudDataGrid Items="@ExecutionResult.ManualActions" T="ManualActionViewModel" Dense="true" ReadOnly="true">
                         <Columns>
-                            <PropertyColumn Property="@(item => item.ActionType)" Title="Action type" />
+                            <TemplateColumn Title="Action type">
+                                <CellTemplate>
+                                    <MudChip T="string" Color="@GetManualActionColour(context.Item.ActionType)" Variant="Variant.Filled" Size="Size.Small">
+                                        @context.Item.ActionType
+                                    </MudChip>
+                                </CellTemplate>
+                            </TemplateColumn>
                             <PropertyColumn Property="@(item => item.GoalName)" Title="Goal" />
                             <PropertyColumn Property="@(item => item.TaskName)" Title="Task" />
                             <PropertyColumn Property="@(item => item.Details)" Title="Details" />
@@ -106,4 +126,12 @@
 @code {
     [Parameter]
     public ImportExecutionReportViewModel? ExecutionResult { get; set; }
+
+    private static Color GetManualActionColour(string actionType)
+        => actionType switch
+        {
+            "Ensure Goal Exists" => Color.Warning,
+            "Link Task To Goal" => Color.Info,
+            _ => Color.Default,
+        };
 }
