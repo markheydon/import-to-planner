@@ -168,6 +168,7 @@ On small viewports, the user can still complete the import: the step list may be
 - Desktop (wide) layout is the primary target for Stories 1–3. Story 5 is optional if stacking already keeps the wizard usable on small screens.
 - Delivery may land as incremental slices aligned to the user stories (stepper skeleton, then collapsible setup and summary, then report polish, then optional narrow layout).
 - **Amendment (2026-09-01, dogfooding)**: Step 4 and step 5 titles and pane responsibilities were refined after stepper testing. Preview and confirm import now share step 4; step 5 is report-only. Primary actions remain **Preview import** and **Confirm import** on step 4. Workflow gating (`canValidate`, `canExecute`, staleness) is unchanged.
+- **Amendment (2026-09-01, identity chrome)**: Commercial signed-in header order is email/tenant, then icon actions (theme, profile), then Sign out. Profile may be an icon control with accessible name “Profile” rather than visible link text.
 - Header chrome may stay in the current title row or move to a dedicated top bar, provided it stays full-width above the wizard and remains reachable.
 - End-user help screenshots and copy under public docs may need a later update if the visible layout changes; that documentation refresh is follow-on unless wording on Home itself changes.
 - Source of product intent: GitHub issue #117. Related commercial behaviour is already specified in commercial account features; this spec does not reopen those rules.

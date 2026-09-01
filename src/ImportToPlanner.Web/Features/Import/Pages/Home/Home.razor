@@ -53,13 +53,8 @@
                 </MudItem>
                 <MudItem xs="12" md="5">
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.FlexEnd" Spacing="1" Wrap="Wrap.Wrap">
-                        <MudMenu Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode" Disabled="@(ThemeState is null)">
-                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
-                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
-                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
-                        </MudMenu>
                         <AuthorizeView>
-                            <Authorized Context="authState">
+                            <Authorized>
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
                                     <MudStack Spacing="0">
                                         <MudText Typo="Typo.body2">@IdentityPresentation.EmailAddress</MudText>
@@ -68,15 +63,34 @@
                                             <MudText Typo="Typo.caption">@IdentityPresentation.TenantName</MudText>
                                         }
                                     </MudStack>
-                                    @if (CommercialModeOptions.Enabled)
-                                    {
-                                        <MudButton Variant="Variant.Text" Color="Color.Inherit" Size="Size.Small" Href="/profile">Profile</MudButton>
-                                    }
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                        <MudMenu Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode" Disabled="@(ThemeState is null)">
+                                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
+                                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
+                                            <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
+                                        </MudMenu>
+                                        @if (CommercialModeOptions.Enabled)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.AccountCircle"
+                                                           Href="/profile"
+                                                           Color="Color.Inherit"
+                                                           Size="Size.Small"
+                                                           aria-label="Profile"
+                                                           title="Profile" />
+                                        }
+                                    </MudStack>
                                     <MudButton Variant="Variant.Outlined" Color="Color.Inherit" Size="Size.Small" OnClick="OnSignOutClicked">Sign out</MudButton>
                                 </MudStack>
                             </Authorized>
                             <NotAuthorized>
-                                <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="OnSignInClicked">Sign in</MudButton>
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                    <MudMenu Icon="@GetThemeMenuIcon()" Color="Color.Inherit" Variant="Variant.Text" Dense="true" AriaLabel="Theme mode" Disabled="@(ThemeState is null)">
+                                        <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Auto))">@GetThemeOptionLabel(ThemeMode.Auto)</MudMenuItem>
+                                        <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Light))">@GetThemeOptionLabel(ThemeMode.Light)</MudMenuItem>
+                                        <MudMenuItem OnClick="@(() => SetThemeModeAsync(ThemeMode.Dark))">@GetThemeOptionLabel(ThemeMode.Dark)</MudMenuItem>
+                                    </MudMenu>
+                                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="OnSignInClicked">Sign in</MudButton>
+                                </MudStack>
                             </NotAuthorized>
                         </AuthorizeView>
                     </MudStack>

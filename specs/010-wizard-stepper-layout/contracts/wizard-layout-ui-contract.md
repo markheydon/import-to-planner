@@ -10,7 +10,7 @@ When the layout mode is `ImportWizard`:
 
 | Region | Required content | Must not contain |
 |--------|------------------|------------------|
-| Header (full width) | Title “CSV to Planner Import”, compact CSV guidance (required **Task Name**; accepted Task Name, Description, Priority, Bucket, Goal; one manual-follow-up example), theme menu, email, tenant name when present, Sign out, Profile **only** if commercial mode is on | Step forms, stepper, summary rail |
+| Header (full width) | Title “CSV to Planner Import”, compact CSV guidance (required **Task Name**; accepted Task Name, Description, Priority, Bucket, Goal; one manual-follow-up example), signed-in email and tenant name when present, icon actions for theme and commercial profile (`/profile`), Sign out | Step forms, stepper, summary rail |
 | Step list | Five steps in order with titles below; completion and lock cues | Duplicate full forms for all five steps |
 | Working pane | Detailed content for `viewedStep` only (plus collapsed setup panels from Story 3) | Always-expanded copies of inactive step forms |
 | Summary rail (Story 3, wide viewport) | Location, plan, CSV file, preview/execution status; Open in Planner when a plan id exists | Sign-in or Profile (those stay in the header) |
@@ -47,6 +47,8 @@ Rules:
 - Step 4 completes after import runs; until then it may show interim summary text such as “Preview ready — confirm to import.” when a valid preview exists.
 - Step 5 is locked until import has run; it shows the execution report only.
 - Locked steps are not selectable.
+- Signed-in commercial header order: email and tenant name, then icon actions (theme menu and profile control), then Sign out.
+- The commercial profile control MUST link to `/profile` and MUST expose an accessible name of “Profile” (for example `aria-label`), whether rendered as text or an icon.
 - Primary actions in the working pane remain **Preview import** and **Confirm import** on step 4 (sentence case). Built-in stepper Next/Previous/Reset must not appear as competing primary actions.
 
 ## Workflow gating contract (unchanged meaning)
@@ -63,7 +65,7 @@ Rules:
 | Theme (auto / light / dark) | Yes | Yes |
 | Email | Yes when signed in | Yes when signed in |
 | Tenant display name | When available | When available |
-| Profile → `/profile` | No | Yes when signed in with an active account (and Open profile on the retention gate) |
+| Profile → `/profile` | No | Yes when signed in with an active account — icon control with accessible name “Profile” (and **Open profile** on the retention gate) |
 | Sign out / Sign in | Yes | Yes |
 | Account-created success alert | No | Yes after first successful commercial sign-in, **once**, above the wizard |
 
