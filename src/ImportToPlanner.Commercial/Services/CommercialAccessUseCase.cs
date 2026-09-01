@@ -18,7 +18,6 @@ public sealed class CommercialAccessUseCase(
     /// <inheritdoc/>
     public async Task<CommercialAccessDecision> ResolveAccessAsync(
         SessionIdentityContext sessionIdentity,
-        bool commercialModeEnabled,
         DateTimeOffset occurredUtc,
         CancellationToken cancellationToken)
     {
@@ -27,15 +26,6 @@ public sealed class CommercialAccessUseCase(
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionIdentity.UserId);
 
         cancellationToken.ThrowIfCancellationRequested();
-
-        if (!commercialModeEnabled)
-        {
-            return new CommercialAccessDecision(
-                CommercialAccessDecisionType.SelfHostedBypass,
-                null,
-                null,
-                ShouldSignOut: false);
-        }
 
         var existingAccount = await commercialAccountStore
             .GetAsync(sessionIdentity.TenantId, sessionIdentity.UserId, cancellationToken)

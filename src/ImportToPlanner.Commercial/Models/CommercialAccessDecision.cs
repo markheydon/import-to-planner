@@ -22,5 +22,4 @@ public enum CommercialAccessDecisionType
     CreateAccount,
     BlockedDeleted,
     OfferRestore,
-    SelfHostedBypass,
 }

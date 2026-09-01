@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="ImportToPlanner.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
     <ProjectReference Include="..\ImportToPlanner.Domain\ImportToPlanner.Domain.csproj" />
   </ItemGroup>

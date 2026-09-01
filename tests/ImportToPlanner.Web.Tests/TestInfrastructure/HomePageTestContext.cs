@@ -95,16 +95,25 @@ internal sealed class HomePageTestContext : BunitContext
         Services.AddScoped<ICsvImportParser, CsvImportParserStub>();
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
         Services.AddScoped<ITenantOperationalMetadataStore, TenantOperationalMetadataStoreStub>();
-        CommercialAccountStore = commercialAccountStoreStub ?? new CommercialAccountStoreStub();
-        CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
-        Services.AddScoped<ICommercialAccountStore>(_ => CommercialAccountStore);
-        Services.AddScoped<ICommercialAuditStore>(_ => CommercialAuditStore);
-        Services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
-        Services.AddScoped<GetCommercialProfileUseCase>();
-        Services.AddScoped<DeleteCommercialAccountUseCase>();
-        Services.AddScoped<RestoreCommercialAccountUseCase>();
-        Services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
-        Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
+        if (commercialModeEnabled)
+        {
+            CommercialAccountStore = commercialAccountStoreStub ?? new CommercialAccountStoreStub();
+            CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
+            Services.AddScoped<ICommercialAccountStore>(_ => CommercialAccountStore);
+            Services.AddScoped<ICommercialAuditStore>(_ => CommercialAuditStore);
+            Services.AddScoped<ICommercialAccessUseCase, CommercialAccessUseCase>();
+            Services.AddScoped<GetCommercialProfileUseCase>();
+            Services.AddScoped<DeleteCommercialAccountUseCase>();
+            Services.AddScoped<RestoreCommercialAccountUseCase>();
+            Services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
+            Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
+        }
+        else
+        {
+            CommercialAccountStore = commercialAccountStoreStub ?? new CommercialAccountStoreStub();
+            CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
+        }
+
         Services.AddSingleton(TenantAccessor);
         Services.AddScoped<ICurrentTenantContextAccessor>(_ => TenantAccessor);
         Services.AddApplication();

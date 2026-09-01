@@ -136,7 +136,6 @@ public sealed class CommercialAccountLifecycleUseCaseTests
 
         var decision = await accessUseCase.ResolveAccessAsync(
             identity,
-            commercialModeEnabled: true,
             occurredUtc: new DateTimeOffset(2026, 5, 28, 11, 0, 0, TimeSpan.Zero),
             CancellationToken.None);
 

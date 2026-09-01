@@ -59,6 +59,52 @@ public sealed class InfrastructureRegistrationTests
     }
 
     [Fact]
+    public void AddInfrastructure_WhenCommercialModeEnabled_DoesNotRegisterSelfHostMetadataStore()
+    {
+        var services = new ServiceCollection();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Features:CommercialMode:Enabled"] = "true",
+            })
+            .Build();
+
+        services.AddInfrastructure(configuration);
+
+        var metadataDescriptors = services
+            .Where(descriptor => descriptor.ServiceType == typeof(ITenantOperationalMetadataStore))
+            .ToList();
+
+        Assert.Empty(metadataDescriptors);
+    }
+
+    [Fact]
+    public void AddInfrastructureAndCommercial_WhenCommercialModeEnabled_RegistersTableMetadataStore()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Features:CommercialMode:Enabled"] = "true",
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
+                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
+            })
+            .Build();
+
+        services.AddInfrastructure(configuration);
+        services.AddCommercial(configuration);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var metadataStore = serviceProvider.GetRequiredService<ITenantOperationalMetadataStore>();
+
+        Assert.Equal("TableTenantOperationalMetadataStore", metadataStore.GetType().Name);
+    }
+
+    [Fact]
     public void AddInfrastructure_RegistersGraphGatewayAndSelfHostMetadataStoreWithoutTables()
     {
         var services = new ServiceCollection();

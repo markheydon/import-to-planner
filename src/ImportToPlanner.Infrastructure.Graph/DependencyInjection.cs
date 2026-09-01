@@ -24,7 +24,14 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddScoped<ICsvImportParser, CsvImportParser>();
-        services.AddSingleton<ITenantOperationalMetadataStore, SelfHostTenantOperationalMetadataStore>();
+
+        var commercialModeEnabled = bool.TryParse(configuration["Features:CommercialMode:Enabled"], out var parsedCommercialModeEnabled)
+            && parsedCommercialModeEnabled;
+        if (!commercialModeEnabled)
+        {
+            services.AddSingleton<ITenantOperationalMetadataStore, SelfHostTenantOperationalMetadataStore>();
+        }
+
         services.AddScoped<IPlannerGateway, GraphPlannerGateway>();
 
         return services;

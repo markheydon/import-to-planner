@@ -8,7 +8,7 @@ namespace ImportToPlanner.Commercial.Accounts.Storage;
 /// <summary>
 /// Persists commercial account records in Azure Table Storage.
 /// </summary>
-public sealed class TableCommercialAccountStore(TableClient tableClient) : ICommercialAccountStore, IDisposable
+internal sealed class TableCommercialAccountStore(TableClient tableClient) : ICommercialAccountStore, IDisposable
 {
     private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);

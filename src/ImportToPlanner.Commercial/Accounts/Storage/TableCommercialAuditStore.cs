@@ -8,7 +8,7 @@ namespace ImportToPlanner.Commercial.Accounts.Storage;
 /// <summary>
 /// Persists commercial account audit events in Azure Table Storage.
 /// </summary>
-public sealed class TableCommercialAuditStore(TableClient tableClient) : ICommercialAuditStore, IDisposable
+internal sealed class TableCommercialAuditStore(TableClient tableClient) : ICommercialAuditStore, IDisposable
 {
     private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);
