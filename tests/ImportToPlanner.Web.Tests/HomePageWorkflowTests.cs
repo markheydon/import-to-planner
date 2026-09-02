@@ -3,6 +3,7 @@ using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Tests.TestInfrastructure;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Identity.Client;
 using Microsoft.Identity.Web;
@@ -732,6 +733,123 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task HomePage_WhenCsvReplacedFromPreviewStep_AdvancesToPreviewAndConfirm()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "first.csv", "Task Name\nTask A");
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex)));
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(state.PlanningViewModel);
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+        });
+
+        await UploadCsvAsync(cut, "replacement.csv", "Task Name\nTask B");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.Equal("replacement.csv", state.SelectedFileName);
+            Assert.Contains("Task B", state.CsvContent, StringComparison.Ordinal);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.ExecutionReport);
+            Assert.Contains("CSV file loaded", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenCsvReplacedFromReportStep_AdvancesToPreviewAndConfirm()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "first.csv", "Task Name\nTask A");
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() =>
+        {
+            var confirmButton = cut.FindAll("button").Single(button =>
+                button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase));
+            Assert.False(confirmButton.HasAttribute("disabled"));
+        });
+
+        var confirmImportButton = cut.FindAll("button").Single(button =>
+            button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => confirmImportButton.Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(state.ExecutionReport);
+            Assert.Equal(4, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+        });
+
+        await UploadCsvAsync(cut, "replacement.csv", "Task Name\nTask C");
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.Equal("replacement.csv", state.SelectedFileName);
+            Assert.Contains("Task C", state.CsvContent, StringComparison.Ordinal);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.ExecutionReport);
+            Assert.Contains("CSV file loaded", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenIgnoreExtraColumnsToggledFromPreviewStep_AdvancesToPreviewAndConfirm()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "import.csv", "Task Name\nTask A");
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(state.PlanningViewModel);
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+        });
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudSwitch<bool>>()));
+        var ignoreExtraColumnsSwitch = cut.FindComponents<MudSwitch<bool>>()[0].Instance;
+        await cut.InvokeAsync(() => ignoreExtraColumnsSwitch.ValueChanged.InvokeAsync(false));
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.False(state.IgnoreExtraColumns);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.ExecutionReport);
+            Assert.Contains("Preview cleared because CSV options changed", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
     public async Task HomePage_SummaryRail_IsHiddenBelowMediumBreakpoint()
     {
         await using var ctx = new HomePageTestContext();
@@ -745,6 +863,24 @@ public sealed class HomePageWorkflowTests
             Assert.Contains("d-none", classAttribute, StringComparison.Ordinal);
             Assert.Contains("d-md-block", classAttribute, StringComparison.Ordinal);
         });
+    }
+
+    private static async Task SelectLocationAndPlanAsync(IRenderedComponent<Home> cut, HomePageTestContext ctx)
+    {
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerContainer>>()));
+        var containerAutocomplete = cut.FindComponents<MudAutocomplete<PlannerContainer>>()[0].Instance;
+        await cut.InvokeAsync(() => containerAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Containers[0]));
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudAutocomplete<PlannerPlan>>()));
+        var planAutocomplete = cut.FindComponents<MudAutocomplete<PlannerPlan>>()[0].Instance;
+        await cut.InvokeAsync(() => planAutocomplete.ValueChanged.InvokeAsync(ctx.Gateway.Plans[0]));
+    }
+
+    private static async Task UploadCsvAsync(IRenderedComponent<Home> cut, string fileName, string content)
+    {
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudFileUpload<IBrowserFile>>()));
+        var fileUpload = cut.FindComponents<MudFileUpload<IBrowserFile>>()[0].Instance;
+        await cut.InvokeAsync(() => fileUpload.FilesChanged.InvokeAsync(new BrowserFileStub(fileName, content)));
     }
 
     private static MicrosoftIdentityWebChallengeUserException CreateChallengeException()
