@@ -32,6 +32,55 @@ public sealed class HomePageCreditSummaryTests
     }
 
     [Fact]
+    public async Task HomeExecutionReport_WhenNoTasksCreated_ShowsRemainingCredits()
+    {
+        await using var ctx = new HomePageTestContext(commercialModeEnabled: true);
+        var report = new ImportExecutionReportViewModel(
+            "plan-1",
+            [],
+            ["Plan: Self Test", "Task: Create user stories"],
+            [],
+            [],
+            new ImportExecutionOutcomeSummary(0, 4, 0, 6, false, false),
+            TasksCreatedCount: 0,
+            CreditsUsed: 0,
+            RemainingCredits: 25);
+
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, report));
+
+        Assert.Contains("Credits used (free monthly)", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Remaining credits", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(">0<", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains(">25<", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HomeExecutionReport_WhenNoTasksCreatedAndBalanceUnavailable_ShowsWarning()
+    {
+        await using var ctx = new HomePageTestContext(commercialModeEnabled: true);
+        var report = new ImportExecutionReportViewModel(
+            "plan-1",
+            [],
+            ["Plan: Self Test", "Task: Create user stories"],
+            [],
+            ["Remaining credits could not be loaded for this execution report."],
+            new ImportExecutionOutcomeSummary(0, 4, 1, 6, true, false),
+            TasksCreatedCount: 0,
+            CreditsUsed: 0,
+            RemainingCredits: null);
+
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, report));
+
+        Assert.Contains("Credits used (free monthly)", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(">0<", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Errors: 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Import finished with errors", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Import complete.", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task HomeExecutionReport_WhenCreditsExhausted_ShowsExhaustionCopy()
     {
         await using var ctx = new HomePageTestContext(commercialModeEnabled: true);

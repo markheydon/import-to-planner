@@ -12,6 +12,7 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
 {
     private const int MaxOptimisticConcurrencyRetries = 5;
     private const string LotRowKeyPrefix = "lot|";
+    private const string LotRowKeyUpperBound = "lot|~";
     private const string TransactionRowKeyPrefix = "tx|";
     private const string GrantRowKeyPrefix = "grant|";
 
@@ -27,8 +28,11 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
         await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 
         var lots = new List<CreditLot>();
+        var lotPrefix = LotRowKeyPrefix;
+        var lotUpperBound = LotRowKeyUpperBound;
         await foreach (var entity in tableClient.QueryAsync<TableEntity>(
-                           filter: TableClient.CreateQueryFilter($"PartitionKey eq {tenantId} and RowKey ge '{LotRowKeyPrefix}' and RowKey lt '{LotRowKeyPrefix}~'"),
+                           filter: TableClient.CreateQueryFilter(
+                               $"PartitionKey eq {tenantId} and RowKey ge {lotPrefix} and RowKey lt {lotUpperBound}"),
                            cancellationToken: cancellationToken).ConfigureAwait(false))
         {
             lots.Add(ToLot(entity));

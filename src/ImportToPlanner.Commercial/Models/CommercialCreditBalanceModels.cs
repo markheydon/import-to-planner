@@ -11,6 +11,11 @@ public static class CommercialCreditFailureCodes
     public const string LedgerUnavailable = "credits.ledger_unavailable";
 
     /// <summary>
+    /// Remaining credits could not be loaded for an execution report.
+    /// </summary>
+    public const string BalanceReportUnavailable = "credits.balance_report_unavailable";
+
+    /// <summary>
     /// Free monthly grant could not be written.
     /// </summary>
     public const string GrantFailed = "credits.grant_failed";

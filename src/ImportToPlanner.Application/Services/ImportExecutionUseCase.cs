@@ -14,9 +14,11 @@ public sealed class ImportExecutionUseCase(
 {
     private const string CreditExhaustedDiagnosticCode = "credits.exhausted";
     private const string CreditUnavailableDiagnosticCode = "credits.ledger_unavailable";
+    private const string CreditBalanceReportUnavailableDiagnosticCode = "credits.balance_report_unavailable";
     private const string CreditUsageRecordFailedDiagnosticCode = "credits.usage_record_failed";
     private const string CreditExhaustedMessage = "Import stopped because your organisation has no credits remaining for new tasks.";
     private const string CreditUnavailableMessage = "Import could not continue because credit balance is unavailable.";
+    private const string CreditBalanceReportUnavailableMessage = "Remaining credits could not be loaded for this execution report.";
     private const string CreditUsageRecordFailedMessage = "Import stopped because a credit usage record could not be saved after a task was created.";
 
     /// <inheritdoc/>
@@ -290,6 +292,27 @@ public sealed class ImportExecutionUseCase(
             }
         }
 
+        if (request.Metering is not null && remainingCredits is null)
+        {
+            var balanceResult = await taskCreationQuota.BeforeCreateAsync(
+                new ImportTaskCreationQuotaContext(
+                    request.Metering.TenantId,
+                    request.Metering.ActorUserId,
+                    DateTimeOffset.UtcNow,
+                    importRunId,
+                    string.Empty),
+                cancellationToken).ConfigureAwait(false);
+
+            if (balanceResult.Status == TaskCreationQuotaStatus.Unavailable)
+            {
+                failures.Add(CreateCreditBalanceReportFailure());
+            }
+            else
+            {
+                remainingCredits = balanceResult.RemainingCredits;
+            }
+        }
+
         var outcomeSummary = BuildOutcomeSummary(created, reusedOrSkipped, failures, manualActions);
         var response = new ImportExecutionResult
         {
@@ -378,6 +401,15 @@ public sealed class ImportExecutionUseCase(
             message,
             Retryable: false,
             diagnosticCode);
+
+    private static PlannerOperationFailure CreateCreditBalanceReportFailure()
+        => new(
+            PlannerFailureCategory.Unavailable,
+            PlannerFailureTarget.Workflow,
+            null,
+            CreditBalanceReportUnavailableMessage,
+            Retryable: false,
+            CreditBalanceReportUnavailableDiagnosticCode);
 
     private static PlannerOperationFailure CreateUnexpectedFailure(
         PlannerFailureTarget target,

@@ -54,6 +54,7 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
             "credits.exhausted" => $"Credit exhausted: task '{failure.Reference}' was not created because your organisation has no credits remaining.",
             "credits.usage_record_failed" => $"Credit recording failed: task '{failure.Reference}' was created in Planner, but its credit usage could not be recorded.",
             "credits.ledger_unavailable" => "Import could not continue because credit balance is unavailable.",
+            "credits.balance_report_unavailable" => "Remaining credits could not be loaded for this execution report.",
             _ => PlannerFailureMessageMapper.ToUserSafeMessage(failure),
         };
     }

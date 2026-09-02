@@ -11,6 +11,34 @@ namespace ImportToPlanner.Tests.Credits;
 public sealed class CreditLedgerTableStoreTests
 {
     [Fact]
+    public async Task GetLotsAsync_ReturnsOnlyLotEntitiesWithinRowKeyRange()
+    {
+        var tableClient = new FakeTableClient();
+        var store = new TableCreditLedgerStore(tableClient);
+        var grantedAtUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+        await tableClient.AddEntityAsync(CreateLotEntity(
+            "tenant-001",
+            "lot-001",
+            LotType.FreeMonthly,
+            25,
+            grantedAtUtc,
+            grantedAtUtc.AddDays(30)), CancellationToken.None);
+        await tableClient.AddEntityAsync(new TableEntity("tenant-001", "grant|202609"), CancellationToken.None);
+        await tableClient.AddEntityAsync(new TableEntity("tenant-001", "tx|0000000000000000001|abc"), CancellationToken.None);
+
+        var lots = await store.GetLotsAsync("tenant-001", CancellationToken.None);
+
+        var lot = Assert.Single(lots);
+        Assert.Equal("lot-001", lot.LotId);
+        Assert.NotNull(tableClient.LastQueryFilter);
+        Assert.Contains("RowKey ge", tableClient.LastQueryFilter, StringComparison.Ordinal);
+        Assert.Contains("RowKey lt", tableClient.LastQueryFilter, StringComparison.Ordinal);
+        Assert.Contains("lot|", tableClient.LastQueryFilter, StringComparison.Ordinal);
+        Assert.Contains("lot|~", tableClient.LastQueryFilter, StringComparison.Ordinal);
+        Assert.DoesNotContain("'{LotRowKeyPrefix}'", tableClient.LastQueryFilter, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task TryGrantFreeMonthlyAsync_FirstCall_PersistsGrantMarkerLotAndTransaction()
     {
         var tableClient = new FakeTableClient();
@@ -278,9 +306,19 @@ public sealed class CreditLedgerTableStoreTests
             @"PartitionKey eq '(?<tenant>[^']+)'",
             RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+        private static readonly Regex LotRowKeyLowerBoundRegex = new(
+            @"RowKey ge '(?<lower>[^']*)'",
+            RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+        private static readonly Regex LotRowKeyUpperBoundRegex = new(
+            @"RowKey lt '(?<upper>[^']*)'",
+            RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
         private readonly Dictionary<string, TableEntity> entities = new(StringComparer.Ordinal);
 
         public IReadOnlyDictionary<string, TableEntity> StoredEntities => entities;
+
+        public string? LastQueryFilter { get; private set; }
 
         public Func<IReadOnlyList<TableTransactionAction>, bool>? FailUpdateReplaceOnce { get; set; }
 
@@ -396,15 +434,40 @@ public sealed class CreditLedgerTableStoreTests
                 throw new InvalidOperationException("This test double currently supports TableEntity queries only.");
             }
 
+            LastQueryFilter = filter;
             var tenantId = ExtractTenantId(filter);
+            var lowerBound = ExtractLotRowKeyLowerBound(filter) ?? "lot|";
+            var upperBound = ExtractLotRowKeyUpperBound(filter) ?? "lot|~";
             var results = entities.Values
                 .Where(entity => entity.PartitionKey == tenantId
-                    && entity.RowKey.StartsWith("lot|", StringComparison.Ordinal)
-                    && entity.RowKey.CompareTo("lot|~", StringComparison.Ordinal) < 0)
+                    && string.Compare(entity.RowKey, lowerBound, StringComparison.Ordinal) >= 0
+                    && string.Compare(entity.RowKey, upperBound, StringComparison.Ordinal) < 0)
                 .Cast<T>()
                 .ToList();
 
             return new FakeAsyncPageable<T>(results);
+        }
+
+        private static string? ExtractLotRowKeyLowerBound(string? filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                return null;
+            }
+
+            var match = LotRowKeyLowerBoundRegex.Match(filter);
+            return match.Success ? match.Groups["lower"].Value : null;
+        }
+
+        private static string? ExtractLotRowKeyUpperBound(string? filter)
+        {
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                return null;
+            }
+
+            var match = LotRowKeyUpperBoundRegex.Match(filter);
+            return match.Success ? match.Groups["upper"].Value : null;
         }
 
         private static string? ExtractTenantId(string? filter)
