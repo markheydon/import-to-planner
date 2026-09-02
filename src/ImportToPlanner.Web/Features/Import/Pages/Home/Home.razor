@@ -1,7 +1,8 @@
 @page "/"
 @namespace ImportToPlanner.Web.Features.Import.Pages
 @using ImportToPlanner.Commercial.Abstractions
-@using ImportToPlanner.Application.Exceptions
+@using ImportToPlanner.Web.Features.Import.Presenters
+@using ImportToPlanner.Web.Features.Import.Workflows
 @using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
 @inject WorkflowCoordinationState WorkflowState
@@ -399,6 +400,8 @@
 
     private ImportExecutionReportViewModel? executionResult => WorkflowState.ExecutionReport;
 
+    private WorkflowCreditBalanceSnapshot? creditBalanceSnapshot => WorkflowState.CreditBalanceSnapshot;
+
     private ImportPlanningRequest? currentRequest
     {
         get => WorkflowState.CurrentPlanningRequest;
@@ -412,6 +415,14 @@
            && !string.IsNullOrWhiteSpace(csvContent);
 
     private bool canExecute
+        => !isBusy
+           && preview is not null
+           && currentRequest is not null
+           && !isPreviewStale
+           && IsCurrentSelectionInSyncWithRequest()
+           && !IsCreditConfirmBlocked();
+
+    private bool canShowConfirmImport
         => !isBusy
            && preview is not null
            && currentRequest is not null
@@ -654,7 +665,23 @@
                         <PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
                     </Columns>
                 </MudDataGrid>
-                @if (canExecute)
+                @if (creditBalanceSnapshot?.LedgerUnavailable == true)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">
+                        @ImportCreditPreviewPresenter.BuildLedgerUnavailableMessage()
+                    </MudAlert>
+                }
+                else if (creditBalanceSnapshot?.InsufficientCredits == true
+                         && creditBalanceSnapshot.RemainingCredits is not null)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Class="mt-2">
+                        @ImportCreditPreviewPresenter.BuildInsufficientCreditsWarning(
+                            creditBalanceSnapshot.WouldCreateCount,
+                            creditBalanceSnapshot.RemainingCredits.Value,
+                            creditBalanceSnapshot.Shortfall)
+                    </MudAlert>
+                }
+                @if (canShowConfirmImport)
                 {
                     <MudDivider Class="my-2" />
                     <MudText Typo="Typo.body2">When you are happy with the preview, confirm to run the import.</MudText>

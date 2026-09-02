@@ -29,8 +29,9 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
             .Select(MapManualAction)
             .ToArray();
         var errorItems = response.FailureItems
-            .Select(PlannerFailureMessageMapper.ToUserSafeMessage)
+            .Select(failure => MapFailureMessage(failure))
             .ToArray();
+        var tasksCreatedCount = response.CreatedItems.Count(item => item.Target == PlannerFailureTarget.Task);
 
         ViewModel = new ImportExecutionReportViewModel(
             response.PlanId,
@@ -38,9 +39,24 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
             reusedOrSkippedItems,
             manualActions,
             errorItems,
-            response.OutcomeSummary);
+            response.OutcomeSummary,
+            tasksCreatedCount,
+            response.CreditsUsed,
+            response.RemainingCredits);
 
         return Task.CompletedTask;
+    }
+
+    private static string MapFailureMessage(PlannerOperationFailure failure)
+    {
+        return failure.DiagnosticCode switch
+        {
+            "credits.exhausted" => $"Credit exhausted: task '{failure.Reference}' was not created because your organisation has no credits remaining.",
+            "credits.usage_record_failed" => $"Credit recording failed: task '{failure.Reference}' was created in Planner, but its credit usage could not be recorded.",
+            "credits.ledger_unavailable" => "Import could not continue because credit balance is unavailable.",
+            "credits.balance_report_unavailable" => "Remaining credits could not be loaded for this execution report.",
+            _ => PlannerFailureMessageMapper.ToUserSafeMessage(failure),
+        };
     }
 
     private static ManualActionViewModel MapManualAction(ManualAction action)
@@ -73,13 +89,19 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
 /// <param name="ManualActions">Manual actions.</param>
 /// <param name="Errors">Error lines.</param>
 /// <param name="OutcomeSummary">Aggregate counters.</param>
+/// <param name="TasksCreatedCount">Number of tasks created (not buckets).</param>
+/// <param name="CreditsUsed">Credits used during the run when commercial metering is active.</param>
+/// <param name="RemainingCredits">Remaining credits after the run when commercial metering is active.</param>
 public sealed record ImportExecutionReportViewModel(
     string? PlanId,
     IReadOnlyList<string> Created,
     IReadOnlyList<string> ReusedOrSkipped,
     IReadOnlyList<ManualActionViewModel> ManualActions,
     IReadOnlyList<string> Errors,
-    ImportExecutionOutcomeSummary OutcomeSummary);
+    ImportExecutionOutcomeSummary OutcomeSummary,
+    int TasksCreatedCount = 0,
+    int? CreditsUsed = null,
+    int? RemainingCredits = null);
 
 /// <summary>
 /// Represents one manual action row shaped for web presentation.

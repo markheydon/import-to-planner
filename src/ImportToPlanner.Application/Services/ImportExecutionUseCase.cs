@@ -8,8 +8,19 @@ namespace ImportToPlanner.Application.Services;
 /// <summary>
 /// Executes approved import previews.
 /// </summary>
-public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IImportExecutionUseCase
+public sealed class ImportExecutionUseCase(
+    IPlannerGateway plannerGateway,
+    IImportTaskCreationQuota taskCreationQuota) : IImportExecutionUseCase
 {
+    private const string CreditExhaustedDiagnosticCode = "credits.exhausted";
+    private const string CreditUnavailableDiagnosticCode = "credits.ledger_unavailable";
+    private const string CreditBalanceReportUnavailableDiagnosticCode = "credits.balance_report_unavailable";
+    private const string CreditUsageRecordFailedDiagnosticCode = "credits.usage_record_failed";
+    private const string CreditExhaustedMessage = "Import stopped because your organisation has no credits remaining for new tasks.";
+    private const string CreditUnavailableMessage = "Import could not continue because credit balance is unavailable.";
+    private const string CreditBalanceReportUnavailableMessage = "Remaining credits could not be loaded for this execution report.";
+    private const string CreditUsageRecordFailedMessage = "Import stopped because a credit usage record could not be saved after a task was created.";
+
     /// <inheritdoc/>
     public async Task HandleAsync(
         ImportExecutionRequest request,
@@ -125,6 +136,11 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
         }
 
         var rowsByNumber = planningRequest.Rows.ToDictionary(row => row.RowNumber);
+        var importRunId = Guid.NewGuid().ToString("N");
+        var creditsUsed = 0;
+        int? remainingCredits = null;
+        var stopFurtherCreates = false;
+        string? stopDiagnosticCode = null;
 
         foreach (var taskAction in preview.TaskActions)
         {
@@ -148,6 +164,52 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
                 }
 
                 continue;
+            }
+
+            if (stopFurtherCreates)
+            {
+                failures.Add(CreateCreditFailure(
+                    taskAction.TaskName,
+                    stopDiagnosticCode ?? CreditExhaustedDiagnosticCode,
+                    stopDiagnosticCode == CreditUsageRecordFailedDiagnosticCode
+                        ? CreditUsageRecordFailedMessage
+                        : CreditExhaustedMessage));
+                continue;
+            }
+
+            if (request.Metering is not null)
+            {
+                var quotaResult = await taskCreationQuota.BeforeCreateAsync(
+                    new ImportTaskCreationQuotaContext(
+                        request.Metering.TenantId,
+                        request.Metering.ActorUserId,
+                        DateTimeOffset.UtcNow,
+                        importRunId,
+                        taskAction.TaskName),
+                    cancellationToken).ConfigureAwait(false);
+
+                remainingCredits = quotaResult.RemainingCredits;
+                if (quotaResult.Status == TaskCreationQuotaStatus.Unavailable)
+                {
+                    failures.Add(CreateCreditFailure(
+                        taskAction.TaskName,
+                        quotaResult.DiagnosticCode ?? CreditUnavailableDiagnosticCode,
+                        CreditUnavailableMessage));
+                    stopFurtherCreates = true;
+                    stopDiagnosticCode = quotaResult.DiagnosticCode ?? CreditUnavailableDiagnosticCode;
+                    continue;
+                }
+
+                if (quotaResult.Status == TaskCreationQuotaStatus.Exhausted)
+                {
+                    failures.Add(CreateCreditFailure(
+                        taskAction.TaskName,
+                        CreditExhaustedDiagnosticCode,
+                        CreditExhaustedMessage));
+                    stopFurtherCreates = true;
+                    stopDiagnosticCode = CreditExhaustedDiagnosticCode;
+                    continue;
+                }
             }
 
             if (!bucketCache.TryGetValue(taskAction.Bucket, out var bucket))
@@ -176,6 +238,35 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
 
                 created.Add(new ImportExecutionItem(PlannerFailureTarget.Task, createdTask.Title, createdTask.Id));
 
+                if (request.Metering is not null)
+                {
+                    var recordResult = await taskCreationQuota.RecordSuccessfulCreateAsync(
+                        new ImportTaskCreationQuotaContext(
+                            request.Metering.TenantId,
+                            request.Metering.ActorUserId,
+                            DateTimeOffset.UtcNow,
+                            importRunId,
+                            taskAction.TaskName,
+                            createdTask.Id),
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (!recordResult.Succeeded)
+                    {
+                        // Planner task is intentionally retained when usage recording fails; credits may need manual reconciliation.
+                        failures.Add(CreateCreditFailure(
+                            taskAction.TaskName,
+                            recordResult.DiagnosticCode ?? CreditUsageRecordFailedDiagnosticCode,
+                            CreditUsageRecordFailedMessage));
+                        stopFurtherCreates = true;
+                        stopDiagnosticCode = recordResult.DiagnosticCode ?? CreditUsageRecordFailedDiagnosticCode;
+                    }
+                    else
+                    {
+                        creditsUsed++;
+                        remainingCredits = recordResult.RemainingCredits;
+                    }
+                }
+
                 foreach (var goal in taskAction.Goals ?? [])
                 {
                     if (emittedGoalTaskLinks.Add((goal, sourceRow.TaskName)))
@@ -202,6 +293,27 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
             }
         }
 
+        if (request.Metering is not null && remainingCredits is null)
+        {
+            var balanceResult = await taskCreationQuota.BeforeCreateAsync(
+                new ImportTaskCreationQuotaContext(
+                    request.Metering.TenantId,
+                    request.Metering.ActorUserId,
+                    DateTimeOffset.UtcNow,
+                    importRunId,
+                    string.Empty),
+                cancellationToken).ConfigureAwait(false);
+
+            if (balanceResult.Status == TaskCreationQuotaStatus.Unavailable)
+            {
+                failures.Add(CreateCreditBalanceReportFailure());
+            }
+            else
+            {
+                remainingCredits = balanceResult.RemainingCredits;
+            }
+        }
+
         var outcomeSummary = BuildOutcomeSummary(created, reusedOrSkipped, failures, manualActions);
         var response = new ImportExecutionResult
         {
@@ -211,6 +323,8 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
             FailureItems = failures,
             ManualActions = manualActions,
             OutcomeSummary = outcomeSummary,
+            CreditsUsed = request.Metering is null ? null : creditsUsed,
+            RemainingCredits = request.Metering is null ? null : remainingCredits,
         };
 
         await outputBoundary.PresentAsync(response, cancellationToken);
@@ -276,6 +390,27 @@ public sealed class ImportExecutionUseCase(IPlannerGateway plannerGateway) : IIm
     {
         return string.Equals(reason, "already exists", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static PlannerOperationFailure CreateCreditFailure(
+        string taskName,
+        string diagnosticCode,
+        string message)
+        => new(
+            PlannerFailureCategory.Validation,
+            PlannerFailureTarget.Task,
+            taskName,
+            message,
+            Retryable: false,
+            diagnosticCode);
+
+    private static PlannerOperationFailure CreateCreditBalanceReportFailure()
+        => new(
+            PlannerFailureCategory.Unavailable,
+            PlannerFailureTarget.Workflow,
+            null,
+            CreditBalanceReportUnavailableMessage,
+            Retryable: false,
+            CreditBalanceReportUnavailableDiagnosticCode);
 
     private static PlannerOperationFailure CreateUnexpectedFailure(
         PlannerFailureTarget target,

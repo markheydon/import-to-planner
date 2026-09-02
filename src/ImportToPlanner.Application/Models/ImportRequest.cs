@@ -18,13 +18,22 @@ public sealed record ImportPlanningRequest(
     IReadOnlyList<CsvTaskRow> Rows);
 
 /// <summary>
+/// Optional commercial metering context for import execution.
+/// </summary>
+/// <param name="TenantId">Commercial tenant identifier.</param>
+/// <param name="ActorUserId">Signed-in user identifier.</param>
+public sealed record ImportExecutionMeteringContext(string TenantId, string ActorUserId);
+
+/// <summary>
 /// Represents an approved import execution request.
 /// </summary>
 /// <param name="Request">The planning request that produced the approved preview.</param>
 /// <param name="ApprovedPreview">The approved preview that must match planner state at execution time.</param>
+/// <param name="Metering">Optional commercial metering context.</param>
 public sealed record ImportExecutionRequest(
     ImportPlanningRequest Request,
-    ImportPlanPreview ApprovedPreview);
+    ImportPlanPreview ApprovedPreview,
+    ImportExecutionMeteringContext? Metering = null);
 
 /// <summary>
 /// Represents neutral failure categories for planner operations.

@@ -8,10 +8,20 @@
 
         @if (ExecutionResult.PlanId is not null)
         {
-            <MudAlert Severity="Severity.Success" Dense="true">
-                Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@ExecutionResult.PlanId"
-                                    target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
-            </MudAlert>
+            @if (ExecutionResult.Errors.Count == 0)
+            {
+                <MudAlert Severity="Severity.Success" Dense="true">
+                    Import complete. <a href="https://planner.cloud.microsoft/webui/plan/@ExecutionResult.PlanId"
+                                        target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
+                </MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Warning" Dense="true">
+                    Import finished with errors. <a href="https://planner.cloud.microsoft/webui/plan/@ExecutionResult.PlanId"
+                                                    target="_blank" rel="noopener noreferrer">Open plan in Planner</a>
+                </MudAlert>
+            }
         }
 
         <MudTabs Rounded="false" ApplyEffectsToContainer="false">
@@ -31,6 +41,21 @@
                         </tr>
                     </thead>
                     <tbody>
+                        <tr>
+                            <td>Tasks created</td>
+                            <td>@ExecutionResult.TasksCreatedCount</td>
+                        </tr>
+                        @if (ExecutionResult.CreditsUsed is not null)
+                        {
+                            <tr>
+                                <td>Credits used (free monthly)</td>
+                                <td>@ExecutionResult.CreditsUsed</td>
+                            </tr>
+                            <tr>
+                                <td>Remaining credits</td>
+                                <td>@ExecutionResult.RemainingCredits</td>
+                            </tr>
+                        }
                         <tr>
                             <td>Created</td>
                             <td>@ExecutionResult.Created.Count</td>

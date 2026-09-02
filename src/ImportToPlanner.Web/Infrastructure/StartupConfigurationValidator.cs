@@ -56,6 +56,7 @@ internal static class StartupConfigurationValidator
             ValidateRequiredSetting("Storage:TenantMetadataTable");
             ValidateRequiredSetting("Storage:CommercialAccountsTable");
             ValidateRequiredSetting("Storage:CommercialAuditTable");
+            ValidateRequiredSetting("Storage:CommercialCreditLedgerTable");
         }
 
         ValidateRequiredSetting("Storage:DataProtectionContainer");

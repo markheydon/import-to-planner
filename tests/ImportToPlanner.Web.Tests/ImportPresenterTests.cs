@@ -34,6 +34,70 @@ public sealed class ImportPresenterTests
     }
 
     [Fact]
+    public async Task ImportExecutionPresenter_PresentsCreditExhaustionCopy()
+    {
+        var presenter = new ImportExecutionPresenter();
+        var response = new ImportExecutionResult
+        {
+            PlanId = "plan-1",
+            CreatedItems = [],
+            ReusedOrSkippedItems = [],
+            FailureItems =
+            [
+                new PlannerOperationFailure(
+                    PlannerFailureCategory.Validation,
+                    PlannerFailureTarget.Task,
+                    "Task B",
+                    "Import stopped because your organisation has no credits remaining for new tasks.",
+                    false,
+                    "credits.exhausted"),
+            ],
+            ManualActions = [],
+            OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true),
+            CreditsUsed = 0,
+            RemainingCredits = 0,
+        };
+
+        await presenter.PresentAsync(response, CancellationToken.None);
+
+        Assert.Contains(
+            presenter.ViewModel!.Errors,
+            error => error.Contains("Credit exhausted", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task ImportExecutionPresenter_PresentsCreditBalanceReportUnavailableCopy()
+    {
+        var presenter = new ImportExecutionPresenter();
+        var response = new ImportExecutionResult
+        {
+            PlanId = "plan-1",
+            CreatedItems = [],
+            ReusedOrSkippedItems = [new ImportExecutionItem(PlannerFailureTarget.Task, "Existing Task")],
+            FailureItems =
+            [
+                new PlannerOperationFailure(
+                    PlannerFailureCategory.Unavailable,
+                    PlannerFailureTarget.Workflow,
+                    null,
+                    "Remaining credits could not be loaded for this execution report.",
+                    false,
+                    "credits.balance_report_unavailable"),
+            ],
+            ManualActions = [],
+            OutcomeSummary = new ImportExecutionOutcomeSummary(0, 1, 1, 0, true, false),
+            CreditsUsed = 0,
+            RemainingCredits = null,
+        };
+
+        await presenter.PresentAsync(response, CancellationToken.None);
+
+        Assert.Contains(
+            presenter.ViewModel!.Errors,
+            error => error.Contains("Remaining credits could not be loaded", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void PlannerFailureMessageMapper_WhenAdminConsentIsRequired_PreservesConsentUri()
     {
         var consentUri = new Uri("https://contoso.example/admin-consent");

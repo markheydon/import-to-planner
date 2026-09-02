@@ -65,4 +65,6 @@ public sealed class WorkflowCoordinationState
     public ImportPlanningViewModel? PlanningViewModel { get; set; }
 
     public ImportExecutionReportViewModel? ExecutionReport { get; set; }
+
+    public WorkflowCreditBalanceSnapshot? CreditBalanceSnapshot { get; set; }
 }

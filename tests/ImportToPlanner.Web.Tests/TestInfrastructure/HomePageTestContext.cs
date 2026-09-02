@@ -19,7 +19,8 @@ internal sealed class HomePageTestContext : BunitContext
         bool isAuthenticated = true,
         bool commercialModeEnabled = false,
         CommercialAccountStoreStub? commercialAccountStoreStub = null,
-        CommercialAuditStoreStub? commercialAuditStoreStub = null)
+        CommercialAuditStoreStub? commercialAuditStoreStub = null,
+        CreditEnsureUseCaseStub? creditEnsureUseCaseStub = null)
     {
         Services.AddMudServices(configuration =>
         {
@@ -49,6 +50,7 @@ internal sealed class HomePageTestContext : BunitContext
                 ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
                 ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
                 ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
+                ["Storage:CommercialCreditLedgerTable"] = "CommercialCreditLedger",
                 ["Storage:DataProtectionContainer"] = "dataprotection",
                 ["Storage:DataProtectionBlob"] = "keys.xml",
                 ["Features:CommercialMode:Enabled"] = commercialModeEnabled.ToString(),
@@ -107,11 +109,14 @@ internal sealed class HomePageTestContext : BunitContext
             Services.AddScoped<RestoreCommercialAccountUseCase>();
             Services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
             Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
+            CreditEnsureUseCase = creditEnsureUseCaseStub ?? new CreditEnsureUseCaseStub();
+            Services.AddScoped<IEnsureCurrentCreditBalanceUseCase>(_ => CreditEnsureUseCase);
         }
         else
         {
             CommercialAccountStore = commercialAccountStoreStub ?? new CommercialAccountStoreStub();
             CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
+            CreditEnsureUseCase = creditEnsureUseCaseStub ?? new CreditEnsureUseCaseStub();
         }
 
         Services.AddSingleton(TenantAccessor);
@@ -133,6 +138,8 @@ internal sealed class HomePageTestContext : BunitContext
     public CommercialAccountStoreStub CommercialAccountStore { get; }
 
     public CommercialAuditStoreStub CommercialAuditStore { get; }
+
+    public CreditEnsureUseCaseStub CreditEnsureUseCase { get; }
 
     private static ClaimsPrincipal CreatePrincipal(bool isAuthenticated)
     {

@@ -2,6 +2,8 @@ using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Commercial.Accounts.Storage;
+using ImportToPlanner.Commercial.Credits;
+using ImportToPlanner.Commercial.Credits.Storage;
 using ImportToPlanner.Commercial.Services;
 using ImportToPlanner.Commercial.TenantMetadata;
 using Microsoft.Extensions.Configuration;
@@ -18,6 +20,8 @@ public static class DependencyInjection
     public const string CommercialAccountsTableClientKey = "CommercialAccountsTable";
 
     public const string CommercialAuditTableClientKey = "CommercialAuditTable";
+
+    public const string CommercialCreditLedgerTableClientKey = "CommercialCreditLedgerTable";
 
     /// <summary>
     /// Adds Aspire-managed Azure Table Storage client registrations required by commercial adapters.
@@ -62,6 +66,12 @@ public static class DependencyInjection
             throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialAuditTable'.");
         }
 
+        var commercialCreditLedgerTableName = configuration["Storage:CommercialCreditLedgerTable"];
+        if (string.IsNullOrWhiteSpace(commercialCreditLedgerTableName))
+        {
+            throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialCreditLedgerTable'.");
+        }
+
         services.AddKeyedSingleton<TableClient>(
             CommercialAccountsTableClientKey,
             (serviceProvider, _) => serviceProvider
@@ -72,12 +82,30 @@ public static class DependencyInjection
             (serviceProvider, _) => serviceProvider
                 .GetRequiredService<TableServiceClient>()
                 .GetTableClient(commercialAuditTableName));
+        services.AddKeyedSingleton<TableClient>(
+            CommercialCreditLedgerTableClientKey,
+            (serviceProvider, _) => serviceProvider
+                .GetRequiredService<TableServiceClient>()
+                .GetTableClient(commercialCreditLedgerTableName));
         services.AddScoped<ICommercialAccountStore>(serviceProvider =>
             new TableCommercialAccountStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAccountsTableClientKey)));
         services.AddScoped<ICommercialAuditStore>(serviceProvider =>
             new TableCommercialAuditStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAuditTableClientKey)));
+        services.AddSingleton<IUtcClock, SystemUtcClock>();
+        services.AddScoped<ImportExecutionCreditBalanceCache>();
+        services.AddScoped<ICreditLedgerStore>(serviceProvider =>
+            new TableCreditLedgerStore(
+                serviceProvider.GetRequiredKeyedService<TableClient>(CommercialCreditLedgerTableClientKey)));
+        services.AddScoped<IEnsureCurrentCreditBalanceUseCase, EnsureCurrentCreditBalanceUseCase>();
+
+        foreach (var descriptor in services.Where(descriptor => descriptor.ServiceType == typeof(IImportTaskCreationQuota)).ToList())
+        {
+            services.Remove(descriptor);
+        }
+
+        services.AddScoped<IImportTaskCreationQuota, ImportTaskCreationCreditQuota>();
         services.AddSingleton<ITenantOperationalMetadataStore>(serviceProvider =>
             new TableTenantOperationalMetadataStore(
                 serviceProvider.GetRequiredService<TableServiceClient>(),

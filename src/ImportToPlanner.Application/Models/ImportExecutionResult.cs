@@ -34,6 +34,16 @@ public sealed record ImportExecutionResult
     /// Gets or sets the aggregate execution outcome summary.
     /// </summary>
     public required ImportExecutionOutcomeSummary OutcomeSummary { get; init; }
+
+    /// <summary>
+    /// Gets or sets credits consumed during this run when commercial metering is active.
+    /// </summary>
+    public int? CreditsUsed { get; init; }
+
+    /// <summary>
+    /// Gets or sets remaining credits after this run when commercial metering is active.
+    /// </summary>
+    public int? RemainingCredits { get; init; }
 }
 
 /// <summary>

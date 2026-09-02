@@ -1,3 +1,4 @@
+using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Web.Features.Import.Workflows;
@@ -15,6 +16,9 @@ public partial class Home
 
     private ICommercialProfileUseCase? CommercialProfileUseCase =>
         ServiceProvider.GetService<ICommercialProfileUseCase>();
+
+    private IEnsureCurrentCreditBalanceUseCase? EnsureCurrentCreditBalanceUseCase =>
+        ServiceProvider.GetService<IEnsureCurrentCreditBalanceUseCase>();
 
     private async Task<CommercialAccessDecision?> ResolveCommercialAccessDecisionAsync()
     {
@@ -54,7 +58,35 @@ public partial class Home
             }
         }
 
+        if (accessDecision.Decision is CommercialAccessDecisionType.Allow or CommercialAccessDecisionType.CreateAccount)
+        {
+            await TryEnsureCreditBalanceOnSignInAsync(sessionIdentity);
+        }
+
         return accessDecision;
+    }
+
+    private async Task TryEnsureCreditBalanceOnSignInAsync(SessionIdentityContext sessionIdentity)
+    {
+        if (EnsureCurrentCreditBalanceUseCase is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await EnsureCurrentCreditBalanceUseCase.EnsureAsync(
+                new EnsureCurrentCreditBalanceRequest(
+                    sessionIdentity.TenantId,
+                    sessionIdentity.UserId,
+                    DateTimeOffset.UtcNow,
+                    EnsureBalanceReason.SignIn),
+                CancellationToken.None);
+        }
+        catch (Exception)
+        {
+            // Sign-in may succeed when the ledger is unavailable.
+        }
     }
 
     private async Task RestoreCommercialAccountAsync()
