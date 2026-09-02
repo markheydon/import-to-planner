@@ -67,6 +67,9 @@ public partial class Home
         }
     }
 
+    // Unlike location or plan changes, CSV and CSV-option updates should return to Preview and
+    // confirm when setup remains complete. Always call MaybeAdvanceViewedStep after focusing
+    // the upload step; it no-ops when the upload step is incomplete (for example after clear).
     private async Task OnFileChangedAsync(IBrowserFile? file)
     {
         if (file is null)

@@ -834,9 +834,7 @@ public sealed class HomePageWorkflowTests
             Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
         });
 
-        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudSwitch<bool>>()));
-        var ignoreExtraColumnsSwitch = cut.FindComponents<MudSwitch<bool>>()[0].Instance;
-        await cut.InvokeAsync(() => ignoreExtraColumnsSwitch.ValueChanged.InvokeAsync(false));
+        await ToggleIgnoreExtraColumnsAsync(cut, false);
 
         cut.WaitForAssertion(() =>
         {
@@ -845,6 +843,137 @@ public sealed class HomePageWorkflowTests
             Assert.Null(state.PlanningViewModel);
             Assert.Null(state.ExecutionReport);
             Assert.Contains("Preview cleared because CSV options changed", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenCsvClearedFromPreviewStep_StaysOnUploadCsv()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "import.csv", "Task Name\nTask A");
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(state.PlanningViewModel);
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+        });
+
+        await ClearCsvAsync(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(2, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.Equal(string.Empty, state.CsvContent);
+            Assert.Equal("No file selected", state.SelectedFileName);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.ExecutionReport);
+            Assert.Contains("CSV selection cleared", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Selected file: No file selected", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenCsvClearedFromReportStep_StaysOnUploadCsv()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "import.csv", "Task Name\nTask A");
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        var confirmImportButton = cut.FindAll("button").Single(button =>
+            button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => confirmImportButton.Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(state.ExecutionReport);
+            Assert.Equal(4, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+        });
+
+        await ClearCsvAsync(cut);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(2, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.Equal(string.Empty, state.CsvContent);
+            Assert.Equal("No file selected", state.SelectedFileName);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.ExecutionReport);
+            Assert.Contains("CSV selection cleared", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenIgnoreExtraColumnsToggledFromReportStep_AdvancesToPreviewAndConfirm()
+    {
+        await using var ctx = new HomePageTestContext();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "import.csv", "Task Name\nTask A");
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        var confirmImportButton = cut.FindAll("button").Single(button =>
+            button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => confirmImportButton.Click());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(state.ExecutionReport);
+            Assert.Equal(4, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+        });
+
+        await ToggleIgnoreExtraColumnsAsync(cut, false);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.False(state.IgnoreExtraColumns);
+            Assert.Null(state.PlanningViewModel);
+            Assert.Null(state.ExecutionReport);
+            Assert.Contains("Preview cleared because CSV options changed", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public async Task HomePage_WhenIgnoreExtraColumnsToggledOnUploadStep_AdvancesToPreviewAndConfirm()
+    {
+        await using var ctx = new HomePageTestContext();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "import.csv", "Task Name\nTask A");
+
+        cut.WaitForAssertion(() =>
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex)));
+
+        await ToggleIgnoreExtraColumnsAsync(cut, false);
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Equal(3, cut.FindComponent<MudStepper>().Instance.GetState(static x => x.ActiveIndex));
+            Assert.False(state.IgnoreExtraColumns);
             Assert.Contains("Preview import", cut.Markup, StringComparison.OrdinalIgnoreCase);
         });
     }
@@ -881,6 +1010,29 @@ public sealed class HomePageWorkflowTests
         cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudFileUpload<IBrowserFile>>()));
         var fileUpload = cut.FindComponents<MudFileUpload<IBrowserFile>>()[0].Instance;
         await cut.InvokeAsync(() => fileUpload.FilesChanged.InvokeAsync(new BrowserFileStub(fileName, content)));
+    }
+
+    private static async Task ClearCsvAsync(IRenderedComponent<Home> cut)
+    {
+        cut.WaitForAssertion(() =>
+        {
+            var clearButtons = cut.FindAll("button")
+                .Where(button => button.TextContent.Contains("Clear CSV", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            Assert.Single(clearButtons);
+            Assert.False(clearButtons[0].HasAttribute("disabled"));
+        });
+
+        var csvClearButton = cut.FindAll("button")
+            .Single(button => button.TextContent.Contains("Clear CSV", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => csvClearButton.Click());
+    }
+
+    private static async Task ToggleIgnoreExtraColumnsAsync(IRenderedComponent<Home> cut, bool value)
+    {
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindComponents<MudSwitch<bool>>()));
+        var ignoreExtraColumnsSwitch = cut.FindComponents<MudSwitch<bool>>()[0].Instance;
+        await cut.InvokeAsync(() => ignoreExtraColumnsSwitch.ValueChanged.InvokeAsync(value));
     }
 
     private static MicrosoftIdentityWebChallengeUserException CreateChallengeException()
