@@ -67,6 +67,9 @@ public partial class Home
         }
     }
 
+    // Unlike location or plan changes, CSV and CSV-option updates should return to Preview and
+    // confirm when setup remains complete. Always call MaybeAdvanceViewedStep after focusing
+    // the upload step; it no-ops when the upload step is incomplete (for example after clear).
     private async Task OnFileChangedAsync(IBrowserFile? file)
     {
         if (file is null)
@@ -83,10 +86,8 @@ public partial class Home
         csvContent = await reader.ReadToEndAsync();
 
         SetStatus("CSV file loaded. Click Preview import.", WorkflowStatusLevel.Info);
-        if (!FocusSetupStepIfReviewingLaterSteps(3))
-        {
-            MaybeAdvanceViewedStep();
-        }
+        FocusSetupStepIfReviewingLaterSteps(3);
+        MaybeAdvanceViewedStep();
     }
 
     private async Task ClearSelectedCsv()
@@ -105,10 +106,8 @@ public partial class Home
         selectedFileName = WorkflowCoordinationState.NoFileSelectedText;
         ResetFlowState();
         SetStatus("CSV selection cleared.", WorkflowStatusLevel.Info);
-        if (!FocusSetupStepIfReviewingLaterSteps(3))
-        {
-            MaybeAdvanceViewedStep();
-        }
+        FocusSetupStepIfReviewingLaterSteps(3);
+        MaybeAdvanceViewedStep();
     }
 
     private async Task OnSelectedContainerChangedAsync(PlannerContainer? container)
@@ -198,6 +197,7 @@ public partial class Home
         ResetExecutionState();
         InvalidatePreviewAfterSetupChange("Preview cleared because CSV options changed. Generate a new preview before import.");
         FocusSetupStepIfReviewingLaterSteps(3);
+        MaybeAdvanceViewedStep();
         return Task.CompletedTask;
     }
 
