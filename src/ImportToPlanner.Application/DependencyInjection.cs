@@ -20,6 +20,7 @@ public static class DependencyInjection
 
         services.AddScoped<IImportPlanningUseCase, ImportPlanningUseCase>();
         services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
+        services.AddScoped<IImportTaskCreationQuota, NoOpImportTaskCreationQuota>();
 
         return services;
     }

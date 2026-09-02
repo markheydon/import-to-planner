@@ -273,7 +273,20 @@ public partial class Home
         {
             isBusy = false;
             MaybeAdvanceViewedStep();
+            await RefreshLiveCreditBalanceSnapshotAsync();
         }
+    }
+
+    private async Task RefreshLiveCreditBalanceSnapshotAsync()
+    {
+        if (!CommercialModeOptions.Enabled || preview is null)
+        {
+            return;
+        }
+
+        await WorkflowCoordinator.RefreshCreditBalanceSnapshotForConfirmAsync(
+            WorkflowState,
+            CancellationToken.None);
     }
 
     private async Task ExecuteAsync()
@@ -364,5 +377,21 @@ public partial class Home
         {
             await csvFileUpload.OpenFilePickerAsync();
         }
+    }
+
+    private bool IsCreditConfirmBlocked()
+    {
+        if (!CommercialModeOptions.Enabled || creditBalanceSnapshot is null)
+        {
+            return false;
+        }
+
+        return creditBalanceSnapshot.LedgerUnavailable || creditBalanceSnapshot.InsufficientCredits;
+    }
+
+    private async Task RefreshLiveCreditBalanceSnapshotWhenOnPreviewStepAsync()
+    {
+        await RefreshLiveCreditBalanceSnapshotAsync();
+        await InvokeAsync(StateHasChanged);
     }
 }

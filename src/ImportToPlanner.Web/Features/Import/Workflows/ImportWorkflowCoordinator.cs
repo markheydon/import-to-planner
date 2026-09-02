@@ -1,5 +1,7 @@
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Abstractions;
+using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Features.Import.Presenters;
 
@@ -15,8 +17,12 @@ public sealed class ImportWorkflowCoordinator(
     IImportExecutionUseCase executionUseCase,
     ICurrentTenantContextAccessor currentTenantContextAccessor,
     ImportPlanningPresenter planningPresenter,
-    ImportExecutionPresenter executionPresenter)
+    ImportExecutionPresenter executionPresenter,
+    IServiceProvider serviceProvider)
 {
+    private IEnsureCurrentCreditBalanceUseCase? EnsureCreditBalanceUseCase =>
+        serviceProvider.GetService<IEnsureCurrentCreditBalanceUseCase>();
+
     public async Task LoadContainersAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -121,6 +127,7 @@ public sealed class ImportWorkflowCoordinator(
             state.PlanningViewModel = null;
             state.ExecutionReport = null;
             state.CurrentPlanningRequest = null;
+            state.CreditBalanceSnapshot = null;
             state.IsPreviewStale = false;
 
             if (state.SelectedContainer is null)
@@ -162,6 +169,19 @@ public sealed class ImportWorkflowCoordinator(
             await planningUseCase.HandleAsync(request, planningPresenter, cancellationToken);
             state.CurrentPlanningRequest = request;
             state.PlanningViewModel = planningPresenter.ViewModel;
+            state.CreditBalanceSnapshot = await BuildCreditBalanceSnapshotAsync(
+                state,
+                planningPresenter.ViewModel!.Preview,
+                EnsureBalanceReason.Preview,
+                cancellationToken).ConfigureAwait(false);
+            if (state.CreditBalanceSnapshot?.LedgerUnavailable == true)
+            {
+                state.StatusMessage = ImportCreditPreviewPresenter.BuildLedgerUnavailableMessage();
+                state.StatusReferenceId = state.CreditBalanceSnapshot.LedgerFailureCode;
+                state.StatusLevel = WorkflowStatusLevel.Error;
+                return;
+            }
+
             state.StatusMessage = "Preview generated. Review actions, then confirm execution.";
             state.StatusReferenceId = null;
             state.StatusLevel = WorkflowStatusLevel.Success;
@@ -171,6 +191,25 @@ public sealed class ImportWorkflowCoordinator(
             ApplyFailureSignals(state, exception);
             throw;
         }
+    }
+
+    public async Task RefreshCreditBalanceSnapshotForConfirmAsync(
+        WorkflowCoordinationState state,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        if (state.PlanningViewModel?.Preview is null)
+        {
+            return;
+        }
+
+        ResolveTenantContext(state);
+        state.CreditBalanceSnapshot = await BuildCreditBalanceSnapshotAsync(
+            state,
+            state.PlanningViewModel.Preview,
+            EnsureBalanceReason.Confirm,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task ExecuteAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
@@ -188,7 +227,40 @@ public sealed class ImportWorkflowCoordinator(
                 return;
             }
 
-            var request = new ImportExecutionRequest(state.CurrentPlanningRequest, state.PlanningViewModel.Preview);
+            var preview = state.PlanningViewModel.Preview;
+            var creditSnapshot = await BuildCreditBalanceSnapshotAsync(
+                state,
+                preview,
+                EnsureBalanceReason.Confirm,
+                cancellationToken).ConfigureAwait(false);
+            state.CreditBalanceSnapshot = creditSnapshot;
+            if (creditSnapshot?.LedgerUnavailable == true)
+            {
+                state.StatusMessage = ImportCreditPreviewPresenter.BuildLedgerUnavailableMessage();
+                state.StatusReferenceId = creditSnapshot.LedgerFailureCode;
+                state.StatusLevel = WorkflowStatusLevel.Error;
+                return;
+            }
+
+            if (creditSnapshot?.InsufficientCredits == true)
+            {
+                state.StatusMessage = ImportCreditPreviewPresenter.BuildInsufficientCreditsWarning(
+                    creditSnapshot.WouldCreateCount,
+                    creditSnapshot.RemainingCredits ?? 0,
+                    creditSnapshot.Shortfall);
+                state.StatusLevel = WorkflowStatusLevel.Warning;
+                return;
+            }
+
+            ImportExecutionMeteringContext? metering = null;
+            if (state.ActiveTenantContext is not null && EnsureCreditBalanceUseCase is not null)
+            {
+                metering = new ImportExecutionMeteringContext(
+                    state.ActiveTenantContext.TenantId,
+                    state.ActiveTenantContext.UserObjectId);
+            }
+
+            var request = new ImportExecutionRequest(state.CurrentPlanningRequest, preview, metering);
             await executionUseCase.HandleAsync(request, executionPresenter, cancellationToken);
             state.ExecutionReport = executionPresenter.ViewModel;
             state.IsPreviewStale = false;
@@ -216,7 +288,49 @@ public sealed class ImportWorkflowCoordinator(
         state.PlanningViewModel = null;
         state.CurrentPlanningRequest = null;
         state.ExecutionReport = null;
+        state.CreditBalanceSnapshot = null;
         state.IsPreviewStale = hadPreviewState;
+    }
+
+    private async Task<WorkflowCreditBalanceSnapshot?> BuildCreditBalanceSnapshotAsync(
+        WorkflowCoordinationState state,
+        ImportPlanPreview preview,
+        EnsureBalanceReason reason,
+        CancellationToken cancellationToken)
+    {
+        if (EnsureCreditBalanceUseCase is null || state.ActiveTenantContext is null)
+        {
+            return null;
+        }
+
+        var wouldCreateCount = ImportCreditPreviewPresenter.CountWouldCreateTasks(preview);
+        var ensureOutcome = await EnsureCreditBalanceUseCase.EnsureAsync(
+            new EnsureCurrentCreditBalanceRequest(
+                state.ActiveTenantContext.TenantId,
+                state.ActiveTenantContext.UserObjectId,
+                DateTimeOffset.UtcNow,
+                reason),
+            cancellationToken).ConfigureAwait(false);
+
+        if (ensureOutcome is EnsureCurrentCreditBalanceOutcome.Failed failure)
+        {
+            return new WorkflowCreditBalanceSnapshot
+            {
+                WouldCreateCount = wouldCreateCount,
+                LedgerUnavailable = true,
+                LedgerFailureCode = failure.Failure.FailureCode,
+            };
+        }
+
+        var balance = ((EnsureCurrentCreditBalanceOutcome.Succeeded)ensureOutcome).Result;
+        var shortfall = Math.Max(0, wouldCreateCount - balance.RemainingCredits);
+        return new WorkflowCreditBalanceSnapshot
+        {
+            WouldCreateCount = wouldCreateCount,
+            RemainingCredits = balance.RemainingCredits,
+            Shortfall = shortfall,
+            InsufficientCredits = wouldCreateCount > balance.RemainingCredits,
+        };
     }
 
     private void ResolveTenantContext(WorkflowCoordinationState state)

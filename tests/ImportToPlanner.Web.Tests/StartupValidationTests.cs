@@ -117,6 +117,25 @@ public sealed class StartupValidationTests
         Assert.Contains("Storage:TenantMetadataTable", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Validate_WhenCommercialCreditLedgerTableMissing_ThrowsFriendlyError()
+    {
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["AzureAd:TenantId"] = "organizations",
+            ["Features:CommercialMode:Enabled"] = "true",
+            ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+            ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
+            ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
+            ["Storage:DataProtectionContainer"] = "dataprotection",
+            ["Storage:DataProtectionBlob"] = "keys.xml",
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(() => StartupConfigurationValidator.Validate(configuration));
+
+        Assert.Contains("Storage:CommercialCreditLedgerTable", exception.Message, StringComparison.Ordinal);
+    }
+
     private static IConfiguration BuildConfiguration(Dictionary<string, string?> values)
         => new ConfigurationBuilder()
             .AddInMemoryCollection(values)

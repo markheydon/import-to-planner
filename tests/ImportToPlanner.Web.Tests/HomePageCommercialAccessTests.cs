@@ -75,4 +75,33 @@ public sealed class HomePageCommercialAccessTests
 
         Assert.Single(ctx.CommercialAccountStore.Accounts);
     }
+
+    [Fact]
+    public async Task HomePage_WhenCommercialModeEnabled_InvokesEnsureOnSignInWithSignInReason()
+    {
+        await using var ctx = new HomePageTestContext(commercialModeEnabled: true, isAuthenticated: true);
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() => Assert.True(ctx.CreditEnsureUseCase.EnsureCallCount >= 1));
+        Assert.Equal(EnsureBalanceReason.SignIn, ctx.CreditEnsureUseCase.LastReason);
+    }
+
+    [Fact]
+    public async Task HomePage_WhenLedgerEnsureFailsOnSignIn_StillRendersImportWorkflow()
+    {
+        await using var ctx = new HomePageTestContext(commercialModeEnabled: true, isAuthenticated: true);
+        ctx.CreditEnsureUseCase.FailClosed = true;
+
+        var cut = ctx.Render<Home>();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.Contains("Select Planner location", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Credit balance is temporarily unavailable", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        });
+
+        Assert.True(ctx.CreditEnsureUseCase.EnsureCallCount >= 1);
+        Assert.Equal(EnsureBalanceReason.SignIn, ctx.CreditEnsureUseCase.LastReason);
+    }
 }

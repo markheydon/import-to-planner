@@ -14,7 +14,7 @@ public sealed class ImportExecutionUseCaseTests
     {
         var gateway = new PlannerGatewayStub();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
-        var useCase = new ImportExecutionUseCase(gateway);
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
         var output = new CaptureExecutionOutputBoundary();
 
         var planningRequest = new ImportPlanningRequest(
@@ -75,8 +75,8 @@ public sealed class ImportExecutionUseCaseTests
         await inMemoryPlanning.HandleAsync(request, inMemoryPlanningOutput, CancellationToken.None);
         await fakePlanning.HandleAsync(request, fakePlanningOutput, CancellationToken.None);
 
-        var inMemoryExecution = new ImportExecutionUseCase(plannerGatewayStub);
-        var fakeExecution = new ImportExecutionUseCase(fakeGateway);
+        var inMemoryExecution = new ImportExecutionUseCase(plannerGatewayStub, new NoOpImportTaskCreationQuota());
+        var fakeExecution = new ImportExecutionUseCase(fakeGateway, new NoOpImportTaskCreationQuota());
         var inMemoryOutput = new CaptureExecutionOutputBoundary();
         var fakeOutput = new CaptureExecutionOutputBoundary();
 
@@ -101,7 +101,7 @@ public sealed class ImportExecutionUseCaseTests
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
-        var useCase = new ImportExecutionUseCase(gateway);
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
         var output = new CaptureExecutionOutputBoundary();
 
         var request = new ImportPlanningRequest(
@@ -131,6 +131,291 @@ public sealed class ImportExecutionUseCaseTests
         Assert.Equal(PlannerFailureTarget.Workflow, failure.Target);
         Assert.True(output.Response.OutcomeSummary.IsFullFailure);
     }
+
+    [Fact]
+    public async Task HandleAsync_WithMetering_RecordsOneCreditPerCreatedTask()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = BuildSingleCreateRequest();
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var quota = new ConfigurableImportTaskCreationQuota();
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: 2));
+        quota.RecordResults.Enqueue(new TaskCreationQuotaRecordResult(true, RemainingCredits: 1));
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                planningOutput.Response!,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal(1, quota.BeforeCreateCallCount);
+        Assert.Equal(1, quota.RecordCallCount);
+        Assert.Equal(1, output.Response!.CreditsUsed);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMetering_StopsFurtherCreatesWhenQuotaExhausted()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = BuildSingleCreateRequest();
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var quota = new ConfigurableImportTaskCreationQuota();
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(TaskCreationQuotaStatus.Exhausted, "credits.exhausted", 0));
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                planningOutput.Response!,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Empty(output.Response!.CreatedItems);
+        Assert.Contains(output.Response.FailureItems, failure => failure.DiagnosticCode == "credits.exhausted");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMetering_DoesNotCallQuotaForBucketReuseOrTaskSkip()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        var opsBucket = await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", opsBucket.Id, "Existing Task", null, null, null, CancellationToken.None);
+
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [
+                new CsvTaskRow(2, "Existing Task", null, 3, "Ops", null),
+                new CsvTaskRow(3, "Skipped Task", null, 3, "Ops", null),
+                new CsvTaskRow(4, "Brand New", null, 3, "NewBucket", null),
+            ]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var preview = planningOutput.Response! with
+        {
+            BucketActions = new Dictionary<string, PlannedEntityAction>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["Ops"] = PlannedEntityAction.Reuse,
+                ["NewBucket"] = PlannedEntityAction.Create,
+            },
+            TaskActions =
+            [
+                new ImportTaskPlanItem(2, "Existing Task", "Ops", null, PlannedEntityAction.Reuse),
+                new ImportTaskPlanItem(3, "Skipped Task", "Ops", null, PlannedEntityAction.Skip),
+                new ImportTaskPlanItem(4, "Brand New", "NewBucket", null, PlannedEntityAction.Create),
+            ],
+        };
+
+        var quota = new ConfigurableImportTaskCreationQuota();
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: 5));
+        quota.RecordResults.Enqueue(new TaskCreationQuotaRecordResult(true, RemainingCredits: 4));
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                preview,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal(1, quota.BeforeCreateCallCount);
+        Assert.Equal(1, quota.RecordCallCount);
+        Assert.Equal(1, output.Response!.CreditsUsed);
+        Assert.Equal(2, output.Response.CreatedItems.Count);
+        Assert.Contains(output.Response.CreatedItems, item => item.Target == PlannerFailureTarget.Task);
+        Assert.Contains(output.Response.CreatedItems, item => item.Target == PlannerFailureTarget.Bucket);
+        Assert.Equal(4, output.Response.ReusedOrSkippedItems.Count);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMetering_KeepsPlannerTaskWhenUsageRecordFails()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = BuildSingleCreateRequest();
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var quota = new ConfigurableImportTaskCreationQuota();
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: 1));
+        quota.RecordResults.Enqueue(new TaskCreationQuotaRecordResult(false, "credits.usage_record_failed"));
+        quota.RecordResults.Enqueue(new TaskCreationQuotaRecordResult(false, "credits.usage_record_failed"));
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                planningOutput.Response!,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Single(output.Response!.CreatedItems);
+        Assert.Contains(output.Response.FailureItems, failure => failure.DiagnosticCode == "credits.usage_record_failed");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMetering_StopsFurtherCreatesAfterPartialCreatesWhenQuotaExhausted()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [
+                new CsvTaskRow(2, "Task A", null, 3, "Ops", null),
+                new CsvTaskRow(3, "Task B", null, 3, "Ops", null),
+            ]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var preview = planningOutput.Response! with
+        {
+            TaskActions =
+            [
+                new ImportTaskPlanItem(2, "Task A", "Ops", null, PlannedEntityAction.Create),
+                new ImportTaskPlanItem(3, "Task B", "Ops", null, PlannedEntityAction.Create),
+            ],
+        };
+
+        var quota = new ConfigurableImportTaskCreationQuota();
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: 1));
+        quota.RecordResults.Enqueue(new TaskCreationQuotaRecordResult(true, RemainingCredits: 0));
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(TaskCreationQuotaStatus.Exhausted, "credits.exhausted", 0));
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                preview,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Single(output.Response!.CreatedItems);
+        Assert.Equal(1, output.Response.CreditsUsed);
+        Assert.Equal(0, output.Response.RemainingCredits);
+        Assert.Contains(output.Response.FailureItems, failure =>
+            failure.DiagnosticCode == "credits.exhausted"
+            && string.Equals(failure.Reference, "Task B", StringComparison.Ordinal));
+        Assert.True(output.Response.RemainingCredits >= 0);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMetering_StopsWhenQuotaUnavailableAtBeforeCreate()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = BuildSingleCreateRequest();
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var quota = new ConfigurableImportTaskCreationQuota();
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(
+            TaskCreationQuotaStatus.Unavailable,
+            "credits.ledger_unavailable"));
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                planningOutput.Response!,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Empty(output.Response!.CreatedItems);
+        Assert.Equal(0, quota.RecordCallCount);
+        Assert.Contains(output.Response.FailureItems, failure => failure.DiagnosticCode == "credits.ledger_unavailable");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMetering_DoesNotRecordCreditWhenPlannerCreateFails()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        gateway.CreateTaskException = new PlannerOperationException(new PlannerOperationFailure(
+            PlannerFailureCategory.Unavailable,
+            PlannerFailureTarget.Task,
+            "Task A",
+            "Planner provider is unavailable.",
+            true,
+            "Unavailable"));
+
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = BuildSingleCreateRequest();
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var quota = new ConfigurableImportTaskCreationQuota();
+        quota.BeforeCreateResults.Enqueue(new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: 1));
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                planningOutput.Response!,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal(0, quota.RecordCallCount);
+        Assert.Equal(0, output.Response!.CreditsUsed);
+        Assert.Empty(output.Response.CreatedItems);
+    }
+
+    private static ImportPlanningRequest BuildSingleCreateRequest()
+        => new(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null)]);
 
     private sealed class CapturePlanningOutputBoundary : IImportPlanningOutputBoundary
     {
@@ -174,6 +459,8 @@ public sealed class ImportExecutionUseCaseTests
         public Exception? GetPlanByIdException { get; set; }
 
         public Exception? GetBucketsException { get; set; }
+
+        public Exception? CreateTaskException { get; set; }
 
         public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<PlannerContainer>>([]);
@@ -225,6 +512,11 @@ public sealed class ImportExecutionUseCaseTests
 
         public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, CancellationToken cancellationToken)
         {
+            if (CreateTaskException is not null)
+            {
+                return Task.FromException<PlannerTaskSnapshot>(CreateTaskException);
+            }
+
             if (!tasks.TryGetValue(planId, out var planTasks))
             {
                 planTasks = [];

@@ -27,7 +27,12 @@ public partial class Home
 
             if (!IsStepLocked(targetStep))
             {
+                var previousStep = viewedStep;
                 viewedStep = targetStep;
+                if (targetStep == 4 && previousStep != 4)
+                {
+                    _ = RefreshLiveCreditBalanceSnapshotWhenOnPreviewStepAsync();
+                }
             }
         }
     }
@@ -84,6 +89,10 @@ public partial class Home
             if (executionResult is not null)
             {
                 viewedStep = 5;
+            }
+            else
+            {
+                _ = RefreshLiveCreditBalanceSnapshotWhenOnPreviewStepAsync();
             }
 
             return;

@@ -23,6 +23,8 @@ public sealed class ArchitectureComplianceTests
             "Microsoft.AspNetCore.Http",
             "System.Security.Claims",
             "Azure.Data.Tables",
+            "CreditLedgerTransaction",
+            "CreditLot",
         };
 
         foreach (var file in files)
@@ -67,10 +69,13 @@ public sealed class ArchitectureComplianceTests
             Path.Combine(applicationRoot, "Models", "CommercialAccount.cs"),
             Path.Combine(applicationRoot, "Models", "CommercialAccessDecision.cs"),
             Path.Combine(applicationRoot, "Models", "AccountAuditEvent.cs"),
+            Path.Combine(applicationRoot, "Models", "CreditLot.cs"),
+            Path.Combine(applicationRoot, "Models", "CreditLedgerTransaction.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialAccountStore.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialAuditStore.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialAccessUseCase.cs"),
             Path.Combine(applicationRoot, "Abstractions", "ICommercialProfileUseCase.cs"),
+            Path.Combine(applicationRoot, "Abstractions", "ICreditLedgerStore.cs"),
         };
 
         foreach (var forbiddenPath in forbiddenPaths)
@@ -134,6 +139,7 @@ public sealed class ArchitectureComplianceTests
         Assert.DoesNotContain("ImportToPlanner.Infrastructure.Graph", projectContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.Graph", projectContent, StringComparison.Ordinal);
         Assert.DoesNotContain("MudBlazor", projectContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("Stripe", projectContent, StringComparison.OrdinalIgnoreCase);
 
         var forbiddenTokens = new[]
         {
@@ -141,6 +147,7 @@ public sealed class ArchitectureComplianceTests
             "Microsoft.Graph",
             "Microsoft.Kiota",
             "MudBlazor",
+            "Stripe",
         };
 
         foreach (var file in commercialSourceFiles)
