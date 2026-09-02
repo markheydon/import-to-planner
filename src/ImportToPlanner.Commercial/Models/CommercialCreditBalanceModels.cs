@@ -42,7 +42,7 @@ public static class CommercialCreditFailureCodes
 /// <param name="TenantId">Commercial tenant identifier.</param>
 /// <param name="ActorUserId">Session user for audit.</param>
 /// <param name="OccurredUtc">Grant or expiry timestamp.</param>
-/// <param name="Reason">Why balance ensure was requested.</param>
+/// <param name="Reason">Why balance ensure was requested. Audit and caller policy only; behaviour is identical for all reasons.</param>
 public sealed record EnsureCurrentCreditBalanceRequest(
     string TenantId,
     string ActorUserId,

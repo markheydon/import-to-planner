@@ -252,6 +252,7 @@ public sealed class ImportExecutionUseCase(
 
                     if (!recordResult.Succeeded)
                     {
+                        // Planner task is intentionally retained when usage recording fails; credits may need manual reconciliation.
                         failures.Add(CreateCreditFailure(
                             taskAction.TaskName,
                             recordResult.DiagnosticCode ?? CreditUsageRecordFailedDiagnosticCode,

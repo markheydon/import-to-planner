@@ -48,7 +48,7 @@ public enum CreditEntryType
 }
 
 /// <summary>
-/// Reason a balance ensure was requested.
+/// Reason a balance ensure was requested. Audit and caller policy only; the ensure use case applies the same rules for every value.
 /// </summary>
 public enum EnsureBalanceReason
 {

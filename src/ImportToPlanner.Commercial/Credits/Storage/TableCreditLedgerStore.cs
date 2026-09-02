@@ -15,6 +15,7 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
     private const string LotRowKeyUpperBound = "lot|~";
     private const string TransactionRowKeyPrefix = "tx|";
     private const string GrantRowKeyPrefix = "grant|";
+    private const string UsageIdempotencyRowKeyPrefix = "usage|";
 
     private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);
@@ -197,26 +198,31 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.ImportRunId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.CreatedPlannerTaskId);
         await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        var idempotencyRowKey = BuildUsageIdempotencyRowKey(request.ImportRunId, request.CreatedPlannerTaskId);
+        if (await HasUsageIdempotencyMarkerAsync(request.TenantId, idempotencyRowKey, cancellationToken).ConfigureAwait(false))
+        {
+            return await BuildIdempotentUsageSuccessAsync(request, cancellationToken).ConfigureAwait(false);
+        }
 
         for (var attempt = 0; attempt < MaxOptimisticConcurrencyRetries; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var lots = await GetLotsAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
-            var lot = lots
-                .Where(candidate => candidate.RemainingQuantity > 0)
-                .OrderBy(candidate => candidate.LotType == LotType.FreeMonthly ? 0 : 1)
-                .ThenBy(candidate => candidate.GrantedAtUtc)
-                .FirstOrDefault();
+            var lot = CreditLotSelector.SelectConsumableLot(lots, request.OccurredUtc);
 
-            if (lot is null || lot.RemainingQuantity <= 0)
+            if (lot is null)
             {
                 return new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted);
             }
 
+            var transactionId = Guid.NewGuid().ToString("N");
             var transaction = new CreditLedgerTransaction(
-                Guid.NewGuid().ToString("N"),
+                transactionId,
                 request.TenantId,
                 request.OccurredUtc,
                 CreditEntryType.Usage,
@@ -234,22 +240,27 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
                     .ConfigureAwait(false);
                 var lotEntity = CloneTableEntity(lotEntityResponse.Value);
                 var remaining = lotEntity.GetInt32("RemainingQuantity") ?? 0;
-                if (remaining <= 0)
+                if (remaining <= 0 || !CreditLotSelector.IsConsumable(lot, request.OccurredUtc))
                 {
-                    return new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted);
+                    continue;
                 }
 
                 lotEntity["RemainingQuantity"] = remaining - 1;
                 var batch = new List<TableTransactionAction>
                 {
+                    new(TableTransactionActionType.Add, ToUsageIdempotencyEntity(request, idempotencyRowKey, transactionId)),
                     new(TableTransactionActionType.UpdateReplace, lotEntity, lotEntity.ETag),
                     new(TableTransactionActionType.Add, ToTransactionEntity(transaction)),
                 };
                 await tableClient.SubmitTransactionAsync(batch, cancellationToken).ConfigureAwait(false);
 
                 var refreshedLots = await GetLotsAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
-                var totalRemaining = refreshedLots.Sum(candidate => candidate.RemainingQuantity);
+                var totalRemaining = CreditLotSelector.SumConsumableRemaining(refreshedLots, request.OccurredUtc);
                 return new RecordCreditUsageOutcome.Success(totalRemaining);
+            }
+            catch (RequestFailedException exception) when (exception.Status == 409)
+            {
+                return await BuildIdempotentUsageSuccessAsync(request, cancellationToken).ConfigureAwait(false);
             }
             catch (RequestFailedException exception) when (exception.Status == 412)
             {
@@ -310,9 +321,39 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
         return clone;
     }
 
+    private async Task<bool> HasUsageIdempotencyMarkerAsync(
+        string tenantId,
+        string idempotencyRowKey,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await tableClient
+                .GetEntityAsync<TableEntity>(tenantId, idempotencyRowKey, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+        catch (RequestFailedException exception) when (exception.Status == 404)
+        {
+            return false;
+        }
+    }
+
+    private async Task<RecordCreditUsageOutcome> BuildIdempotentUsageSuccessAsync(
+        RecordCreditUsageRequest request,
+        CancellationToken cancellationToken)
+    {
+        var lots = await GetLotsAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
+        var totalRemaining = CreditLotSelector.SumConsumableRemaining(lots, request.OccurredUtc);
+        return new RecordCreditUsageOutcome.Success(totalRemaining);
+    }
+
     private static string BuildLotRowKey(string lotId) => $"{LotRowKeyPrefix}{lotId}";
 
     private static string BuildGrantRowKey(string utcYearMonth) => $"{GrantRowKeyPrefix}{utcYearMonth}";
+
+    private static string BuildUsageIdempotencyRowKey(string importRunId, string createdPlannerTaskId)
+        => $"{UsageIdempotencyRowKeyPrefix}{importRunId}|{createdPlannerTaskId}";
 
     private static string BuildTransactionRowKey(DateTimeOffset occurredUtc, string transactionId)
     {
@@ -330,6 +371,20 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
             ["RemainingQuantity"] = lot.RemainingQuantity,
             ["GrantedAtUtc"] = lot.GrantedAtUtc,
             ["ExpiresAtUtc"] = lot.ExpiresAtUtc,
+        };
+    }
+
+    private static TableEntity ToUsageIdempotencyEntity(
+        RecordCreditUsageRequest request,
+        string idempotencyRowKey,
+        string transactionId)
+    {
+        return new TableEntity(request.TenantId, idempotencyRowKey)
+        {
+            ["ImportRunId"] = request.ImportRunId,
+            ["CreatedPlannerTaskId"] = request.CreatedPlannerTaskId,
+            ["TransactionId"] = transactionId,
+            ["OccurredUtc"] = request.OccurredUtc,
         };
     }
 

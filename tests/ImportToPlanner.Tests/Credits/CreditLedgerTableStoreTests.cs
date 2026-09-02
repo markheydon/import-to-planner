@@ -3,6 +3,7 @@ using Azure;
 using Azure.Core;
 using Azure.Data.Tables;
 using Azure.Data.Tables.Models;
+using ImportToPlanner.Commercial.Credits;
 using ImportToPlanner.Commercial.Credits.Storage;
 using ImportToPlanner.Commercial.Models;
 
@@ -279,6 +280,72 @@ public sealed class CreditLedgerTableStoreTests
             CancellationToken.None);
         Assert.IsType<RecordCreditUsageOutcome.Success>(thirdUsage);
         Assert.Equal(0, (await store.GetLotsAsync("tenant-001", CancellationToken.None)).Sum(lot => lot.RemainingQuantity));
+    }
+
+    [Fact]
+    public async Task RecordUsageAsync_WhenCalledTwiceForSameTask_IsIdempotent()
+    {
+        var tableClient = new FakeTableClient();
+        var store = new TableCreditLedgerStore(tableClient);
+        var grantedAtUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+
+        await store.TryGrantFreeMonthlyAsync(
+            "tenant-001",
+            "202609",
+            25,
+            grantedAtUtc,
+            "user-001",
+            CancellationToken.None);
+
+        var request = new RecordCreditUsageRequest("tenant-001", "user-001", grantedAtUtc.AddMinutes(5), "run-1", "task-1");
+        var firstUsage = await store.RecordUsageAsync(request, CancellationToken.None);
+        var secondUsage = await store.RecordUsageAsync(request, CancellationToken.None);
+
+        Assert.IsType<RecordCreditUsageOutcome.Success>(firstUsage);
+        Assert.IsType<RecordCreditUsageOutcome.Success>(secondUsage);
+        Assert.Equal(24, ((RecordCreditUsageOutcome.Success)secondUsage).RemainingCredits);
+        Assert.Single(
+            tableClient.StoredEntities.Values,
+            entity => entity.RowKey.StartsWith("usage|", StringComparison.Ordinal));
+        Assert.Single(
+            tableClient.StoredEntities.Values,
+            entity => entity.RowKey.StartsWith("tx|", StringComparison.Ordinal)
+                && entity.GetInt32("EntryType") == (int)CreditEntryType.Usage);
+    }
+
+    [Fact]
+    public async Task RecordUsageAsync_SkipsExpiredFreeLotAndUsesPaidLot()
+    {
+        var tableClient = new FakeTableClient();
+        var store = new TableCreditLedgerStore(tableClient);
+        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+        var expiredFreeGrantedAt = new DateTimeOffset(2026, 8, 15, 10, 0, 0, TimeSpan.Zero);
+        var paidGrantedAt = new DateTimeOffset(2026, 8, 1, 10, 0, 0, TimeSpan.Zero);
+        var paidLotId = Guid.NewGuid().ToString("N");
+
+        await tableClient.AddEntityAsync(CreateLotEntity(
+            "tenant-001",
+            Guid.NewGuid().ToString("N"),
+            LotType.FreeMonthly,
+            5,
+            expiredFreeGrantedAt,
+            CommercialCreditPolicy.GetFreeLotExpiresAtUtc(expiredFreeGrantedAt)), CancellationToken.None);
+        await tableClient.AddEntityAsync(CreateLotEntity(
+            "tenant-001",
+            paidLotId,
+            LotType.Paid,
+            1,
+            paidGrantedAt,
+            occurredUtc.AddYears(1)), CancellationToken.None);
+
+        var usageOutcome = await store.RecordUsageAsync(
+            new RecordCreditUsageRequest("tenant-001", "user-001", occurredUtc, "run-1", "task-1"),
+            CancellationToken.None);
+
+        Assert.IsType<RecordCreditUsageOutcome.Success>(usageOutcome);
+        var lots = await store.GetLotsAsync("tenant-001", CancellationToken.None);
+        Assert.Equal(5, lots.Single(lot => lot.LotType == LotType.FreeMonthly).RemainingQuantity);
+        Assert.Equal(0, lots.Single(lot => lot.LotId == paidLotId).RemainingQuantity);
     }
 
     private static TableEntity CreateLotEntity(

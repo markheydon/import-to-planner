@@ -1,4 +1,5 @@
 using Azure.Data.Tables;
+using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Commercial;
 using ImportToPlanner.Commercial.Abstractions;
@@ -136,6 +137,31 @@ public sealed class InfrastructureRegistrationTests
         Assert.Null(tableServiceClient);
         Assert.Null(commercialAccountStore);
         Assert.Null(creditLedgerTableClient);
+    }
+
+    [Fact]
+    public void AddCommercial_ReplacesNoOpImportTaskCreationQuota()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
+        services.AddApplication();
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
+                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
+                ["Storage:CommercialCreditLedgerTable"] = "CommercialCreditLedger",
+            })
+            .Build();
+
+        services.AddCommercial(configuration);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var quota = serviceProvider.GetRequiredService<IImportTaskCreationQuota>();
+
+        Assert.Equal("ImportTaskCreationCreditQuota", quota.GetType().Name);
     }
 
     [Fact]

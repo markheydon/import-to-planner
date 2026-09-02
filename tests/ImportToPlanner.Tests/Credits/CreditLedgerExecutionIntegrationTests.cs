@@ -17,7 +17,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
     {
         var store = new InMemoryCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
@@ -66,7 +66,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
         var inner = new InMemoryCreditLedgerStore();
         var store = new AlwaysFailRecordUsageCreditLedgerStore(inner);
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
@@ -108,7 +108,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
     {
         var store = new InMemoryCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
@@ -161,7 +161,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
     {
         var store = new InMemoryCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
         var backlogBucket = await gateway.CreateBucketAsync("plan-alpha", "Backlog", CancellationToken.None);
@@ -218,7 +218,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
     {
         var store = new UnavailableCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
         var backlogBucket = await gateway.CreateBucketAsync("plan-alpha", "Backlog", CancellationToken.None);
@@ -267,7 +267,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
     {
         var store = new InMemoryCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var grantedAtUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
         await store.TryGrantFreeMonthlyAsync("tenant-001", "202609", 1, grantedAtUtc, "user-001", CancellationToken.None);
         await store.RecordUsageAsync(

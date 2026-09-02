@@ -94,10 +94,17 @@ public static class DependencyInjection
             new TableCommercialAuditStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAuditTableClientKey)));
         services.AddSingleton<IUtcClock, SystemUtcClock>();
+        services.AddScoped<ImportExecutionCreditBalanceCache>();
         services.AddScoped<ICreditLedgerStore>(serviceProvider =>
             new TableCreditLedgerStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialCreditLedgerTableClientKey)));
         services.AddScoped<IEnsureCurrentCreditBalanceUseCase, EnsureCurrentCreditBalanceUseCase>();
+
+        foreach (var descriptor in services.Where(descriptor => descriptor.ServiceType == typeof(IImportTaskCreationQuota)).ToList())
+        {
+            services.Remove(descriptor);
+        }
+
         services.AddScoped<IImportTaskCreationQuota, ImportTaskCreationCreditQuota>();
         services.AddSingleton<ITenantOperationalMetadataStore>(serviceProvider =>
             new TableTenantOperationalMetadataStore(

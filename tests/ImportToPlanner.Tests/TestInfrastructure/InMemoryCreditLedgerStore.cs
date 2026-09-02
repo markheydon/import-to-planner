@@ -115,39 +115,55 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.ImportRunId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.CreatedPlannerTaskId);
+
         var state = GetTenantState(request.TenantId);
         lock (state.Sync)
         {
-            var lot = state.Lots.Values
-                .Where(candidate => candidate.RemainingQuantity > 0)
-                .OrderBy(candidate => candidate.GrantedAtUtc)
-                .FirstOrDefault(candidate => candidate.LotType == LotType.FreeMonthly)
-                ?? state.Lots.Values
-                    .Where(candidate => candidate.RemainingQuantity > 0)
-                    .OrderBy(candidate => candidate.GrantedAtUtc)
-                    .FirstOrDefault();
-
-            if (lot is null || lot.RemainingQuantity <= 0)
+            var idempotencyKey = BuildUsageIdempotencyKey(request.ImportRunId, request.CreatedPlannerTaskId);
+            if (state.UsageIdempotencyKeys.Contains(idempotencyKey))
             {
-                return Task.FromResult<RecordCreditUsageOutcome>(
-                    new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted));
+                var remaining = CreditLotSelector.SumConsumableRemaining(state.Lots.Values.ToList(), request.OccurredUtc);
+                return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(remaining));
             }
 
-            state.Lots[lot.LotId] = lot with { RemainingQuantity = lot.RemainingQuantity - 1 };
-            state.Transactions.Add(new CreditLedgerTransaction(
-                Guid.NewGuid().ToString("N"),
-                request.TenantId,
-                request.OccurredUtc,
-                CreditEntryType.Usage,
-                1,
-                lot.LotId,
-                lot.LotType,
-                request.ImportRunId,
-                request.CreatedPlannerTaskId,
-                request.ActorUserId));
+            for (var attempt = 0; attempt < 5; attempt++)
+            {
+                var lot = CreditLotSelector.SelectConsumableLot(state.Lots.Values.ToList(), request.OccurredUtc);
+                if (lot is null)
+                {
+                    return Task.FromResult<RecordCreditUsageOutcome>(
+                        new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted));
+                }
 
-            var remaining = state.Lots.Values.Sum(candidate => candidate.RemainingQuantity);
-            return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(remaining));
+                if (!state.Lots.TryGetValue(lot.LotId, out var current)
+                    || current.RemainingQuantity <= 0
+                    || !CreditLotSelector.IsConsumable(current, request.OccurredUtc))
+                {
+                    continue;
+                }
+
+                state.UsageIdempotencyKeys.Add(idempotencyKey);
+                state.Lots[lot.LotId] = current with { RemainingQuantity = current.RemainingQuantity - 1 };
+                state.Transactions.Add(new CreditLedgerTransaction(
+                    Guid.NewGuid().ToString("N"),
+                    request.TenantId,
+                    request.OccurredUtc,
+                    CreditEntryType.Usage,
+                    1,
+                    lot.LotId,
+                    lot.LotType,
+                    request.ImportRunId,
+                    request.CreatedPlannerTaskId,
+                    request.ActorUserId));
+
+                var remaining = CreditLotSelector.SumConsumableRemaining(state.Lots.Values.ToList(), request.OccurredUtc);
+                return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(remaining));
+            }
+
+            return Task.FromResult<RecordCreditUsageOutcome>(
+                new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted));
         }
     }
 
@@ -163,6 +179,9 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
         }
     }
 
+    private static string BuildUsageIdempotencyKey(string importRunId, string createdPlannerTaskId)
+        => $"{importRunId}|{createdPlannerTaskId}";
+
     private TenantLedgerState GetTenantState(string tenantId)
         => tenants.GetOrAdd(tenantId, _ => new TenantLedgerState());
 
@@ -173,6 +192,8 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
         public Dictionary<string, CreditLot> Lots { get; } = new(StringComparer.Ordinal);
 
         public Dictionary<string, CreditMonthGrantMarker> Markers { get; } = new(StringComparer.Ordinal);
+
+        public HashSet<string> UsageIdempotencyKeys { get; } = new(StringComparer.Ordinal);
 
         public List<CreditLedgerTransaction> Transactions { get; } = [];
     }

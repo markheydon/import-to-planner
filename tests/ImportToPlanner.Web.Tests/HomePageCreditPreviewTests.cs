@@ -99,16 +99,15 @@ public sealed class HomePageCreditPreviewTests
 
         await PreparePreviewAsync(ctx, cut, coordinator, state);
 
-        cut.WaitForAssertion(() => Assert.True(cut.FindAll(".mud-step").Count >= 4));
-        cut.FindAll(".mud-step")[3].Click();
-
         cut.WaitForAssertion(() =>
         {
             Assert.Contains("Credit balance is temporarily unavailable", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("0 credits remaining", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            var confirmButton = cut.FindAll("button").Single(button =>
-                button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase));
-            Assert.True(confirmButton.HasAttribute("disabled"));
+            Assert.DoesNotContain("Dry-run preview", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Equal(
+                0,
+                cut.FindAll("button").Count(button =>
+                    button.TextContent.Contains("Confirm import", StringComparison.OrdinalIgnoreCase)));
         });
     }
 

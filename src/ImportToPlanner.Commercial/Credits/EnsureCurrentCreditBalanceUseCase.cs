@@ -9,6 +9,10 @@ namespace ImportToPlanner.Commercial.Credits;
 public sealed class EnsureCurrentCreditBalanceUseCase(ICreditLedgerStore ledgerStore) : IEnsureCurrentCreditBalanceUseCase
 {
     /// <inheritdoc/>
+    /// <remarks>
+    /// <see cref="EnsureCurrentCreditBalanceRequest.Reason"/> is recorded for audit and caller policy only;
+    /// grant, expiry, and balance derivation behave the same for every reason.
+    /// </remarks>
     public async Task<EnsureCurrentCreditBalanceOutcome> EnsureAsync(
         EnsureCurrentCreditBalanceRequest request,
         CancellationToken cancellationToken)

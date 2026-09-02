@@ -176,6 +176,8 @@ public sealed class ImportWorkflowCoordinator(
                 cancellationToken).ConfigureAwait(false);
             if (state.CreditBalanceSnapshot?.LedgerUnavailable == true)
             {
+                state.PlanningViewModel = null;
+                state.CurrentPlanningRequest = null;
                 state.StatusMessage = ImportCreditPreviewPresenter.BuildLedgerUnavailableMessage();
                 state.StatusReferenceId = state.CreditBalanceSnapshot.LedgerFailureCode;
                 state.StatusLevel = WorkflowStatusLevel.Error;

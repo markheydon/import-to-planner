@@ -13,7 +13,7 @@ public sealed class ImportTaskCreationCreditQuotaTests
     {
         var store = new InMemoryCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         await ensureUseCase.EnsureAsync(
@@ -40,7 +40,7 @@ public sealed class ImportTaskCreationCreditQuotaTests
     {
         var store = new InMemoryCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         await ensureUseCase.EnsureAsync(
@@ -76,7 +76,7 @@ public sealed class ImportTaskCreationCreditQuotaTests
         var inner = new InMemoryCreditLedgerStore();
         var store = new FailOnceRecordUsageCreditLedgerStore(inner);
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         await ensureUseCase.EnsureAsync(
@@ -97,6 +97,68 @@ public sealed class ImportTaskCreationCreditQuotaTests
         Assert.Equal(24, recordResult.RemainingCredits);
         Assert.Equal(2, store.RecordUsageCallCount);
         Assert.Single(inner.GetTransactions("tenant-001"), transaction => transaction.EntryType == CreditEntryType.Usage);
+    }
+
+    [Fact]
+    public async Task RecordSuccessfulCreateAsync_WhenCalledTwiceForSameTask_RecordsSingleUsage()
+    {
+        var store = new InMemoryCreditLedgerStore();
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+
+        await ensureUseCase.EnsureAsync(
+            new EnsureCurrentCreditBalanceRequest("tenant-001", "user-001", occurredUtc, EnsureBalanceReason.Execute),
+            CancellationToken.None);
+
+        var context = new ImportTaskCreationQuotaContext(
+            "tenant-001",
+            "user-001",
+            occurredUtc,
+            "run-1",
+            "Task A",
+            "planner-task-1");
+
+        var firstRecord = await quota.RecordSuccessfulCreateAsync(context, CancellationToken.None);
+        var secondRecord = await quota.RecordSuccessfulCreateAsync(context, CancellationToken.None);
+
+        Assert.True(firstRecord.Succeeded);
+        Assert.True(secondRecord.Succeeded);
+        Assert.Equal(firstRecord.RemainingCredits, secondRecord.RemainingCredits);
+        Assert.Single(store.GetTransactions("tenant-001"), transaction => transaction.EntryType == CreditEntryType.Usage);
+    }
+
+    [Fact]
+    public async Task BeforeCreateAsync_ReusesCachedBalanceWithoutSecondEnsureCall()
+    {
+        var store = new InMemoryCreditLedgerStore();
+        var ensureCallCount = 0;
+        var ensureUseCase = new CountingEnsureCurrentCreditBalanceUseCase(
+            new EnsureCurrentCreditBalanceUseCase(store),
+            () => ensureCallCount++);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+        var context = new ImportTaskCreationQuotaContext("tenant-001", "user-001", occurredUtc, "run-1", "Task A");
+
+        var first = await quota.BeforeCreateAsync(context, CancellationToken.None);
+        var second = await quota.BeforeCreateAsync(context, CancellationToken.None);
+
+        Assert.Equal(TaskCreationQuotaStatus.Allow, first.Status);
+        Assert.Equal(TaskCreationQuotaStatus.Allow, second.Status);
+        Assert.Equal(1, ensureCallCount);
+    }
+
+    private sealed class CountingEnsureCurrentCreditBalanceUseCase(
+        IEnsureCurrentCreditBalanceUseCase inner,
+        Action onEnsure) : IEnsureCurrentCreditBalanceUseCase
+    {
+        public Task<EnsureCurrentCreditBalanceOutcome> EnsureAsync(
+            EnsureCurrentCreditBalanceRequest request,
+            CancellationToken cancellationToken)
+        {
+            onEnsure();
+            return inner.EnsureAsync(request, cancellationToken);
+        }
     }
 
     private sealed class FailOnceRecordUsageCreditLedgerStore(InMemoryCreditLedgerStore inner) : ICreditLedgerStore

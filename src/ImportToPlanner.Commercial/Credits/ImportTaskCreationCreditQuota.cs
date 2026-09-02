@@ -9,7 +9,8 @@ namespace ImportToPlanner.Commercial.Credits;
 /// </summary>
 public sealed class ImportTaskCreationCreditQuota(
     IEnsureCurrentCreditBalanceUseCase ensureCurrentCreditBalanceUseCase,
-    ICreditLedgerStore ledgerStore) : IImportTaskCreationQuota
+    ICreditLedgerStore ledgerStore,
+    ImportExecutionCreditBalanceCache executionCreditBalanceCache) : IImportTaskCreationQuota
 {
     /// <inheritdoc/>
     public async Task<TaskCreationQuotaResult> BeforeCreateAsync(
@@ -19,31 +20,23 @@ public sealed class ImportTaskCreationCreditQuota(
         ArgumentNullException.ThrowIfNull(context);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var ensureOutcome = await ensureCurrentCreditBalanceUseCase.EnsureAsync(
-            new EnsureCurrentCreditBalanceRequest(
-                context.TenantId,
-                context.ActorUserId,
-                context.OccurredUtc,
-                EnsureBalanceReason.Execute),
-            cancellationToken).ConfigureAwait(false);
-
-        if (ensureOutcome is EnsureCurrentCreditBalanceOutcome.Failed failure)
+        var remaining = await GetOrEnsureRemainingCreditsAsync(context, cancellationToken).ConfigureAwait(false);
+        if (remaining.Status == TaskCreationQuotaStatus.Unavailable)
         {
             return new TaskCreationQuotaResult(
                 TaskCreationQuotaStatus.Unavailable,
-                failure.Failure.FailureCode);
+                remaining.DiagnosticCode);
         }
 
-        var remaining = ((EnsureCurrentCreditBalanceOutcome.Succeeded)ensureOutcome).Result.RemainingCredits;
-        if (remaining <= 0)
+        if ((remaining.RemainingCredits ?? 0) <= 0)
         {
             return new TaskCreationQuotaResult(
                 TaskCreationQuotaStatus.Exhausted,
                 CommercialCreditFailureCodes.Exhausted,
-                remaining);
+                remaining.RemainingCredits);
         }
 
-        return new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: remaining);
+        return new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: remaining.RemainingCredits);
     }
 
     /// <inheritdoc/>
@@ -64,20 +57,57 @@ public sealed class ImportTaskCreationCreditQuota(
         var firstAttempt = await RecordUsageOnceAsync(context, cancellationToken).ConfigureAwait(false);
         if (firstAttempt is RecordCreditUsageOutcome.Success success)
         {
+            executionCreditBalanceCache.SetRemaining(context.TenantId, context.OccurredUtc, success.RemainingCredits);
             return new TaskCreationQuotaRecordResult(true, RemainingCredits: success.RemainingCredits);
         }
 
         var secondAttempt = await RecordUsageOnceAsync(context, cancellationToken).ConfigureAwait(false);
-        return secondAttempt switch
+        if (secondAttempt is RecordCreditUsageOutcome.Success retrySuccess)
         {
-            RecordCreditUsageOutcome.Success retrySuccess => new TaskCreationQuotaRecordResult(
-                true,
-                RemainingCredits: retrySuccess.RemainingCredits),
-            RecordCreditUsageOutcome.Failure failure => new TaskCreationQuotaRecordResult(
-                false,
-                failure.FailureCode),
-            _ => new TaskCreationQuotaRecordResult(false, CommercialCreditFailureCodes.UsageRecordFailed),
-        };
+            executionCreditBalanceCache.SetRemaining(context.TenantId, context.OccurredUtc, retrySuccess.RemainingCredits);
+            return new TaskCreationQuotaRecordResult(true, RemainingCredits: retrySuccess.RemainingCredits);
+        }
+
+        if (secondAttempt is RecordCreditUsageOutcome.Failure failure)
+        {
+            return new TaskCreationQuotaRecordResult(false, failure.FailureCode);
+        }
+
+        return new TaskCreationQuotaRecordResult(false, CommercialCreditFailureCodes.UsageRecordFailed);
+    }
+
+    private async Task<RemainingCreditsLookup> GetOrEnsureRemainingCreditsAsync(
+        ImportTaskCreationQuotaContext context,
+        CancellationToken cancellationToken)
+    {
+        if (executionCreditBalanceCache.TryGetRemaining(context.TenantId, context.OccurredUtc, out var cachedRemaining))
+        {
+            return new RemainingCreditsLookup(cachedRemaining, null);
+        }
+
+        var ensureOutcome = await ensureCurrentCreditBalanceUseCase.EnsureAsync(
+            new EnsureCurrentCreditBalanceRequest(
+                context.TenantId,
+                context.ActorUserId,
+                context.OccurredUtc,
+                EnsureBalanceReason.Execute),
+            cancellationToken).ConfigureAwait(false);
+
+        if (ensureOutcome is EnsureCurrentCreditBalanceOutcome.Failed failure)
+        {
+            return new RemainingCreditsLookup(null, failure.Failure.FailureCode);
+        }
+
+        var remaining = ((EnsureCurrentCreditBalanceOutcome.Succeeded)ensureOutcome).Result.RemainingCredits;
+        executionCreditBalanceCache.SetRemaining(context.TenantId, context.OccurredUtc, remaining);
+        return new RemainingCreditsLookup(remaining, null);
+    }
+
+    private readonly record struct RemainingCreditsLookup(int? RemainingCredits, string? DiagnosticCode)
+    {
+        public TaskCreationQuotaStatus Status => DiagnosticCode is null
+            ? TaskCreationQuotaStatus.Allow
+            : TaskCreationQuotaStatus.Unavailable;
     }
 
     private Task<RecordCreditUsageOutcome> RecordUsageOnceAsync(
