@@ -55,6 +55,25 @@ public sealed class CsvImportParserTests
         Assert.Contains(result.ValidationErrors, error => error.Field == "Priority");
     }
 
+    [Fact]
+    public async Task ParseAsync_WithDescriptionExceedingPlannerLimit_ReturnsValidationError()
+    {
+        // Arrange
+        var parser = new CsvImportParser();
+        var description = new string('x', 32_769);
+        var csv = $"Task Name,Description\nTask A,{description}";
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.HasErrors);
+        Assert.Contains(result.ValidationErrors, error =>
+            error.RowNumber == 2 &&
+            error.Field == "Description" &&
+            error.Message.Contains("32,768", StringComparison.Ordinal));
+    }
+
     [Theory]
     [InlineData("Urgent", 1)]
     [InlineData("Important", 3)]

@@ -7,6 +7,7 @@ using Microsoft.Kiota.Abstractions;
 using GraphPlannerBucket = Microsoft.Graph.Models.PlannerBucket;
 using GraphPlannerPlan = Microsoft.Graph.Models.PlannerPlan;
 using GraphPlannerTask = Microsoft.Graph.Models.PlannerTask;
+using GraphPlannerTaskDetails = Microsoft.Graph.Models.PlannerTaskDetails;
 
 namespace ImportToPlanner.Infrastructure.Graph.Planner;
 
@@ -22,6 +23,8 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     private const int DefaultRetryAfterSeconds = 10;
     private const int MaxRetryAfterSeconds = 60;
     private const int TransientRowFailureRetryCount = 1;
+    private const int TaskDetailsNotFoundRetryCount = 4;
+    private const int TaskDetailsNotFoundInitialDelayMilliseconds = 200;
     private readonly GraphServiceClient graphClient;
     private readonly ICurrentTenantContextAccessor? currentTenantContextAccessor;
 
@@ -356,7 +359,6 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketId, nameof(bucketId));
         ValidateRequired(taskName, nameof(taskName));
-        _ = description;
         _ = goal;
 
         var operationName = $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'";
@@ -381,7 +383,200 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             throw new InvalidOperationException("Graph returned an invalid task response.");
         }
 
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            try
+            {
+                await UpdateTaskDescriptionAsync(created.Id, description, taskName, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                await TryCompensateCreatedTaskAsync(created, taskName, cancellationToken);
+                throw;
+            }
+        }
+
         return MapPlannerTaskSnapshot(created, planId);
+    }
+
+    private async Task UpdateTaskDescriptionAsync(
+        string taskId,
+        string description,
+        string taskName,
+        CancellationToken cancellationToken)
+    {
+        ValidateRequired(taskId, nameof(taskId));
+        ValidateRequired(description, nameof(description));
+
+        var updateDetailsOperation = $"updating planner task notes for '{taskName}'";
+        await ExecuteWithTransientRowRetryAsync(
+            updateDetailsOperation,
+            async innerToken =>
+            {
+                await PatchTaskDescriptionWithConflictRetryAsync(
+                    taskId,
+                    description,
+                    taskName,
+                    innerToken);
+                return true;
+            },
+            cancellationToken);
+    }
+
+    private async Task PatchTaskDescriptionWithConflictRetryAsync(
+        string taskId,
+        string description,
+        string taskName,
+        CancellationToken cancellationToken)
+    {
+        var getDetailsOperation = $"loading planner task details for '{taskName}'";
+        var existingDetails = await GetTaskDetailsWithAvailabilityRetryAsync(
+            taskId,
+            getDetailsOperation,
+            cancellationToken);
+
+        var etagHolder = new EtagHolder(ResolvePlannerDetailsEtag(existingDetails));
+        if (string.IsNullOrWhiteSpace(etagHolder.Value))
+        {
+            throw CreateMissingDetailsEtagException(getDetailsOperation);
+        }
+
+        var updateDetailsOperation = $"updating planner task notes for '{taskName}'";
+        await ExecuteGraphCallAsync(
+            updateDetailsOperation,
+            token => graphClient.Planner.Tasks[taskId].Details.PatchAsync(
+                new GraphPlannerTaskDetails
+                {
+                    Description = description,
+                },
+                requestConfiguration =>
+                {
+                    requestConfiguration.Headers.Add("Prefer", "return=representation");
+                    requestConfiguration.Headers.Add("If-Match", etagHolder.Value!);
+                },
+                token),
+            cancellationToken,
+            onConflictAsync: async conflictToken =>
+            {
+                var refreshedDetails = await GetTaskDetailsWithAvailabilityRetryAsync(
+                    taskId,
+                    getDetailsOperation,
+                    conflictToken);
+                etagHolder.Value = ResolvePlannerDetailsEtag(refreshedDetails);
+                return !string.IsNullOrWhiteSpace(etagHolder.Value);
+            });
+    }
+
+    private async Task TryCompensateCreatedTaskAsync(
+        GraphPlannerTask created,
+        string taskName,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(created.Id))
+        {
+            return;
+        }
+
+        var etag = ResolvePlannerTaskEtag(created);
+        if (string.IsNullOrWhiteSpace(etag))
+        {
+            return;
+        }
+
+        try
+        {
+            var rollbackOperation = $"rolling back planner task '{taskName}' after notes update failed";
+            await ExecuteGraphCallAsync(
+                rollbackOperation,
+                async token =>
+                {
+                    await graphClient.Planner.Tasks[created.Id].DeleteAsync(
+                        requestConfiguration => requestConfiguration.Headers.Add("If-Match", etag),
+                        token);
+                    return true;
+                },
+                cancellationToken);
+        }
+        catch
+        {
+            // Best-effort compensation; the original notes-update failure is still propagated.
+        }
+    }
+
+    private async Task<GraphPlannerTaskDetails> GetTaskDetailsWithAvailabilityRetryAsync(
+        string taskId,
+        string operationName,
+        CancellationToken cancellationToken)
+    {
+        var attempt = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var details = await ExecuteGraphCallAsync(
+                    operationName,
+                    token => graphClient.Planner.Tasks[taskId].Details.GetAsync(cancellationToken: token),
+                    cancellationToken);
+
+                if (details is null)
+                {
+                    throw new InvalidOperationException("Graph returned an invalid task details response.");
+                }
+
+                return details;
+            }
+            catch (PlannerOperationException ex) when (
+                ex.Failure.DiagnosticCode == "NotFound" &&
+                attempt < TaskDetailsNotFoundRetryCount)
+            {
+                attempt++;
+                var delayMilliseconds = TaskDetailsNotFoundInitialDelayMilliseconds * (1 << (attempt - 1));
+                await Task.Delay(delayMilliseconds, cancellationToken);
+            }
+        }
+    }
+
+    private static PlannerOperationException CreateMissingDetailsEtagException(string operationName) =>
+        new(
+            new PlannerOperationFailure(
+                PlannerFailureCategory.Unknown,
+                PlannerFailureTarget.Workflow,
+                null,
+                $"Graph returned task details without an ETag while {operationName}.",
+                false,
+                "MissingETag"));
+
+    private static string? ResolvePlannerDetailsEtag(GraphPlannerTaskDetails details)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+
+        return ResolveOdataEtag(details.AdditionalData);
+    }
+
+    private static string? ResolvePlannerTaskEtag(GraphPlannerTask task)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+
+        return ResolveOdataEtag(task.AdditionalData);
+    }
+
+    private static string? ResolveOdataEtag(IDictionary<string, object>? additionalData)
+    {
+        if (additionalData is not null &&
+            additionalData.TryGetValue("@odata.etag", out var etagValue))
+        {
+            return etagValue?.ToString();
+        }
+
+        return null;
+    }
+
+    private sealed class EtagHolder(string? value)
+    {
+        public string? Value { get; set; } = value;
     }
 
     private void EnsureDelegatedTenantSession()
