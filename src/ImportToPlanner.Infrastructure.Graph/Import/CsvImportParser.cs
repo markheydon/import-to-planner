@@ -16,6 +16,7 @@ public sealed class CsvImportParser : ICsvImportParser
     private const string PriorityHeader = "priority";
     private const string BucketHeader = "bucket";
     private const string GoalHeader = "goal";
+    private const int MaxDescriptionLength = 32_768;
 
     private static readonly HashSet<string> SupportedHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -72,6 +73,15 @@ public sealed class CsvImportParser : ICsvImportParser
             if (string.IsNullOrWhiteSpace(taskName))
             {
                 errors.Add(new ImportValidationError(rowNumber, "Task Name", "Task Name is required."));
+                continue;
+            }
+
+            if (description is not null && description.Length > MaxDescriptionLength)
+            {
+                errors.Add(new ImportValidationError(
+                    rowNumber,
+                    "Description",
+                    $"Description must be {MaxDescriptionLength:N0} characters or fewer."));
                 continue;
             }
 

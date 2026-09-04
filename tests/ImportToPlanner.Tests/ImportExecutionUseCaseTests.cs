@@ -558,6 +558,35 @@ public sealed class ImportExecutionUseCaseTests
         Assert.Empty(output.Response.FailureItems);
     }
 
+    [Fact]
+    public async Task HandleAsync_PassesCsvDescriptionToCreateTask()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", "Planner notes", 3, "Ops", null)]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal("Planner notes", gateway.LastCreateDescription);
+        Assert.Single(output.Response!.CreatedItems);
+    }
+
     private static ImportPlanningRequest BuildSingleCreateRequest()
         => new(
             "group-alpha",
@@ -611,6 +640,8 @@ public sealed class ImportExecutionUseCaseTests
 
         public Exception? CreateTaskException { get; set; }
 
+        public string? LastCreateDescription { get; private set; }
+
         public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<PlannerContainer>>([]);
 
@@ -661,6 +692,8 @@ public sealed class ImportExecutionUseCaseTests
 
         public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, CancellationToken cancellationToken)
         {
+            LastCreateDescription = description;
+
             if (CreateTaskException is not null)
             {
                 return Task.FromException<PlannerTaskSnapshot>(CreateTaskException);

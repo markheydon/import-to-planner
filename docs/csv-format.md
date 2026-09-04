@@ -15,7 +15,7 @@ The required column is:
 Accepted columns are:
 
 - Task Name (required)
-- Description (optional) — written to the task notes in Planner when provided
+- Description (optional) — written to the task notes in Planner when provided (maximum 32,768 characters)
 - Priority (optional)
 - Bucket (optional)
 - Goal (optional)
@@ -55,6 +55,7 @@ Publish update,Post the final update to users,3,Delivery,Launch readiness
 - Missing header row: always include headings in the first row.
 - Wrong heading names: use the accepted headings exactly.
 - Invalid priority value: use 0-10 or one of Urgent/Important/Medium/Low.
+- Description too long: keep descriptions within 32,768 characters to match Planner limits.
 - Wrong delimiter: use commas unless your export tool is configured differently and your app instance supports it.
 - Extra columns: unexpected columns can be ignored for import, but keeping only supported columns reduces confusion.
 - Empty task names: each row must include a task name.
