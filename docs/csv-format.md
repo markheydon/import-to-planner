@@ -15,7 +15,7 @@ The required column is:
 Accepted columns are:
 
 - Task Name (required)
-- Description (optional)
+- Description (optional) — written to the task notes in Planner when provided
 - Priority (optional)
 - Bucket (optional)
 - Goal (optional)

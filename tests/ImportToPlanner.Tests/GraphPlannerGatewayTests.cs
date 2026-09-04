@@ -11,6 +11,7 @@ using Microsoft.Kiota.Abstractions.Store;
 using GraphPlannerBucket = Microsoft.Graph.Models.PlannerBucket;
 using GraphPlannerPlan = Microsoft.Graph.Models.PlannerPlan;
 using GraphPlannerTask = Microsoft.Graph.Models.PlannerTask;
+using GraphPlannerTaskDetails = Microsoft.Graph.Models.PlannerTaskDetails;
 
 namespace ImportToPlanner.Tests;
 
@@ -406,8 +407,16 @@ public sealed class GraphPlannerGatewayTests
         var adapter = new StubRequestAdapter();
         adapter.QueueSendAsyncResponse<GraphPlannerTask>(
             "createTaskSuccess",
-            request => request.URI?.AbsolutePath.EndsWith("/planner/tasks", StringComparison.OrdinalIgnoreCase) == true,
+            IsPlannerTaskCreate,
             new GraphPlannerTask { Id = "task-1", Title = "Task A", PlanId = "plan-1" });
+        adapter.QueueSendAsyncResponse<GraphPlannerTaskDetails>(
+            "getTaskDetails",
+            IsPlannerTaskDetailsGet,
+            CreateTaskDetailsWithEtag());
+        adapter.QueueSendAsyncResponse<GraphPlannerTaskDetails>(
+            "patchTaskDetails",
+            IsPlannerTaskDetailsPatch,
+            CreateTaskDetailsWithEtag("Desc"));
 
         var gateway = CreateGateway(adapter);
 
@@ -418,6 +427,78 @@ public sealed class GraphPlannerGatewayTests
         Assert.Equal("task-1", result.Id);
         Assert.Equal("Task A", result.Title);
         Assert.Equal("plan-1", result.PlanId);
+        Assert.Equal(1, adapter.GetCallCount("getTaskDetails"));
+        Assert.Equal(1, adapter.GetCallCount("patchTaskDetails"));
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WithoutDescription_SkipsDetailsRequests()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            new GraphPlannerTask { Id = "task-1", Title = "Task A", PlanId = "plan-1" });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("task-1", result.Id);
+        Assert.DoesNotContain(
+            adapter.CapturedRequestUris,
+            uri => uri?.AbsolutePath.Contains("/details", StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WithWhitespaceDescription_SkipsDetailsRequests()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            new GraphPlannerTask { Id = "task-1", Title = "Task A", PlanId = "plan-1" });
+
+        var gateway = CreateGateway(adapter);
+
+        // Act
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "   ", 3, null, CancellationToken.None);
+
+        // Assert
+        Assert.Equal("task-1", result.Id);
+        Assert.DoesNotContain(
+            adapter.CapturedRequestUris,
+            uri => uri?.AbsolutePath.Contains("/details", StringComparison.OrdinalIgnoreCase) == true);
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WhenDetailsPatchFails_ThrowsPlannerOperationException()
+    {
+        // Arrange
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            new GraphPlannerTask { Id = "task-1", Title = "Task A", PlanId = "plan-1" });
+        adapter.QueueSendAsyncResponse<GraphPlannerTaskDetails>(
+            "getTaskDetails",
+            IsPlannerTaskDetailsGet,
+            CreateTaskDetailsWithEtag());
+        adapter.QueueSendAsyncResponse<GraphPlannerTaskDetails>(
+            "patchTaskDetails",
+            IsPlannerTaskDetailsPatch,
+            CreateApiException(403));
+
+        var gateway = CreateGateway(adapter);
+
+        // Act + Assert
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
+            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, CancellationToken.None));
+        Assert.Equal(PlannerFailureCategory.Authorisation, exception.Failure.Category);
     }
 
     [Fact]
@@ -427,9 +508,17 @@ public sealed class GraphPlannerGatewayTests
         var adapter = new StubRequestAdapter();
         adapter.QueueSendAsyncResponse<GraphPlannerTask>(
             "createTaskTransient",
-            request => request.URI?.AbsolutePath.EndsWith("/planner/tasks", StringComparison.OrdinalIgnoreCase) == true,
+            IsPlannerTaskCreate,
             CreateApiException(503),
             new GraphPlannerTask { Id = "task-retried", Title = "Task A", PlanId = "plan-1" });
+        adapter.QueueSendAsyncResponse<GraphPlannerTaskDetails>(
+            "getTaskDetails",
+            IsPlannerTaskDetailsGet,
+            CreateTaskDetailsWithEtag());
+        adapter.QueueSendAsyncResponse<GraphPlannerTaskDetails>(
+            "patchTaskDetails",
+            IsPlannerTaskDetailsPatch,
+            CreateTaskDetailsWithEtag("Desc"));
 
         var gateway = CreateGateway(adapter);
 
@@ -470,7 +559,7 @@ public sealed class GraphPlannerGatewayTests
         var adapter = new StubRequestAdapter();
         adapter.QueueSendAsyncResponse<GraphPlannerTask>(
             "createTask",
-            request => request.URI?.AbsolutePath.EndsWith("/planner/tasks", StringComparison.OrdinalIgnoreCase) == true,
+            IsPlannerTaskCreate,
             CreateApiException(403));
 
         var gateway = CreateGateway(adapter);
@@ -539,7 +628,7 @@ public sealed class GraphPlannerGatewayTests
         var adapter = new StubRequestAdapter();
         adapter.QueueSendAsyncResponse<GraphPlannerTask>(
             "createTask",
-            request => request.URI?.AbsolutePath.EndsWith("/planner/tasks", StringComparison.OrdinalIgnoreCase) == true,
+            IsPlannerTaskCreate,
             CreateApiException(412));
 
         var gateway = CreateGateway(adapter);
@@ -556,6 +645,30 @@ public sealed class GraphPlannerGatewayTests
         var client = new GraphServiceClient(requestAdapter);
         return new GraphPlannerGateway(client);
     }
+
+    private static bool IsPlannerTaskCreate(RequestInformation request) =>
+        request.HttpMethod == Method.POST &&
+        request.URI?.AbsolutePath.EndsWith("/planner/tasks", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static bool IsPlannerTaskDetailsGet(RequestInformation request) =>
+        request.HttpMethod == Method.GET &&
+        request.URI?.AbsolutePath.Contains("/planner/tasks/", StringComparison.OrdinalIgnoreCase) == true &&
+        request.URI?.AbsolutePath.EndsWith("/details", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static bool IsPlannerTaskDetailsPatch(RequestInformation request) =>
+        request.HttpMethod == Method.PATCH &&
+        request.URI?.AbsolutePath.Contains("/planner/tasks/", StringComparison.OrdinalIgnoreCase) == true &&
+        request.URI?.AbsolutePath.EndsWith("/details", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static GraphPlannerTaskDetails CreateTaskDetailsWithEtag(string? description = null) =>
+        new()
+        {
+            Description = description,
+            AdditionalData = new Dictionary<string, object>
+            {
+                ["@odata.etag"] = "W/\"test-etag\"",
+            },
+        };
 
     private static ApiException CreateApiException(int statusCode, int? retryAfterSeconds = null)
     {

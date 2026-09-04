@@ -7,6 +7,7 @@ using Microsoft.Kiota.Abstractions;
 using GraphPlannerBucket = Microsoft.Graph.Models.PlannerBucket;
 using GraphPlannerPlan = Microsoft.Graph.Models.PlannerPlan;
 using GraphPlannerTask = Microsoft.Graph.Models.PlannerTask;
+using GraphPlannerTaskDetails = Microsoft.Graph.Models.PlannerTaskDetails;
 
 namespace ImportToPlanner.Infrastructure.Graph.Planner;
 
@@ -22,6 +23,8 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     private const int DefaultRetryAfterSeconds = 10;
     private const int MaxRetryAfterSeconds = 60;
     private const int TransientRowFailureRetryCount = 1;
+    private const int TaskDetailsNotFoundRetryCount = 2;
+    private const int TaskDetailsNotFoundRetryDelayMilliseconds = 200;
     private readonly GraphServiceClient graphClient;
     private readonly ICurrentTenantContextAccessor? currentTenantContextAccessor;
 
@@ -356,7 +359,6 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketId, nameof(bucketId));
         ValidateRequired(taskName, nameof(taskName));
-        _ = description;
         _ = goal;
 
         var operationName = $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'";
@@ -381,7 +383,98 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             throw new InvalidOperationException("Graph returned an invalid task response.");
         }
 
+        if (!string.IsNullOrWhiteSpace(description))
+        {
+            await UpdateTaskDescriptionAsync(created.Id, description, taskName, cancellationToken);
+        }
+
         return MapPlannerTaskSnapshot(created, planId);
+    }
+
+    private async Task UpdateTaskDescriptionAsync(
+        string taskId,
+        string description,
+        string taskName,
+        CancellationToken cancellationToken)
+    {
+        ValidateRequired(taskId, nameof(taskId));
+        ValidateRequired(description, nameof(description));
+
+        var getDetailsOperation = $"loading planner task details for '{taskName}'";
+        var existingDetails = await GetTaskDetailsWithAvailabilityRetryAsync(
+            taskId,
+            getDetailsOperation,
+            cancellationToken);
+
+        var etag = ResolvePlannerDetailsEtag(existingDetails);
+        if (string.IsNullOrWhiteSpace(etag))
+        {
+            throw new InvalidOperationException("Graph returned task details without an ETag.");
+        }
+
+        var updateDetailsOperation = $"updating planner task notes for '{taskName}'";
+        await ExecuteGraphCallAsync(
+            updateDetailsOperation,
+            token => graphClient.Planner.Tasks[taskId].Details.PatchAsync(
+                new GraphPlannerTaskDetails
+                {
+                    Description = description,
+                },
+                requestConfiguration =>
+                {
+                    requestConfiguration.Headers.Add("Prefer", "return=representation");
+                    requestConfiguration.Headers.Add("If-Match", etag);
+                },
+                token),
+            cancellationToken);
+    }
+
+    private async Task<GraphPlannerTaskDetails> GetTaskDetailsWithAvailabilityRetryAsync(
+        string taskId,
+        string operationName,
+        CancellationToken cancellationToken)
+    {
+        var attempt = 0;
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var details = await ExecuteGraphCallAsync(
+                    operationName,
+                    token => graphClient.Planner.Tasks[taskId].Details.GetAsync(cancellationToken: token),
+                    cancellationToken);
+
+                if (details is null)
+                {
+                    throw new InvalidOperationException("Graph returned an invalid task details response.");
+                }
+
+                return details;
+            }
+            catch (PlannerOperationException ex) when (
+                ex.Failure.DiagnosticCode == "NotFound" &&
+                attempt < TaskDetailsNotFoundRetryCount)
+            {
+                attempt++;
+                await Task.Delay(TaskDetailsNotFoundRetryDelayMilliseconds, cancellationToken);
+            }
+        }
+    }
+
+    private static string? ResolvePlannerDetailsEtag(GraphPlannerTaskDetails details)
+    {
+        ArgumentNullException.ThrowIfNull(details);
+
+        if (details.AdditionalData is not null &&
+            details.AdditionalData.TryGetValue("@odata.etag", out var etagValue))
+        {
+            return etagValue?.ToString();
+        }
+
+        return null;
     }
 
     private void EnsureDelegatedTenantSession()
