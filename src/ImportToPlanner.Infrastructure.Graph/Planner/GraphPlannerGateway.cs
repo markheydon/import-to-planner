@@ -23,6 +23,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     private const int DefaultRetryAfterSeconds = 10;
     private const int MaxRetryAfterSeconds = 60;
     private const int TransientRowFailureRetryCount = 1;
+    /// <summary>
+    /// Hour (UTC) used when mapping a calendar due date to Graph <c>dueDateTime</c>.
+    /// Midday UTC is avoided because positive-offset zones then roll to the next local day;
+    /// midnight UTC would roll back for negative-offset zones. Ten o'clock UTC keeps the
+    /// intended calendar date for typical UK and European Planner users. Operators in extreme
+    /// positive UTC offsets (UTC+14) may still see the next calendar day in Planner.
+    /// </summary>
+    private const int DueDateUtcHour = 10;
     private const int TaskDetailsNotFoundRetryCount = 4;
     private const int TaskDetailsNotFoundInitialDelayMilliseconds = 200;
     private readonly GraphServiceClient graphClient;
@@ -380,7 +388,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                                 dueDate.Value.Year,
                                 dueDate.Value.Month,
                                 dueDate.Value.Day,
-                                10,
+                                DueDateUtcHour,
                                 0,
                                 0,
                                 TimeSpan.Zero),

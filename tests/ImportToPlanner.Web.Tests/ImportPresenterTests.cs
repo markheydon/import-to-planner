@@ -131,6 +131,39 @@ public sealed class ImportPresenterTests
     }
 
     [Fact]
+    public async Task ImportPlanningPresenter_FormatsDueDateDisplayForPreviewRows()
+    {
+        var presenter = new ImportPlanningPresenter();
+        var dueDate = new DateOnly(2026, 5, 31);
+        var response = new ImportPlanPreview
+        {
+            ContainerId = "group-a",
+            PlanId = "plan-a",
+            PlanName = "Plan A",
+            PlanAction = PlannedEntityAction.Reuse,
+            HasValidationErrors = false,
+            ValidationFindings = [],
+            RequestFingerprint = "request-fingerprint",
+            PlannerStateFingerprint = "state-fingerprint",
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
+            BucketActions = new Dictionary<string, PlannedEntityAction>(StringComparer.OrdinalIgnoreCase),
+            TaskActions =
+            [
+                new ImportTaskPlanItem(2, "Task A", "Ops", null, PlannedEntityAction.Create, DueDate: dueDate),
+                new ImportTaskPlanItem(3, "Task B", "Ops", null, PlannedEntityAction.Create),
+            ],
+        };
+
+        await presenter.PresentAsync(response, CancellationToken.None);
+
+        Assert.NotNull(presenter.ViewModel);
+        var datedTask = Assert.Single(presenter.ViewModel!.TaskActions, task => task.TaskName == "Task A");
+        Assert.Equal("31/05/2026", datedTask.DueDateDisplay);
+        var undatedTask = Assert.Single(presenter.ViewModel.TaskActions, task => task.TaskName == "Task B");
+        Assert.Equal(string.Empty, undatedTask.DueDateDisplay);
+    }
+
+    [Fact]
     public void PlannerFailureMessageMapper_WhenTenantContextMismatch_ReturnsWorkflowRefreshGuidance()
     {
         var message = PlannerFailureMessageMapper.ToUserSafeMessage(

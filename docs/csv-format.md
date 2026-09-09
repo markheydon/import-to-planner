@@ -27,10 +27,12 @@ Use these exact headings in the first row.
 
 Due Date accepts either:
 
-- ISO dates: `yyyy-MM-dd` (for example `2026-05-31`).
+- ISO dates: `yyyy-MM-dd` with zero-padded month and day (for example `2026-05-31`). Values such as `2026-5-31` are not accepted.
 - UK day-first dates with slashes or hyphens, using two- or four-digit years (for example `31/05/2026`, `31-05-26`).
 
 Two-digit years are interpreted as 2000–2099. Leave the cell empty when no due date is needed.
+
+Numeric dates such as `05/06/2026` are read day-first (5 June), not month-first. Excel serial numbers (for example `44927`) are not accepted.
 
 If the value is not recognised, validation will fail for that row, like invalid Priority.
 

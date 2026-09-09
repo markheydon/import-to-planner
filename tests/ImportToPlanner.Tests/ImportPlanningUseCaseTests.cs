@@ -160,6 +160,31 @@ public sealed class ImportPlanningUseCaseTests
     }
 
     [Fact]
+    public async Task HandleAsync_WithDuplicateCsvRowAndDueDate_SkipsWhileRetainingDueDateForDisplay()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var dueDate = new DateOnly(2026, 5, 31);
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [
+                new CsvTaskRow(2, "Task A", null, null, "Ops", null, dueDate),
+                new CsvTaskRow(3, "Task A", null, null, "Ops", null, dueDate),
+            ]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        Assert.Equal(2, output.Response!.TaskActions.Count);
+        var duplicate = Assert.Single(output.Response.TaskActions, task => task.Reason == "duplicate in CSV");
+        Assert.Equal(dueDate, duplicate.DueDate);
+    }
+
+    [Fact]
     public async Task HandleAsync_WhenDueDateChanges_ProducesDifferentRequestFingerprint()
     {
         var gateway = new PlannerGatewayStub();

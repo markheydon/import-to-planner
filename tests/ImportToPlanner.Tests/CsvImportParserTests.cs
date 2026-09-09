@@ -150,6 +150,7 @@ public sealed class CsvImportParserTests
         Assert.False(result.HasErrors);
         Assert.Single(result.Rows);
         Assert.Equal("Task with extras", result.Rows[0].TaskName);
+        Assert.Equal(new DateOnly(2026, 5, 31), result.Rows[0].DueDate);
     }
 
     [Fact]
@@ -292,6 +293,69 @@ public sealed class CsvImportParserTests
         Assert.False(commaResult.HasErrors);
         Assert.False(semicolonResult.HasErrors);
         Assert.Equal(commaResult.Rows[0].DueDate, semicolonResult.Rows[0].DueDate);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithWhitespaceOnlyDueDateCell_LeavesDueDateNull()
+    {
+        const string csv = "Task Name,Due Date\nTask A,   ";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Null(result.Rows[0].DueDate);
+    }
+
+    [Theory]
+    [InlineData("44927")]
+    [InlineData("2026-5-31")]
+    public async Task ParseAsync_WithUnrecognisedDueDateShape_ReturnsDueDateValidationError(string dueDateText)
+    {
+        var csv = $"Task Name,Due Date\nTask A,{dueDateText}";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.True(result.HasErrors);
+        Assert.Contains(result.ValidationErrors, error => error.Field == "Due Date");
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithInvalidCalendarDueDate_ReturnsDueDateValidationError()
+    {
+        const string csv = "Task Name,Due Date\nTask A,31/02/2026";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.True(result.HasErrors);
+        Assert.Contains(result.ValidationErrors, error => error.Field == "Due Date");
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithUkDayFirstAmbiguousDueDate_ParsesDayBeforeMonth()
+    {
+        const string csv = "Task Name,Due Date\nTask A,05/06/2026";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Equal(new DateOnly(2026, 6, 5), result.Rows[0].DueDate);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithQuotedDueDate_ParsesCalendarDate()
+    {
+        const string csv = "Task Name,Due Date\nTask A,\"31/05/2026\"";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Equal(new DateOnly(2026, 5, 31), result.Rows[0].DueDate);
     }
 
     [Fact]

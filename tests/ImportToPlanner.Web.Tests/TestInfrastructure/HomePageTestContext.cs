@@ -4,6 +4,7 @@ using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial.Services;
+using ImportToPlanner.Infrastructure.Graph.Import;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -94,7 +95,8 @@ internal sealed class HomePageTestContext : BunitContext
                 serviceProvider.GetRequiredService<IHttpContextAccessor>(),
                 serviceProvider.GetRequiredService<TenantAuthorityConfiguration>())!);
 
-        Services.AddScoped<ICsvImportParser, CsvImportParserStub>();
+        CsvParser = new CsvImportParserStub();
+        Services.AddScoped<ICsvImportParser>(_ => CsvParser);
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
         Services.AddScoped<ITenantOperationalMetadataStore, TenantOperationalMetadataStoreStub>();
         if (commercialModeEnabled)
@@ -131,6 +133,8 @@ internal sealed class HomePageTestContext : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
+    public CsvImportParserStub CsvParser { get; }
+
     public PlannerGatewayStub Gateway { get; } = new();
 
     public CurrentTenantContextAccessorStub TenantAccessor { get; } = new();
@@ -162,8 +166,17 @@ internal sealed class HomePageTestContext : BunitContext
 
 internal sealed class CsvImportParserStub : ICsvImportParser
 {
+    private readonly CsvImportParser innerParser = new();
+
+    public bool UseRealParser { get; set; }
+
     public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken, bool ignoreExtraColumns = false)
     {
+        if (UseRealParser)
+        {
+            return innerParser.ParseAsync(csvContent, cancellationToken, ignoreExtraColumns);
+        }
+
         return Task.FromResult(new CsvParseResult(
             [new CsvTaskRow(2, "Stub Task", null, null, null, null)],
             []));
