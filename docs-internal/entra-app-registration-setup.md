@@ -33,6 +33,8 @@ Common values for both modes:
 - `AzureAd:CallbackPath=/signin-oidc`
 - Delegated Graph permissions: `User.Read`, `Group.Read.All`, `GroupMember.Read.All`, `Tasks.ReadWrite`
 
+`GroupMember.Read.All` is also used to resolve optional **Assigned To** CSV values against destination members during preview. No additional Graph permission is required for assignee import beyond this existing scope.
+
 ## Shared hosted multi-tenant setup
 
 Use this for the shared service deployment that admits supported work or school tenants.

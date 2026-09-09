@@ -140,7 +140,7 @@ public sealed class ImportPlanningUseCaseTests
         var gateway = new PlannerGatewayStub();
         gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
         var bucket = await gateway.CreateBucketAsync("plan-a", "Ops", CancellationToken.None);
-        await gateway.CreateTaskAsync("plan-a", bucket.Id, "Existing Task", null, null, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-a", bucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
         var useCase = CreateUseCase(gateway);
         var output = new CapturePlanningOutputBoundary();
         var dueDate = new DateOnly(2026, 6, 15);
@@ -201,6 +201,218 @@ public sealed class ImportPlanningUseCaseTests
         var secondRequest = firstRequest with
         {
             Rows = [new CsvTaskRow(2, "Task A", null, null, "Ops", null, new DateOnly(2026, 6, 1))],
+        };
+
+        await useCase.HandleAsync(firstRequest, firstOutput, CancellationToken.None);
+        await useCase.HandleAsync(secondRequest, secondOutput, CancellationToken.None);
+
+        Assert.NotEqual(firstOutput.Response!.RequestFingerprint, secondOutput.Response!.RequestFingerprint);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithoutAssigneeAddresses_DoesNotCallGetPlanMembers()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null)]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        Assert.Equal(0, gateway.GetPlanMembersCallCount);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenMemberLookupFails_SetsAssignedToValidationError()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.GetPlanMembersException = new PlannerOperationException(new PlannerOperationFailure(
+            PlannerFailureCategory.Authorisation,
+            PlannerFailureTarget.Container,
+            "group-a",
+            "Destination members could not be loaded.",
+            false,
+            "Authorisation"));
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["a@contoso.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        Assert.True(output.Response!.HasValidationErrors);
+        Assert.Contains(output.Response.ValidationFindings, error =>
+            error.RowNumber == 0 && error.Field == "Assigned To");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMailMatch_ResolvesMemberIdOnCreateRow()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.SeedDefaultMembers();
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["a@contoso.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Equal(PlannedEntityAction.Create, task.Action);
+        Assert.Equal(["user-1"], task.ResolvedAssigneeIds);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithUpnMatch_ResolvesMemberIdOnCreateRow()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.SeedDefaultMembers();
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["guest_external.com#EXT#@contoso.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Equal(["guest-1"], task.ResolvedAssigneeIds);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithGuestAlreadyInDestination_ResolvesGuestMemberId()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.SeedDefaultMembers();
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["guest@external.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Equal(["guest-1"], task.ResolvedAssigneeIds);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithAliasOnlyValue_MarksUnresolvedWithNotAMember()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.SeedDefaultMembers();
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["alias@contoso.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Empty(task.ResolvedAssigneeIds!);
+        var unresolved = Assert.Single(task.UnresolvedAssignees!);
+        Assert.Equal("alias@contoso.com", unresolved.Address);
+        Assert.Equal("not-a-member", unresolved.ReasonCode);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMixedAssigneeCell_ShowsResolvedAndUnresolvedWithoutBlockingPreview()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.SeedDefaultMembers();
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["a@contoso.com", "unknown@contoso.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.False(output.Response.HasValidationErrors);
+        Assert.Equal(PlannedEntityAction.Create, task.Action);
+        Assert.Equal(["user-1"], task.ResolvedAssigneeIds);
+        var unresolved = Assert.Single(task.UnresolvedAssignees!);
+        Assert.Equal("unknown@contoso.com", unresolved.Address);
+        Assert.Equal("not-a-member", unresolved.ReasonCode);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithExistingTaskAndAssignees_SkipsWhileRetainingAssigneeAddresses()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.SeedDefaultMembers();
+        var bucket = await gateway.CreateBucketAsync("plan-a", "Ops", CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-a", bucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Existing Task", null, null, "Ops", null, null, ["a@contoso.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Equal(PlannedEntityAction.Skip, task.Action);
+        Assert.Equal("already exists", task.Reason);
+        Assert.Equal(["a@contoso.com"], task.AssigneeAddresses);
+        Assert.Empty(task.ResolvedAssigneeIds!);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAssigneeAddressesChange_ProducesDifferentRequestFingerprint()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var useCase = CreateUseCase(gateway);
+        var firstOutput = new CapturePlanningOutputBoundary();
+        var secondOutput = new CapturePlanningOutputBoundary();
+        var firstRequest = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["a@contoso.com"])]);
+        var secondRequest = firstRequest with
+        {
+            Rows = [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["b@contoso.com"])],
         };
 
         await useCase.HandleAsync(firstRequest, firstOutput, CancellationToken.None);

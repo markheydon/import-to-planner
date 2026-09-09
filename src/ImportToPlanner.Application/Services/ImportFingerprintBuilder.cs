@@ -27,7 +27,8 @@ internal static class ImportFingerprintBuilder
                 row.Priority?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 row.Bucket?.Trim() ?? string.Empty,
                 row.Goal?.Trim() ?? string.Empty,
-                row.DueDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty)));
+                row.DueDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+                FormatAssigneeAddresses(row.AssigneeAddresses))));
 
         return ComputeFingerprint(string.Join("\n", lines));
     }
@@ -42,6 +43,16 @@ internal static class ImportFingerprintBuilder
             .OrderBy(line => line, StringComparer.OrdinalIgnoreCase);
 
         return ComputeFingerprint(string.Join("\n", stateLines));
+    }
+
+    private static string FormatAssigneeAddresses(IReadOnlyList<string>? assigneeAddresses)
+    {
+        if (assigneeAddresses is null || assigneeAddresses.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(';', assigneeAddresses);
     }
 
     private static string ComputeFingerprint(string value)

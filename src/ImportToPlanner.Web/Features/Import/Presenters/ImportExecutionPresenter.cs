@@ -71,12 +71,34 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
             "LinkTaskToGoal" => (
                 "Link Task To Goal",
                 "Link this task to the goal manually in Planner."),
+            "AssignPersonToTask" => (
+                "Assign person to task",
+                FormatAssignPersonDetails(action)),
             _ => (
                 action.ActionType,
                 action.Details ?? "Review this item manually in Planner."),
         };
 
         return new ManualActionViewModel(displayActionType, action.GoalName, action.TaskName, details);
+    }
+
+    private static string FormatAssignPersonDetails(ManualAction action)
+    {
+        var reason = action.Details switch
+        {
+            "not-a-member" => "This person is not a member of the destination and could not be assigned automatically.",
+            "not-an-address" => "The value is not a work email or sign-in name and could not be matched.",
+            "assignment-refused" => "Planner refused the assignment; assign this person manually in Planner.",
+            "destination-limit" => "The destination limit for assignees was reached; assign this person manually in Planner.",
+            _ => "Assign this person manually in Planner.",
+        };
+
+        if (string.IsNullOrWhiteSpace(action.PersonIdentifier))
+        {
+            return reason;
+        }
+
+        return $"{action.PersonIdentifier}: {reason}";
     }
 }
 

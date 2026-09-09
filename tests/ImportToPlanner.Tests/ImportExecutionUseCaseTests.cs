@@ -59,12 +59,12 @@ public sealed class ImportExecutionUseCaseTests
         var plannerGatewayStub = new PlannerGatewayStub();
         plannerGatewayStub.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var plannerStubBucket = await plannerGatewayStub.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
-        await plannerGatewayStub.CreateTaskAsync("plan-alpha", plannerStubBucket.Id, "Existing Task", null, null, null, null, CancellationToken.None);
+        await plannerGatewayStub.CreateTaskAsync("plan-alpha", plannerStubBucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
 
         var fakeGateway = new FakePlannerGateway();
         fakeGateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var fakeBucket = await fakeGateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
-        await fakeGateway.CreateTaskAsync("plan-alpha", fakeBucket.Id, "Existing Task", null, null, null, null, CancellationToken.None);
+        await fakeGateway.CreateTaskAsync("plan-alpha", fakeBucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
 
         var inMemoryPlanning = CreatePlanningUseCase(plannerGatewayStub);
         var fakePlanning = CreatePlanningUseCase(fakeGateway);
@@ -198,7 +198,7 @@ public sealed class ImportExecutionUseCaseTests
         var gateway = new FakePlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var opsBucket = await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
-        await gateway.CreateTaskAsync("plan-alpha", opsBucket.Id, "Existing Task", null, null, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", opsBucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
 
         var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
@@ -646,7 +646,7 @@ public sealed class ImportExecutionUseCaseTests
         var gateway = new FakePlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var bucket = await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
-        await gateway.CreateTaskAsync("plan-alpha", bucket.Id, "Existing Task", null, null, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", bucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
         var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
         var request = new ImportPlanningRequest(
@@ -677,7 +677,7 @@ public sealed class ImportExecutionUseCaseTests
         var gateway = new FakePlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         var bucket = await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
-        await gateway.CreateTaskAsync("plan-alpha", bucket.Id, "Existing Task", null, null, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", bucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
         var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
         var newTaskDueDate = new DateOnly(2026, 7, 1);
@@ -702,6 +702,241 @@ public sealed class ImportExecutionUseCaseTests
 
         Assert.Equal(1, gateway.CreateTaskCallCount);
         Assert.Equal(newTaskDueDate, gateway.LastCreateDueDate);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithResolvedAssignees_PassesAssigneeIdsToCreateTask()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null, null, ["a@contoso.com"])]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            new CaptureExecutionOutputBoundary(),
+            CancellationToken.None);
+
+        Assert.Equal(["user-1"], gateway.LastCreateAssigneeIds);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithoutAssignees_PassesEmptyAssigneeListToCreateTask()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = BuildSingleCreateRequest();
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            new CaptureExecutionOutputBoundary(),
+            CancellationToken.None);
+
+        Assert.NotNull(gateway.LastCreateAssigneeIds);
+        Assert.Empty(gateway.LastCreateAssigneeIds!);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithGuestAssignee_PassesGuestMemberIdToCreateTask()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null, null, ["guest@external.com"])]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            new CaptureExecutionOutputBoundary(),
+            CancellationToken.None);
+
+        Assert.Equal(["guest-1"], gateway.LastCreateAssigneeIds);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMixedAssignees_CreatesTaskAndEmitsFollowUpForUnresolved()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null, null, ["a@contoso.com", "unknown@contoso.com"])]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        var output = new CaptureExecutionOutputBoundary();
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal(["user-1"], gateway.LastCreateAssigneeIds);
+        Assert.Single(output.Response!.CreatedItems);
+        var followUp = Assert.Single(output.Response.ManualActions, action => action.ActionType == "AssignPersonToTask");
+        Assert.Equal("unknown@contoso.com", followUp.PersonIdentifier);
+        Assert.Equal("not-a-member", followUp.Details);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithAllUnassignableAddresses_CreatesTaskAndEmitsFollowUpForEachPerson()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null, null, ["unknown@contoso.com", "alias@contoso.com"])]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        var output = new CaptureExecutionOutputBoundary();
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            output,
+            CancellationToken.None);
+
+        Assert.NotNull(gateway.LastCreateAssigneeIds);
+        Assert.Empty(gateway.LastCreateAssigneeIds!);
+        Assert.Single(output.Response!.CreatedItems);
+        Assert.Equal(2, output.Response.ManualActions.Count(action => action.ActionType == "AssignPersonToTask"));
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAppliedAssigneeIdsMissingPreviewResolvedId_EmitsAssignmentRefusedFollowUp()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        gateway.AppliedAssigneeIdsOverride = [];
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null, null, ["a@contoso.com"])]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        var output = new CaptureExecutionOutputBoundary();
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            output,
+            CancellationToken.None);
+
+        Assert.Single(output.Response!.CreatedItems);
+        var followUp = Assert.Single(output.Response.ManualActions, action => action.ActionType == "AssignPersonToTask");
+        Assert.Equal("a@contoso.com", followUp.PersonIdentifier);
+        Assert.Equal("assignment-refused", followUp.Details);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithExistingTaskAndAssignees_DoesNotCreateOrEmitAssignPersonFollowUp()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        var bucket = await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", bucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Existing Task", null, 3, "Ops", null, null, ["a@contoso.com", "unknown@contoso.com"])]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        gateway.ResetCreateTracking();
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        var output = new CaptureExecutionOutputBoundary();
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal(0, gateway.CreateTaskCallCount);
+        Assert.DoesNotContain(output.Response!.ManualActions, action => action.ActionType == "AssignPersonToTask");
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithMixedNewAndExistingTasks_AssignsOnlyNewTasks()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        var bucket = await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", bucket.Id, "Existing Task", null, null, null, null, [], CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [
+                new CsvTaskRow(2, "Existing Task", null, 3, "Ops", null, null, ["a@contoso.com"]),
+                new CsvTaskRow(3, "Brand New Task", null, 3, "Ops", null, null, ["guest@external.com"]),
+            ]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        gateway.ResetCreateTracking();
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            new CaptureExecutionOutputBoundary(),
+            CancellationToken.None);
+
+        Assert.Equal(1, gateway.CreateTaskCallCount);
+        Assert.Equal(["guest-1"], gateway.LastCreateAssigneeIds);
     }
 
     private static ImportPlanningRequest BuildSingleCreateRequest()
@@ -750,10 +985,13 @@ public sealed class ImportExecutionUseCaseTests
         private readonly List<PlannerPlan> plans = [];
         private readonly Dictionary<string, List<PlannerBucket>> buckets = new();
         private readonly Dictionary<string, List<PlannerTaskSnapshot>> tasks = new();
+        private readonly List<PlanMember> members = [];
 
         public Exception? GetPlanByIdException { get; set; }
 
         public Exception? GetBucketsException { get; set; }
+
+        public Exception? GetPlanMembersException { get; set; }
 
         public Exception? CreateTaskException { get; set; }
 
@@ -761,12 +999,26 @@ public sealed class ImportExecutionUseCaseTests
 
         public DateOnly? LastCreateDueDate { get; private set; }
 
+        public IReadOnlyList<string>? LastCreateAssigneeIds { get; private set; }
+
+        public IReadOnlyList<string>? AppliedAssigneeIdsOverride { get; set; }
+
         public int CreateTaskCallCount { get; private set; }
+
+        public int GetPlanMembersCallCount { get; private set; }
 
         public void ResetCreateTracking()
         {
             LastCreateDueDate = null;
+            LastCreateAssigneeIds = null;
             CreateTaskCallCount = 0;
+        }
+
+        public void SeedDefaultMembers()
+        {
+            members.Clear();
+            members.Add(new PlanMember("user-1", "a@contoso.com", "a@contoso.com"));
+            members.Add(new PlanMember("guest-1", "guest@external.com", "guest_external.com#EXT#@contoso.com"));
         }
 
         public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
@@ -817,15 +1069,40 @@ public sealed class ImportExecutionUseCaseTests
         public Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>(tasks.GetValueOrDefault(planId, []));
 
-        public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, DateOnly? dueDate, CancellationToken cancellationToken)
+        public Task<IReadOnlyList<PlanMember>> GetPlanMembersAsync(
+            string containerId,
+            ContainerType containerType,
+            CancellationToken cancellationToken)
+        {
+            GetPlanMembersCallCount++;
+
+            if (GetPlanMembersException is not null)
+            {
+                return Task.FromException<IReadOnlyList<PlanMember>>(GetPlanMembersException);
+            }
+
+            return Task.FromResult<IReadOnlyList<PlanMember>>(members);
+        }
+
+        public Task<CreatedPlannerTask> CreateTaskAsync(
+            string planId,
+            string bucketId,
+            string taskName,
+            string? description,
+            int? priority,
+            string? goal,
+            DateOnly? dueDate,
+            IReadOnlyList<string> assigneeUserIds,
+            CancellationToken cancellationToken)
         {
             LastCreateDescription = description;
             LastCreateDueDate = dueDate;
+            LastCreateAssigneeIds = assigneeUserIds;
             CreateTaskCallCount++;
 
             if (CreateTaskException is not null)
             {
-                return Task.FromException<PlannerTaskSnapshot>(CreateTaskException);
+                return Task.FromException<CreatedPlannerTask>(CreateTaskException);
             }
 
             if (!tasks.TryGetValue(planId, out var planTasks))
@@ -837,12 +1114,14 @@ public sealed class ImportExecutionUseCaseTests
             var existing = planTasks.FirstOrDefault(task => string.Equals(task.Title, taskName, StringComparison.OrdinalIgnoreCase));
             if (existing is not null)
             {
-                return Task.FromResult(existing);
+                var appliedIds = AppliedAssigneeIdsOverride ?? assigneeUserIds;
+                return Task.FromResult(new CreatedPlannerTask(existing, appliedIds));
             }
 
             var task = new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId);
             planTasks.Add(task);
-            return Task.FromResult(task);
+            var appliedAssigneeIds = AppliedAssigneeIdsOverride ?? assigneeUserIds;
+            return Task.FromResult(new CreatedPlannerTask(task, appliedAssigneeIds));
         }
 
         public void AddPlan(string planId, string containerId, ContainerType containerType, string planName)

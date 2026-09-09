@@ -15,6 +15,11 @@ public sealed class ImportPlanningUseCase(
 {
     private const string DefaultBucketName = "General";
     private const string TaskAlreadyExistsReason = "already exists";
+    private const string AssignedToField = "Assigned To";
+    private const string NotAMemberReasonCode = "not-a-member";
+    private const string NotAnAddressReasonCode = "not-an-address";
+    private static readonly IReadOnlyList<string> EmptyAssigneeIds = [];
+    private static readonly IReadOnlyList<UnresolvedAssignee> EmptyUnresolvedAssignees = [];
 
     /// <inheritdoc/>
     public async Task HandleAsync(
@@ -52,6 +57,27 @@ public sealed class ImportPlanningUseCase(
         var requestFingerprint = ImportFingerprintBuilder.BuildRequestFingerprint(request);
         var plannerStateFingerprint = ImportFingerprintBuilder.BuildPlannerStateFingerprint(existingBuckets, existingTasks);
 
+        var validationFindings = new List<ImportValidationError>();
+        IReadOnlyList<PlanMember>? destinationMembers = null;
+
+        if (request.Rows.Any(row => HasAssigneeAddresses(row.AssigneeAddresses)))
+        {
+            try
+            {
+                destinationMembers = await plannerGateway.GetPlanMembersAsync(
+                    request.ContainerId,
+                    request.ContainerType,
+                    cancellationToken);
+            }
+            catch (PlannerOperationException ex)
+            {
+                validationFindings.Add(new ImportValidationError(
+                    0,
+                    AssignedToField,
+                    ex.Failure.Message));
+            }
+        }
+
         var csvSeenTaskNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var taskActions = new List<ImportTaskPlanItem>();
 
@@ -60,6 +86,11 @@ public sealed class ImportPlanningUseCase(
             var resolvedBucket = string.IsNullOrWhiteSpace(row.Bucket)
                 ? DefaultBucketName
                 : row.Bucket!;
+
+            var assigneeAddresses = NormaliseAssigneeAddresses(row.AssigneeAddresses);
+            var assigneeResolution = destinationMembers is null
+                ? new AssigneeResolution(EmptyAssigneeIds, EmptyUnresolvedAssignees)
+                : ResolveAssignees(assigneeAddresses, destinationMembers);
 
             if (!csvSeenTaskNames.Add(row.TaskName))
             {
@@ -70,7 +101,10 @@ public sealed class ImportPlanningUseCase(
                     ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
                     "duplicate in CSV",
-                    DueDate: row.DueDate));
+                    DueDate: row.DueDate,
+                    AssigneeAddresses: assigneeAddresses,
+                    ResolvedAssigneeIds: EmptyAssigneeIds,
+                    UnresolvedAssignees: assigneeResolution.UnresolvedAssignees));
 
                 continue;
             }
@@ -84,7 +118,10 @@ public sealed class ImportPlanningUseCase(
                     ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
                     TaskAlreadyExistsReason,
-                    DueDate: row.DueDate));
+                    DueDate: row.DueDate,
+                    AssigneeAddresses: assigneeAddresses,
+                    ResolvedAssigneeIds: EmptyAssigneeIds,
+                    UnresolvedAssignees: assigneeResolution.UnresolvedAssignees));
 
                 continue;
             }
@@ -95,7 +132,10 @@ public sealed class ImportPlanningUseCase(
                 resolvedBucket,
                 ResolveGoalList(row.Goal),
                 PlannedEntityAction.Create,
-                DueDate: row.DueDate));
+                DueDate: row.DueDate,
+                AssigneeAddresses: assigneeAddresses,
+                ResolvedAssigneeIds: assigneeResolution.ResolvedAssigneeIds,
+                UnresolvedAssignees: assigneeResolution.UnresolvedAssignees));
         }
 
         var requiredBuckets = taskActions
@@ -119,8 +159,8 @@ public sealed class ImportPlanningUseCase(
             PlanName = existingPlan.Title,
             PlanId = existingPlan.Id,
             PlanAction = PlannedEntityAction.Reuse,
-            HasValidationErrors = false,
-            ValidationFindings = [],
+            HasValidationErrors = validationFindings.Count > 0,
+            ValidationFindings = validationFindings,
             RequestFingerprint = requestFingerprint,
             PlannerStateFingerprint = plannerStateFingerprint,
             GeneratedAtUtc = DateTimeOffset.UtcNow,
@@ -129,6 +169,68 @@ public sealed class ImportPlanningUseCase(
         };
 
         await outputBoundary.PresentAsync(response, cancellationToken);
+    }
+
+    private static bool HasAssigneeAddresses(IReadOnlyList<string>? assigneeAddresses)
+    {
+        return assigneeAddresses is { Count: > 0 };
+    }
+
+    private static IReadOnlyList<string> NormaliseAssigneeAddresses(IReadOnlyList<string>? assigneeAddresses)
+    {
+        if (assigneeAddresses is null || assigneeAddresses.Count == 0)
+        {
+            return [];
+        }
+
+        return assigneeAddresses;
+    }
+
+    private static AssigneeResolution ResolveAssignees(
+        IReadOnlyList<string> assigneeAddresses,
+        IReadOnlyList<PlanMember> destinationMembers)
+    {
+        if (assigneeAddresses.Count == 0)
+        {
+            return new AssigneeResolution(EmptyAssigneeIds, EmptyUnresolvedAssignees);
+        }
+
+        var resolvedIds = new List<string>();
+        var unresolved = new List<UnresolvedAssignee>();
+        var resolvedIdSet = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var address in assigneeAddresses)
+        {
+            if (!address.Contains('@', StringComparison.Ordinal))
+            {
+                unresolved.Add(new UnresolvedAssignee(address, NotAnAddressReasonCode));
+                continue;
+            }
+
+            var matchedMember = destinationMembers.FirstOrDefault(member =>
+                MatchesMember(address, member));
+
+            if (matchedMember is null)
+            {
+                unresolved.Add(new UnresolvedAssignee(address, NotAMemberReasonCode));
+                continue;
+            }
+
+            if (resolvedIdSet.Add(matchedMember.Id))
+            {
+                resolvedIds.Add(matchedMember.Id);
+            }
+        }
+
+        return new AssigneeResolution(resolvedIds, unresolved);
+    }
+
+    private static bool MatchesMember(string address, PlanMember member)
+    {
+        return (!string.IsNullOrWhiteSpace(member.Mail)
+                && string.Equals(address, member.Mail, StringComparison.OrdinalIgnoreCase))
+            || (!string.IsNullOrWhiteSpace(member.SignInName)
+                && string.Equals(address, member.SignInName, StringComparison.OrdinalIgnoreCase));
     }
 
     private async Task<ConsentResolution> ResolveConsentAsync(CancellationToken cancellationToken)
@@ -208,4 +310,8 @@ public sealed class ImportPlanningUseCase(
             throw new ArgumentException("At least one CSV row is required.", nameof(request));
         }
     }
+
+    private sealed record AssigneeResolution(
+        IReadOnlyList<string> ResolvedAssigneeIds,
+        IReadOnlyList<UnresolvedAssignee> UnresolvedAssignees);
 }

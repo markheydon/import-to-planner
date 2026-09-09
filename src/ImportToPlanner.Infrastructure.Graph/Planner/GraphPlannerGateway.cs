@@ -4,10 +4,13 @@ using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
+using GraphPlannerAssignment = Microsoft.Graph.Models.PlannerAssignment;
+using GraphPlannerAssignments = Microsoft.Graph.Models.PlannerAssignments;
 using GraphPlannerBucket = Microsoft.Graph.Models.PlannerBucket;
 using GraphPlannerPlan = Microsoft.Graph.Models.PlannerPlan;
 using GraphPlannerTask = Microsoft.Graph.Models.PlannerTask;
 using GraphPlannerTaskDetails = Microsoft.Graph.Models.PlannerTaskDetails;
+using GraphUser = Microsoft.Graph.Models.User;
 
 namespace ImportToPlanner.Infrastructure.Graph.Planner;
 
@@ -353,7 +356,32 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     }
 
     /// <inheritdoc/>
-    public async Task<PlannerTaskSnapshot> CreateTaskAsync(
+    public async Task<IReadOnlyList<PlanMember>> GetPlanMembersAsync(
+        string containerId,
+        ContainerType containerType,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        EnsureDelegatedTenantSession();
+        ValidateRequired(containerId, nameof(containerId));
+
+        return containerType switch
+        {
+            ContainerType.User => await GetUserContainerMembersAsync(cancellationToken),
+            ContainerType.Group => await GetGroupContainerMembersAsync(containerId, cancellationToken),
+            _ => throw new PlannerOperationException(
+                new PlannerOperationFailure(
+                    PlannerFailureCategory.Authorisation,
+                    PlannerFailureTarget.Container,
+                    containerId,
+                    "Destination members could not be loaded for this container type.",
+                    false,
+                    "Authorisation")),
+        };
+    }
+
+    /// <inheritdoc/>
+    public async Task<CreatedPlannerTask> CreateTaskAsync(
         string planId,
         string bucketId,
         string taskName,
@@ -361,6 +389,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         int? priority,
         string? goal,
         DateOnly? dueDate,
+        IReadOnlyList<string> assigneeUserIds,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -370,32 +399,49 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         ValidateRequired(taskName, nameof(taskName));
         _ = goal;
 
-        var operationName = $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'";
-        var created = await ExecuteWithTransientRowRetryAsync(
-            operationName,
-            innerToken => ExecuteGraphCallAsync(
-                operationName,
-                token => graphClient.Planner.Tasks.PostAsync(
-                    new GraphPlannerTask
-                    {
-                        PlanId = planId,
-                        BucketId = bucketId,
-                        Title = taskName,
-                        Priority = priority,
-                        DueDateTime = dueDate is null
-                            ? null
-                            : new DateTimeOffset(
-                                dueDate.Value.Year,
-                                dueDate.Value.Month,
-                                dueDate.Value.Day,
-                                DueDateUtcHour,
-                                0,
-                                0,
-                                TimeSpan.Zero),
-                    },
-                    cancellationToken: token),
-                innerToken),
-            cancellationToken);
+        var assigneeIds = assigneeUserIds ?? [];
+        GraphPlannerTask? created;
+        IReadOnlyList<string> appliedAssigneeIds;
+
+        if (assigneeIds.Count > 0)
+        {
+            try
+            {
+                created = await PostTaskAsync(
+                    planId,
+                    bucketId,
+                    taskName,
+                    priority,
+                    dueDate,
+                    assigneeIds,
+                    cancellationToken);
+                appliedAssigneeIds = assigneeIds;
+            }
+            catch (PlannerOperationException ex) when (IsAssignmentCreateFailure(ex))
+            {
+                created = await PostTaskAsync(
+                    planId,
+                    bucketId,
+                    taskName,
+                    priority,
+                    dueDate,
+                    [],
+                    cancellationToken);
+                appliedAssigneeIds = [];
+            }
+        }
+        else
+        {
+            created = await PostTaskAsync(
+                planId,
+                bucketId,
+                taskName,
+                priority,
+                dueDate,
+                [],
+                cancellationToken);
+            appliedAssigneeIds = [];
+        }
 
         if (string.IsNullOrWhiteSpace(created?.Id) || string.IsNullOrWhiteSpace(created.Title))
         {
@@ -415,7 +461,158 @@ public sealed class GraphPlannerGateway : IPlannerGateway
             }
         }
 
-        return MapPlannerTaskSnapshot(created, planId);
+        return new CreatedPlannerTask(MapPlannerTaskSnapshot(created, planId), appliedAssigneeIds);
+    }
+
+    private async Task<IReadOnlyList<PlanMember>> GetUserContainerMembersAsync(CancellationToken cancellationToken)
+    {
+        var me = await ExecuteGraphCallAsync(
+            "loading destination members for personal plans",
+            innerToken => graphClient.Me.GetAsync(
+                requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = ["id", "mail", "userPrincipalName"];
+                },
+                innerToken),
+            cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(me?.Id))
+        {
+            throw new InvalidOperationException("Graph returned an invalid user response.");
+        }
+
+        return [MapPlanMember(me)];
+    }
+
+    private async Task<IReadOnlyList<PlanMember>> GetGroupContainerMembersAsync(
+        string containerId,
+        CancellationToken cancellationToken)
+    {
+        var members = new List<PlanMember>();
+        var membersResponse = await ExecuteGraphCallAsync(
+            $"loading destination members for group '{containerId}'",
+            innerToken => graphClient.Groups[containerId].Members.GraphUser.GetAsync(
+                requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = ["id", "mail", "userPrincipalName"];
+                    requestConfiguration.QueryParameters.Top = MaxGroupPageSize;
+                },
+                innerToken),
+            cancellationToken);
+
+        while (membersResponse is not null)
+        {
+            if (membersResponse.Value is not null)
+            {
+                members.AddRange(membersResponse.Value
+                    .Where(user => !string.IsNullOrWhiteSpace(user.Id))
+                    .Select(MapPlanMember));
+            }
+
+            if (string.IsNullOrWhiteSpace(membersResponse.OdataNextLink))
+            {
+                break;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            membersResponse = await ExecuteGraphCallAsync(
+                $"loading destination members for group '{containerId}'",
+                innerToken => graphClient.Groups[containerId].Members.GraphUser
+                    .WithUrl(membersResponse.OdataNextLink)
+                    .GetAsync(cancellationToken: innerToken),
+                cancellationToken);
+        }
+
+        return members;
+    }
+
+    private async Task<GraphPlannerTask> PostTaskAsync(
+        string planId,
+        string bucketId,
+        string taskName,
+        int? priority,
+        DateOnly? dueDate,
+        IReadOnlyList<string> assigneeUserIds,
+        CancellationToken cancellationToken)
+    {
+        var operationName = $"creating planner task '{taskName}' in plan '{planId}' and bucket '{bucketId}'";
+        var created = await ExecuteWithTransientRowRetryAsync(
+            operationName,
+            innerToken => ExecuteGraphCallAsync(
+                operationName,
+                token => graphClient.Planner.Tasks.PostAsync(
+                    BuildCreateTaskRequest(planId, bucketId, taskName, priority, dueDate, assigneeUserIds),
+                    cancellationToken: token),
+                innerToken),
+            cancellationToken);
+
+        if (created is null)
+        {
+            throw new InvalidOperationException("Graph returned an invalid task response.");
+        }
+
+        return created;
+    }
+
+    private static GraphPlannerTask BuildCreateTaskRequest(
+        string planId,
+        string bucketId,
+        string taskName,
+        int? priority,
+        DateOnly? dueDate,
+        IReadOnlyList<string> assigneeUserIds)
+    {
+        var task = new GraphPlannerTask
+        {
+            PlanId = planId,
+            BucketId = bucketId,
+            Title = taskName,
+            Priority = priority,
+            DueDateTime = dueDate is null
+                ? null
+                : new DateTimeOffset(
+                    dueDate.Value.Year,
+                    dueDate.Value.Month,
+                    dueDate.Value.Day,
+                    DueDateUtcHour,
+                    0,
+                    0,
+                    TimeSpan.Zero),
+        };
+
+        if (assigneeUserIds.Count > 0)
+        {
+            var assignments = new GraphPlannerAssignments();
+            foreach (var userId in assigneeUserIds)
+            {
+                assignments.AdditionalData ??= new Dictionary<string, object>();
+                assignments.AdditionalData[userId] = new GraphPlannerAssignment
+                {
+                    OrderHint = " !",
+                };
+            }
+
+            task.Assignments = assignments;
+        }
+
+        return task;
+    }
+
+    private static PlanMember MapPlanMember(GraphUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        return new PlanMember(user.Id!, user.Mail, user.UserPrincipalName);
+    }
+
+    private static bool IsAssignmentCreateFailure(PlannerOperationException exception)
+    {
+        if (exception.InnerException is ApiException apiException)
+        {
+            return apiException.ResponseStatusCode is 400 or 403;
+        }
+
+        return false;
     }
 
     private async Task UpdateTaskDescriptionAsync(

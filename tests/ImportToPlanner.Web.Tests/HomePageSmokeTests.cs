@@ -63,6 +63,7 @@ public sealed class HomePageSmokeTests
         Assert.Contains("Bucket", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Goal", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Due Date", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Assigned To", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Sign out", cut.Markup, StringComparison.OrdinalIgnoreCase);
     }
 

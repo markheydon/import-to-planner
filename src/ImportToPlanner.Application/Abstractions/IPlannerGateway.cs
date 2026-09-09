@@ -1,3 +1,4 @@
+using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
 
 namespace ImportToPlanner.Application.Abstractions;
@@ -57,6 +58,18 @@ public interface IPlannerGateway
     Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Gets destination members who can be assigned to tasks in the specified container.
+    /// </summary>
+    /// <param name="containerId">The container identifier.</param>
+    /// <param name="containerType">The container type.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The destination members available for assignment.</returns>
+    Task<IReadOnlyList<PlanMember>> GetPlanMembersAsync(
+        string containerId,
+        ContainerType containerType,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Creates a task in the specified plan.
     /// </summary>
     /// <param name="planId">The plan identifier.</param>
@@ -66,9 +79,10 @@ public interface IPlannerGateway
     /// <param name="priority">The optional priority.</param>
     /// <param name="goal">The optional goal value from CSV.</param>
     /// <param name="dueDate">The optional calendar due date to set on the new task.</param>
+    /// <param name="assigneeUserIds">The destination member identifiers to assign on create.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
-    /// <returns>The created task snapshot.</returns>
-    Task<PlannerTaskSnapshot> CreateTaskAsync(
+    /// <returns>The created task and the assignees actually applied.</returns>
+    Task<CreatedPlannerTask> CreateTaskAsync(
         string planId,
         string bucketId,
         string taskName,
@@ -76,5 +90,6 @@ public interface IPlannerGateway
         int? priority,
         string? goal,
         DateOnly? dueDate,
+        IReadOnlyList<string> assigneeUserIds,
         CancellationToken cancellationToken);
 }

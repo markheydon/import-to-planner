@@ -163,6 +163,42 @@ public sealed class ImportPresenterTests
         Assert.Equal(string.Empty, undatedTask.DueDateDisplay);
     }
 
+    [Theory]
+    [InlineData("not-a-member", "not a member of the destination")]
+    [InlineData("not-an-address", "not a work email or sign-in name")]
+    [InlineData("assignment-refused", "Planner refused the assignment")]
+    [InlineData("destination-limit", "destination limit for assignees")]
+    public async Task ImportExecutionPresenter_PresentsAssignPersonToTaskWithUkReasonCopy(
+        string reasonCode,
+        string expectedFragment)
+    {
+        var presenter = new ImportExecutionPresenter();
+        var response = new ImportExecutionResult
+        {
+            PlanId = "plan-1",
+            CreatedItems = [new ImportExecutionItem(PlannerFailureTarget.Task, "Task A")],
+            ReusedOrSkippedItems = [],
+            FailureItems = [],
+            ManualActions =
+            [
+                new ManualAction(
+                    "AssignPersonToTask",
+                    null,
+                    "Task A",
+                    reasonCode,
+                    "person@contoso.com"),
+            ],
+            OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 0, 1, false, false),
+        };
+
+        await presenter.PresentAsync(response, CancellationToken.None);
+
+        var manualAction = Assert.Single(presenter.ViewModel!.ManualActions);
+        Assert.Equal("Assign person to task", manualAction.ActionType);
+        Assert.Contains("person@contoso.com", manualAction.Details, StringComparison.Ordinal);
+        Assert.Contains(expectedFragment, manualAction.Details, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void PlannerFailureMessageMapper_WhenTenantContextMismatch_ReturnsWorkflowRefreshGuidance()
     {

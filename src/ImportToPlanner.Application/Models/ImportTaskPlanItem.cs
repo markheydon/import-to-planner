@@ -12,6 +12,9 @@ namespace ImportToPlanner.Application.Models;
 /// <param name="IsStale">Indicates whether this item became stale before execution.</param>
 /// <param name="ReportStatus">The user-facing report status for this item.</param>
 /// <param name="DueDate">The optional due date from CSV, shown in preview even when the row is skipped.</param>
+/// <param name="AssigneeAddresses">The original CSV assignee addresses for preview display.</param>
+/// <param name="ResolvedAssigneeIds">The destination member identifiers to assign on create.</param>
+/// <param name="UnresolvedAssignees">The assignee addresses that need manual follow-up at preview.</param>
 public sealed record ImportTaskPlanItem(
     int RowNumber,
     string TaskName,
@@ -21,4 +24,7 @@ public sealed record ImportTaskPlanItem(
     string? Reason = null,
     bool IsStale = false,
     string? ReportStatus = null,
-    DateOnly? DueDate = null);
+    DateOnly? DueDate = null,
+    IReadOnlyList<string>? AssigneeAddresses = null,
+    IReadOnlyList<string>? ResolvedAssigneeIds = null,
+    IReadOnlyList<UnresolvedAssignee>? UnresolvedAssignees = null);
