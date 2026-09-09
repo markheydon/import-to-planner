@@ -17,6 +17,7 @@ public sealed class CsvImportParser : ICsvImportParser
     private const string BucketHeader = "bucket";
     private const string GoalHeader = "goal";
     private const int MaxDescriptionLength = 32_768;
+    private const char Utf8Bom = '\uFEFF';
 
     private static readonly HashSet<string> SupportedHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -32,14 +33,42 @@ public sealed class CsvImportParser : ICsvImportParser
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (string.IsNullOrWhiteSpace(csvContent))
+        var normalisedContent = StripLeadingBom(csvContent);
+
+        if (string.IsNullOrWhiteSpace(normalisedContent))
         {
             return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV file is empty.")]));
         }
 
-        using var reader = new StringReader(csvContent);
+        var headerLine = GetFirstHeaderLine(normalisedContent);
+        var separatorDetection = DetectFieldSeparator(headerLine);
+
+        if (separatorDetection == FieldSeparatorDetection.Ambiguous)
+        {
+            return Task.FromResult(new CsvParseResult(
+                [],
+                [new ImportValidationError(
+                    0,
+                    "File",
+                    "The field separator could not be determined. Save the file as comma-separated UTF-8 and upload again.")]));
+        }
+
+        if (separatorDetection == FieldSeparatorDetection.Unsupported)
+        {
+            return Task.FromResult(new CsvParseResult(
+                [],
+                [new ImportValidationError(
+                    0,
+                    "File",
+                    "This separator is not supported. Save the file as comma-separated UTF-8 and upload again.")]));
+        }
+
+        var delimiter = separatorDetection == FieldSeparatorDetection.Semicolon ? ";" : ",";
+
+        using var reader = new StringReader(normalisedContent);
         var config = new CsvConfiguration(CultureInfo.InvariantCulture)
         {
+            Delimiter = delimiter,
             IgnoreBlankLines = true,
             TrimOptions = TrimOptions.Trim,
             MissingFieldFound = null,
@@ -98,6 +127,140 @@ public sealed class CsvImportParser : ICsvImportParser
         }
 
         return Task.FromResult(new CsvParseResult(rows, errors));
+    }
+
+    /// <summary>
+    /// Strips a leading UTF-8 BOM when present. Upload paths may already remove the BOM via
+    /// <see cref="StreamReader"/>, but callers can still pass raw text containing U+FEFF.
+    /// </summary>
+    private static string StripLeadingBom(string? csvContent)
+    {
+        if (string.IsNullOrEmpty(csvContent))
+        {
+            return string.Empty;
+        }
+
+        if (csvContent[0] == Utf8Bom)
+        {
+            return csvContent[1..];
+        }
+
+        return csvContent;
+    }
+
+    private static string GetFirstHeaderLine(string csvContent)
+    {
+        var inQuotes = false;
+
+        for (var index = 0; index < csvContent.Length; index++)
+        {
+            var character = csvContent[index];
+
+            if (inQuotes)
+            {
+                if (character == '"')
+                {
+                    if (index + 1 < csvContent.Length && csvContent[index + 1] == '"')
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+
+                continue;
+            }
+
+            if (character == '"')
+            {
+                inQuotes = true;
+                continue;
+            }
+
+            if (character == '\r' || character == '\n')
+            {
+                return csvContent[..index];
+            }
+        }
+
+        return csvContent;
+    }
+
+    private static FieldSeparatorDetection DetectFieldSeparator(string headerLine)
+    {
+        var unquotedCommas = 0;
+        var unquotedSemicolons = 0;
+        var unquotedTabs = 0;
+        var unquotedPipes = 0;
+        var inQuotes = false;
+
+        for (var index = 0; index < headerLine.Length; index++)
+        {
+            var character = headerLine[index];
+
+            if (inQuotes)
+            {
+                if (character == '"')
+                {
+                    if (index + 1 < headerLine.Length && headerLine[index + 1] == '"')
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+
+                continue;
+            }
+
+            if (character == '"')
+            {
+                inQuotes = true;
+                continue;
+            }
+
+            switch (character)
+            {
+                case ',':
+                    unquotedCommas++;
+                    break;
+                case ';':
+                    unquotedSemicolons++;
+                    break;
+                case '\t':
+                    unquotedTabs++;
+                    break;
+                case '|':
+                    unquotedPipes++;
+                    break;
+            }
+        }
+
+        if (unquotedCommas > 0 && unquotedSemicolons > 0)
+        {
+            return FieldSeparatorDetection.Ambiguous;
+        }
+
+        if (unquotedSemicolons > 0 && unquotedCommas == 0)
+        {
+            return FieldSeparatorDetection.Semicolon;
+        }
+
+        if (unquotedCommas > 0 && unquotedSemicolons == 0)
+        {
+            return FieldSeparatorDetection.Comma;
+        }
+
+        if (unquotedTabs > 0 || unquotedPipes > 0)
+        {
+            return FieldSeparatorDetection.Unsupported;
+        }
+
+        return FieldSeparatorDetection.SingleColumn;
     }
 
     private static void ValidateHeaders(IEnumerable<string> headers, List<ImportValidationError> errors, bool ignoreExtraColumns = false)
@@ -159,5 +322,14 @@ public sealed class CsvImportParser : ICsvImportParser
     private static string? Normalise(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private enum FieldSeparatorDetection
+    {
+        Comma,
+        Semicolon,
+        SingleColumn,
+        Ambiguous,
+        Unsupported,
     }
 }
