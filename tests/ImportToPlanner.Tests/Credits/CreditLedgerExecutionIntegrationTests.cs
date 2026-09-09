@@ -166,7 +166,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
         var backlogBucket = await gateway.CreateBucketAsync("plan-alpha", "Backlog", CancellationToken.None);
         await gateway.CreateBucketAsync("plan-alpha", "Architecture", CancellationToken.None);
-        await gateway.CreateTaskAsync("plan-alpha", backlogBucket.Id, "Create user stories", null, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", backlogBucket.Id, "Create user stories", null, null, null, null, CancellationToken.None);
 
         var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
@@ -222,7 +222,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
         var backlogBucket = await gateway.CreateBucketAsync("plan-alpha", "Backlog", CancellationToken.None);
-        await gateway.CreateTaskAsync("plan-alpha", backlogBucket.Id, "Create user stories", null, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", backlogBucket.Id, "Create user stories", null, null, null, null, CancellationToken.None);
 
         var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
@@ -277,7 +277,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
         var backlogBucket = await gateway.CreateBucketAsync("plan-alpha", "Backlog", CancellationToken.None);
-        await gateway.CreateTaskAsync("plan-alpha", backlogBucket.Id, "Create user stories", null, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-alpha", backlogBucket.Id, "Create user stories", null, null, null, null, CancellationToken.None);
 
         var planningUseCase = CreatePlanningUseCase(gateway);
         var planningOutput = new CapturePlanningOutputBoundary();
@@ -427,7 +427,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
         public Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
             => Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>([]);
 
-        public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, CancellationToken cancellationToken)
+        public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, DateOnly? dueDate, CancellationToken cancellationToken)
             => Task.FromResult(new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId));
 
         public void AddPlan(string planId, string containerId, ContainerType containerType, string planName)

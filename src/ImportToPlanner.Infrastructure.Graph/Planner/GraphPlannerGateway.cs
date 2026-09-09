@@ -352,6 +352,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         string? description,
         int? priority,
         string? goal,
+        DateOnly? dueDate,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -373,6 +374,16 @@ public sealed class GraphPlannerGateway : IPlannerGateway
                         BucketId = bucketId,
                         Title = taskName,
                         Priority = priority,
+                        DueDateTime = dueDate is null
+                            ? null
+                            : new DateTimeOffset(
+                                dueDate.Value.Year,
+                                dueDate.Value.Month,
+                                dueDate.Value.Day,
+                                10,
+                                0,
+                                0,
+                                TimeSpan.Zero),
                     },
                     cancellationToken: token),
                 innerToken),

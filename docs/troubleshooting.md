@@ -40,6 +40,7 @@ Common causes:
 - Unsupported or misspelled column headings.
 - Empty task names.
 - Invalid priority values.
+- Invalid due date values (row-level CSV validation, not a file separator error).
 - Locale Excel CSV that uses semicolons — usually fine when the header uses semicolons consistently.
 - UTF-8 BOM at the start of the file — the app ignores a leading BOM; you do not need to remove it.
 - Mixed commas and semicolons in the header row — the app cannot determine the separator. Save as comma-separated UTF-8.

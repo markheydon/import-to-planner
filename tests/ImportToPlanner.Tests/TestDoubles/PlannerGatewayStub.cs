@@ -44,7 +44,7 @@ public sealed class PlannerGatewayStub : IPlannerGateway
     public Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>(tasks.GetValueOrDefault(planId, []));
 
-    public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, CancellationToken cancellationToken)
+    public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, DateOnly? dueDate, CancellationToken cancellationToken)
     {
         if (!tasks.TryGetValue(planId, out var planTasks))
         {

@@ -26,7 +26,8 @@ internal static class ImportFingerprintBuilder
                 row.Description?.Trim() ?? string.Empty,
                 row.Priority?.ToString(CultureInfo.InvariantCulture) ?? string.Empty,
                 row.Bucket?.Trim() ?? string.Empty,
-                row.Goal?.Trim() ?? string.Empty)));
+                row.Goal?.Trim() ?? string.Empty,
+                row.DueDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty)));
 
         return ComputeFingerprint(string.Join("\n", lines));
     }

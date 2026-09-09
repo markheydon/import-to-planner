@@ -9,10 +9,12 @@ namespace ImportToPlanner.Application.Models;
 /// <param name="Priority">The optional Planner priority in the range 0-10.</param>
 /// <param name="Bucket">The optional bucket name.</param>
 /// <param name="Goal">The optional goal name used to generate manual post-import actions.</param>
+/// <param name="DueDate">The optional calendar due date from the CSV Due Date column.</param>
 public sealed record CsvTaskRow(
     int RowNumber,
     string TaskName,
     string? Description,
     int? Priority,
     string? Bucket,
-    string? Goal);
+    string? Goal,
+    DateOnly? DueDate = null);
