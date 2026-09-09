@@ -5,6 +5,13 @@ namespace ImportToPlanner.Tests;
 
 public sealed class CsvImportParserTests
 {
+    private const string AmbiguousSeparatorMessage =
+        "The field separator could not be determined. Save the file as comma-separated UTF-8 and upload again.";
+
+    private const string UnsupportedSeparatorMessage =
+        "This separator is not supported. Save the file as comma-separated UTF-8 and upload again.";
+
+    private const string EmptyFileMessage = "CSV file is empty.";
     [Fact]
     public async Task ParseAsync_WithMissingTaskName_ReturnsRowLevelValidationError()
     {
@@ -284,7 +291,7 @@ public sealed class CsvImportParserTests
         Assert.Contains(result.ValidationErrors, error =>
             error.RowNumber == 0 &&
             error.Field == "File" &&
-            error.Message.Contains("separator", StringComparison.OrdinalIgnoreCase));
+            error.Message == AmbiguousSeparatorMessage);
         Assert.DoesNotContain(result.ValidationErrors, error =>
             error.Message.Contains("Task Name column is required", StringComparison.OrdinalIgnoreCase));
     }
@@ -305,7 +312,7 @@ public sealed class CsvImportParserTests
         Assert.Contains(result.ValidationErrors, error =>
             error.RowNumber == 0 &&
             error.Field == "File" &&
-            error.Message.Contains("not supported", StringComparison.OrdinalIgnoreCase));
+            error.Message == UnsupportedSeparatorMessage);
     }
 
     [Fact]
@@ -324,7 +331,7 @@ public sealed class CsvImportParserTests
         Assert.Contains(result.ValidationErrors, error =>
             error.RowNumber == 0 &&
             error.Field == "File" &&
-            error.Message.Contains("not supported", StringComparison.OrdinalIgnoreCase));
+            error.Message == UnsupportedSeparatorMessage);
     }
 
     [Fact]
@@ -364,6 +371,129 @@ public sealed class CsvImportParserTests
     {
         // Arrange
         const string csv = "Task Name,\"Description; alias\"\nTask A,Value";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None, ignoreExtraColumns: true);
+
+        // Assert
+        Assert.DoesNotContain(result.ValidationErrors, error => error.Field == "File");
+        Assert.Single(result.Rows);
+        Assert.Equal("Task A", result.Rows[0].TaskName);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithQuotedSemicolonsInCommaDelimitedDescription_PreservesFieldValue()
+    {
+        // Arrange
+        const string csv = "Task Name,Description\nTask A,\"Has; semicolon inside\"";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Equal("Has; semicolon inside", result.Rows[0].Description);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithCrlfLineEndings_ParsesSuccessfully()
+    {
+        // Arrange
+        const string csv = "Task Name;Description\r\nTask A;Desc";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Equal("Task A", result.Rows[0].TaskName);
+        Assert.Equal("Desc", result.Rows[0].Description);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithBomOnly_ReturnsEmptyFileError()
+    {
+        // Arrange
+        const string csv = "\uFEFF";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.HasErrors);
+        Assert.Empty(result.Rows);
+        Assert.Contains(result.ValidationErrors, error =>
+            error.RowNumber == 0 &&
+            error.Field == "File" &&
+            error.Message == EmptyFileMessage);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithBomAndWhitespaceOnly_ReturnsEmptyFileError()
+    {
+        // Arrange
+        const string csv = "\uFEFF   \r\n  ";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.HasErrors);
+        Assert.Empty(result.Rows);
+        Assert.Contains(result.ValidationErrors, error =>
+            error.RowNumber == 0 &&
+            error.Field == "File" &&
+            error.Message == EmptyFileMessage);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithNullContent_ReturnsEmptyFileError()
+    {
+        // Arrange
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(null!, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.HasErrors);
+        Assert.Empty(result.Rows);
+        Assert.Contains(result.ValidationErrors, error =>
+            error.RowNumber == 0 &&
+            error.Field == "File" &&
+            error.Message == EmptyFileMessage);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithQuotedNewlineInSemicolonHeader_ParsesSuccessfully()
+    {
+        // Arrange
+        const string csv = "Task Name;\"Part1\nPart2\";Priority;Bucket;Goal\nTask A;Desc;3;Ops;Goal A";
+        var parser = new CsvImportParser();
+
+        // Act
+        var result = await parser.ParseAsync(csv, CancellationToken.None, ignoreExtraColumns: true);
+
+        // Assert
+        Assert.DoesNotContain(result.ValidationErrors, error => error.Message == AmbiguousSeparatorMessage);
+        Assert.DoesNotContain(result.ValidationErrors, error => error.Message == UnsupportedSeparatorMessage);
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Equal("Task A", result.Rows[0].TaskName);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithQuotedPipeInHeader_DoesNotTreatAsUnsupportedSeparator()
+    {
+        // Arrange
+        const string csv = "Task Name,\"Notes | extra\"\nTask A,Value";
         var parser = new CsvImportParser();
 
         // Act

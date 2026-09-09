@@ -129,9 +129,18 @@ public sealed class CsvImportParser : ICsvImportParser
         return Task.FromResult(new CsvParseResult(rows, errors));
     }
 
-    private static string StripLeadingBom(string csvContent)
+    /// <summary>
+    /// Strips a leading UTF-8 BOM when present. Upload paths may already remove the BOM via
+    /// <see cref="StreamReader"/>, but callers can still pass raw text containing U+FEFF.
+    /// </summary>
+    private static string StripLeadingBom(string? csvContent)
     {
-        if (csvContent.Length > 0 && csvContent[0] == Utf8Bom)
+        if (string.IsNullOrEmpty(csvContent))
+        {
+            return string.Empty;
+        }
+
+        if (csvContent[0] == Utf8Bom)
         {
             return csvContent[1..];
         }
@@ -141,15 +150,36 @@ public sealed class CsvImportParser : ICsvImportParser
 
     private static string GetFirstHeaderLine(string csvContent)
     {
+        var inQuotes = false;
+
         for (var index = 0; index < csvContent.Length; index++)
         {
             var character = csvContent[index];
-            if (character == '\r')
+
+            if (inQuotes)
             {
-                return csvContent[..index];
+                if (character == '"')
+                {
+                    if (index + 1 < csvContent.Length && csvContent[index + 1] == '"')
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        inQuotes = false;
+                    }
+                }
+
+                continue;
             }
 
-            if (character == '\n')
+            if (character == '"')
+            {
+                inQuotes = true;
+                continue;
+            }
+
+            if (character == '\r' || character == '\n')
             {
                 return csvContent[..index];
             }
@@ -162,6 +192,8 @@ public sealed class CsvImportParser : ICsvImportParser
     {
         var unquotedCommas = 0;
         var unquotedSemicolons = 0;
+        var unquotedTabs = 0;
+        var unquotedPipes = 0;
         var inQuotes = false;
 
         for (var index = 0; index < headerLine.Length; index++)
@@ -199,6 +231,12 @@ public sealed class CsvImportParser : ICsvImportParser
                 case ';':
                     unquotedSemicolons++;
                     break;
+                case '\t':
+                    unquotedTabs++;
+                    break;
+                case '|':
+                    unquotedPipes++;
+                    break;
             }
         }
 
@@ -217,7 +255,7 @@ public sealed class CsvImportParser : ICsvImportParser
             return FieldSeparatorDetection.Comma;
         }
 
-        if (headerLine.Contains('\t') || headerLine.Contains('|'))
+        if (unquotedTabs > 0 || unquotedPipes > 0)
         {
             return FieldSeparatorDetection.Unsupported;
         }
