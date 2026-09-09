@@ -20,8 +20,19 @@ Accepted columns are:
 - Bucket (optional)
 - Goal (optional)
 - Due Date (optional)
+- Assigned To (optional)
 
 Use these exact headings in the first row.
+
+## Assigned To values
+
+Assigned To accepts one or more people identified by work email or sign-in name (user principal name). List several people in one cell, separated by commas or semicolons.
+
+Each value is matched only against destination members (the group or personal plan container). Guests already in the destination can be assigned. Other aliases are not matched.
+
+If a person cannot be assigned, the task is still created and the import report lists manual follow-up for that person. That is different from a row validation error.
+
+If the file contains at least one Assigned To address and the app cannot load destination members (for example missing permission), preview is blocked until lookup succeeds.
 
 ## Due Date values
 
@@ -70,10 +81,10 @@ Review requirements
 ## Full-featured CSV example
 
 ```csv
-Task Name,Description,Priority,Bucket,Goal,Due Date
-Prepare release notes,Draft version 1 for review,Urgent,Planning,Launch readiness,31/05/2026
-Confirm sign-off,Collect final approval from stakeholders,Important,Approvals,Launch readiness,2026-06-15
-Publish update,Post the final update to users,3,Delivery,Launch readiness,
+Task Name,Description,Priority,Bucket,Goal,Due Date,Assigned To
+Prepare release notes,Draft version 1 for review,Urgent,Planning,Launch readiness,31/05/2026,owner@contoso.com
+Confirm sign-off,Collect final approval from stakeholders,Important,Approvals,Launch readiness,2026-06-15,"reviewer@contoso.com; approver@contoso.com"
+Publish update,Post the final update to users,3,Delivery,Launch readiness,,
 ```
 
 ## Common mistakes and how to avoid them

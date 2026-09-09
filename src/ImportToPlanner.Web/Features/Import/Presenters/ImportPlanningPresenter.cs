@@ -34,7 +34,8 @@ public sealed class ImportPlanningPresenter : IImportPlanningOutputBoundary
                     task.Goals is { Count: > 0 } ? string.Join(", ", task.Goals) : string.Empty,
                     task.Action.ToString(),
                     task.Reason,
-                    FormatDueDateDisplay(task.DueDate)))
+                    FormatDueDateDisplay(task.DueDate),
+                    FormatAssignedToDisplay(task)))
                 .ToArray());
 
         return Task.CompletedTask;
@@ -43,6 +44,34 @@ public sealed class ImportPlanningPresenter : IImportPlanningOutputBoundary
     private static string FormatDueDateDisplay(DateOnly? dueDate)
     {
         return dueDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? string.Empty;
+    }
+
+    private static string FormatAssignedToDisplay(ImportTaskPlanItem task)
+    {
+        var matched = task.ResolvedAssignees is { Count: > 0 }
+            ? string.Join(", ", task.ResolvedAssignees.Select(resolved => resolved.Address))
+            : string.Empty;
+
+        var followUp = task.UnresolvedAssignees is { Count: > 0 }
+            ? string.Join(", ", task.UnresolvedAssignees.Select(unresolved => unresolved.Address))
+            : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(matched) && string.IsNullOrWhiteSpace(followUp))
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(followUp))
+        {
+            return matched;
+        }
+
+        if (string.IsNullOrWhiteSpace(matched))
+        {
+            return $"Follow-up: {followUp}";
+        }
+
+        return $"{matched} (follow-up: {followUp})";
     }
 }
 
@@ -74,6 +103,7 @@ public sealed record ImportBucketActionViewModel(string BucketName, string Actio
 /// <param name="Action">The action label.</param>
 /// <param name="Reason">The optional reason text.</param>
 /// <param name="DueDateDisplay">The optional due date formatted for display.</param>
+/// <param name="AssignedToDisplay">The optional assignee preview text.</param>
 public sealed record ImportTaskActionViewModel(
     int RowNumber,
     string TaskName,
@@ -81,4 +111,5 @@ public sealed record ImportTaskActionViewModel(
     string Goals,
     string Action,
     string? Reason,
-    string DueDateDisplay);
+    string DueDateDisplay,
+    string AssignedToDisplay);

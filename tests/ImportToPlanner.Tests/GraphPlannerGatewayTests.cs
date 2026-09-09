@@ -422,12 +422,12 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, CancellationToken.None);
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, [], CancellationToken.None);
 
         // Assert
-        Assert.Equal("task-1", result.Id);
-        Assert.Equal("Task A", result.Title);
-        Assert.Equal("plan-1", result.PlanId);
+        Assert.Equal("task-1", result.Snapshot.Id);
+        Assert.Equal("Task A", result.Snapshot.Title);
+        Assert.Equal("plan-1", result.Snapshot.PlanId);
         Assert.Equal(1, adapter.GetCallCount("getTaskDetails"));
         Assert.Equal(1, adapter.GetCallCount("patchTaskDetails"));
 
@@ -449,10 +449,10 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, null, CancellationToken.None);
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, null, [], CancellationToken.None);
 
         // Assert
-        Assert.Equal("task-1", result.Id);
+        Assert.Equal("task-1", result.Snapshot.Id);
         Assert.DoesNotContain(
             adapter.CapturedRequestUris,
             uri => uri?.AbsolutePath.Contains("/details", StringComparison.OrdinalIgnoreCase) == true);
@@ -470,7 +470,7 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
         var dueDate = new DateOnly(2026, 5, 31);
 
-        await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, dueDate, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, dueDate, [], CancellationToken.None);
 
         var createRequest = Assert.Single(adapter.CapturedRequests, request => request.HttpMethod == Method.POST);
         Assert.NotNull(createRequest.Body);
@@ -489,7 +489,7 @@ public sealed class GraphPlannerGatewayTests
 
         var gateway = CreateGateway(adapter);
 
-        await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, null, CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, null, [], CancellationToken.None);
 
         var createRequest = Assert.Single(adapter.CapturedRequests, request => request.HttpMethod == Method.POST);
         Assert.DoesNotContain("dueDateTime", createRequest.Body ?? string.Empty, StringComparison.OrdinalIgnoreCase);
@@ -508,10 +508,10 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "   ", 3, null, null, CancellationToken.None);
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "   ", 3, null, null, [], CancellationToken.None);
 
         // Assert
-        Assert.Equal("task-1", result.Id);
+        Assert.Equal("task-1", result.Snapshot.Id);
         Assert.DoesNotContain(
             adapter.CapturedRequestUris,
             uri => uri?.AbsolutePath.Contains("/details", StringComparison.OrdinalIgnoreCase) == true);
@@ -542,7 +542,7 @@ public sealed class GraphPlannerGatewayTests
 
         // Act + Assert
         var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
-            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, CancellationToken.None));
+            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, [], CancellationToken.None));
         Assert.Equal(PlannerFailureCategory.Authorisation, exception.Failure.Category);
         Assert.Equal(1, adapter.GetCallCount("deleteTask"));
     }
@@ -570,10 +570,10 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, CancellationToken.None);
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, [], CancellationToken.None);
 
         // Assert
-        Assert.Equal("task-1", result.Id);
+        Assert.Equal("task-1", result.Snapshot.Id);
         Assert.Equal(3, adapter.GetCallCount("getTaskDetails"));
         Assert.Equal(1, adapter.GetCallCount("patchTaskDetails"));
     }
@@ -599,7 +599,7 @@ public sealed class GraphPlannerGatewayTests
 
         // Act + Assert
         var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
-            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, CancellationToken.None));
+            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, [], CancellationToken.None));
         Assert.Equal("MissingETag", exception.Failure.DiagnosticCode);
         Assert.Equal(1, adapter.GetCallCount("deleteTask"));
     }
@@ -627,10 +627,10 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, CancellationToken.None);
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, [], CancellationToken.None);
 
         // Assert
-        Assert.Equal("task-1", result.Id);
+        Assert.Equal("task-1", result.Snapshot.Id);
         Assert.Equal(2, adapter.GetCallCount("patchTaskDetails"));
     }
 
@@ -657,10 +657,10 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, CancellationToken.None);
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, [], CancellationToken.None);
 
         // Assert
-        Assert.Equal("task-1", result.Id);
+        Assert.Equal("task-1", result.Snapshot.Id);
         Assert.Equal(2, adapter.GetCallCount("patchTaskDetails"));
         Assert.Equal(2, adapter.GetCallCount("getTaskDetails"));
     }
@@ -687,10 +687,10 @@ public sealed class GraphPlannerGatewayTests
         var gateway = CreateGateway(adapter);
 
         // Act
-        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, CancellationToken.None);
+        var result = await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", "Desc", 3, null, null, [], CancellationToken.None);
 
         // Assert
-        Assert.Equal("task-retried", result.Id);
+        Assert.Equal("task-retried", result.Snapshot.Id);
         Assert.Equal(2, adapter.GetCallCount("createTaskTransient"));
     }
 
@@ -730,7 +730,7 @@ public sealed class GraphPlannerGatewayTests
 
         // Act + Assert
         var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
-            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, null, null, null, CancellationToken.None));
+            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, null, null, null, [], CancellationToken.None));
         Assert.Equal(PlannerFailureCategory.Authorisation, exception.Failure.Category);
     }
 
@@ -786,6 +786,180 @@ public sealed class GraphPlannerGatewayTests
     }
 
     [Fact]
+    public async Task CreateTaskAsync_WithAssigneeIds_IncludesAssignmentsInPostBody()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            CreatePlannerTaskWithEtag("task-1", "Task A", "plan-1"));
+
+        var gateway = CreateGateway(adapter);
+
+        await gateway.CreateTaskAsync(
+            "plan-1",
+            "bucket-1",
+            "Task A",
+            null,
+            3,
+            null,
+            null,
+            ["user-1", "user-2"],
+            CancellationToken.None);
+
+        var createRequest = Assert.Single(adapter.CapturedRequests, request => request.HttpMethod == Method.POST);
+        Assert.NotNull(createRequest.Body);
+        Assert.Contains("assignments", createRequest.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("user-1", createRequest.Body, StringComparison.Ordinal);
+        Assert.Contains("user-2", createRequest.Body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WithoutAssigneeIds_OmitsAssignmentsFromPostBody()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            CreatePlannerTaskWithEtag("task-1", "Task A", "plan-1"));
+
+        var gateway = CreateGateway(adapter);
+
+        await gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, 3, null, null, [], CancellationToken.None);
+
+        var createRequest = Assert.Single(adapter.CapturedRequests, request => request.HttpMethod == Method.POST);
+        Assert.DoesNotContain("assignments", createRequest.Body ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetPlanMembersAsync_WithPagedGroupMembers_ReturnsAllMembers()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<UserCollectionResponse>(
+            "groupMembers",
+            request => request.URI?.AbsolutePath.Contains("/groups/group-1/members", StringComparison.OrdinalIgnoreCase) == true,
+            new UserCollectionResponse
+            {
+                Value =
+                [
+                    new User { Id = "user-1", Mail = "a@contoso.com", UserPrincipalName = "a@contoso.com" },
+                ],
+                OdataNextLink = "https://graph.microsoft.com/beta/groups/group-1/members/microsoft.graph.user?$skiptoken=page2",
+            },
+            new UserCollectionResponse
+            {
+                Value =
+                [
+                    new User { Id = "user-2", Mail = "b@contoso.com", UserPrincipalName = "b@contoso.com" },
+                ],
+            });
+
+        var gateway = CreateGateway(adapter);
+
+        var result = await gateway.GetPlanMembersAsync("group-1", ContainerType.Group, CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        Assert.Contains(result, member => member.Id == "user-1" && member.Mail == "a@contoso.com");
+        Assert.Contains(result, member => member.Id == "user-2" && member.Mail == "b@contoso.com");
+        Assert.Equal(2, adapter.GetCallCount("groupMembers"));
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WhenAssignmentsRejected_RetriesWithoutAssignmentsAndReturnsEmptyAppliedIds()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            CreateApiException(400, message: "Invalid assignment reference for user."),
+            CreatePlannerTaskWithEtag("task-1", "Task A", "plan-1"));
+
+        var gateway = CreateGateway(adapter);
+
+        var result = await gateway.CreateTaskAsync(
+            "plan-1",
+            "bucket-1",
+            "Task A",
+            null,
+            3,
+            null,
+            null,
+            ["user-1"],
+            CancellationToken.None);
+
+        Assert.Equal("task-1", result.Snapshot.Id);
+        Assert.Empty(result.AppliedAssigneeIds);
+        Assert.Equal(2, adapter.GetCallCount("createTaskSuccess"));
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WhenNonAssignment400WithAssignees_ThrowsWithoutRetryingWithoutAssignments()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTask",
+            IsPlannerTaskCreate,
+            CreateApiException(400, message: "Title is required."));
+
+        var gateway = CreateGateway(adapter);
+
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
+            gateway.CreateTaskAsync(
+                "plan-1",
+                "bucket-1",
+                "Task A",
+                null,
+                3,
+                null,
+                null,
+                ["user-1"],
+                CancellationToken.None));
+
+        Assert.Equal(PlannerFailureCategory.Unknown, exception.Failure.Category);
+        Assert.Equal(1, adapter.GetCallCount("createTask"));
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WhenAssignmentsRejectedWith403_RetriesWithoutAssignmentsAndReturnsEmptyAppliedIds()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            CreateApiException(403, message: "Insufficient privileges to set assignment."),
+            CreatePlannerTaskWithEtag("task-1", "Task A", "plan-1"));
+
+        var gateway = CreateGateway(adapter);
+
+        var result = await gateway.CreateTaskAsync(
+            "plan-1",
+            "bucket-1",
+            "Task A",
+            null,
+            3,
+            null,
+            null,
+            ["user-1"],
+            CancellationToken.None);
+
+        Assert.Equal("task-1", result.Snapshot.Id);
+        Assert.Empty(result.AppliedAssigneeIds);
+        Assert.Equal(2, adapter.GetCallCount("createTaskSuccess"));
+    }
+
+    [Fact]
+    public async Task GetPlanMembersAsync_WithRosterContainer_ThrowsAuthorisationFailure()
+    {
+        var adapter = new StubRequestAdapter();
+        var gateway = CreateGateway(adapter);
+
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
+            gateway.GetPlanMembersAsync("roster-1", ContainerType.Roster, CancellationToken.None));
+
+        Assert.Equal(PlannerFailureCategory.Authorisation, exception.Failure.Category);
+    }
+
+    [Fact]
     public async Task CreateTaskAsync_WhenGraphReturnsConflict_ThrowsConflictFailureWithoutBlindRetry()
     {
         // Arrange
@@ -799,7 +973,7 @@ public sealed class GraphPlannerGatewayTests
 
         // Act + Assert
         var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
-            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, null, null, null, CancellationToken.None));
+            gateway.CreateTaskAsync("plan-1", "bucket-1", "Task A", null, null, null, null, [], CancellationToken.None));
         Assert.Equal(PlannerFailureCategory.Conflict, exception.Failure.Category);
         Assert.Equal(1, adapter.GetCallCount("createTask"));
     }
@@ -851,9 +1025,9 @@ public sealed class GraphPlannerGatewayTests
             },
         };
 
-    private static ApiException CreateApiException(int statusCode, int? retryAfterSeconds = null)
+    private static ApiException CreateApiException(int statusCode, int? retryAfterSeconds = null, string? message = null)
     {
-        var exception = new ApiException($"HTTP {statusCode}")
+        var exception = new ApiException(message ?? $"HTTP {statusCode}")
         {
             ResponseStatusCode = statusCode,
         };

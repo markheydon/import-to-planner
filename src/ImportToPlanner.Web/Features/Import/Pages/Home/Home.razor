@@ -47,7 +47,7 @@
                                 Import a CSV into one Planner plan, then review each step before execution.
                             </MudText>
                             <MudText Typo="Typo.body2" Class="step-intro__guidance">
-                                Required field: <strong>Task Name</strong>. Accepted fields: <strong>Task Name</strong>, <strong>Description</strong>, <strong>Priority</strong>, <strong>Bucket</strong>, <strong>Goal</strong>, and optional <strong>Due Date</strong>. Some details still need manual follow-up in Planner after import, for example confirming goals.
+                                Required field: <strong>Task Name</strong>. Accepted fields: <strong>Task Name</strong>, <strong>Description</strong>, <strong>Priority</strong>, <strong>Bucket</strong>, <strong>Goal</strong>, optional <strong>Due Date</strong>, and optional <strong>Assigned To</strong>. Some details still need manual follow-up in Planner after import, for example confirming goals.
                             </MudText>
                         }
                     </MudStack>
@@ -419,6 +419,8 @@
            && preview is not null
            && currentRequest is not null
            && !isPreviewStale
+           && !preview.Preview.HasValidationErrors
+           && parseErrors.Count == 0
            && IsCurrentSelectionInSyncWithRequest()
            && !IsCreditConfirmBlocked();
 
@@ -427,6 +429,8 @@
            && preview is not null
            && currentRequest is not null
            && !isPreviewStale
+           && !preview.Preview.HasValidationErrors
+           && parseErrors.Count == 0
            && IsCurrentSelectionInSyncWithRequest();
 
     private Severity StatusMessageSeverity
@@ -662,6 +666,7 @@
                         <PropertyColumn Property="@(task => task.Bucket)" Title="Bucket" />
                         <PropertyColumn Property="@(task => task.Goals)" Title="Goals" />
                         <PropertyColumn Property="@(task => task.DueDateDisplay)" Title="Due date" />
+                        <PropertyColumn Property="@(task => task.AssignedToDisplay)" Title="Assigned to" />
                         <PropertyColumn Property="@(task => task.Action)" Title="Action" />
                         <PropertyColumn Property="@(task => task.Reason)" Title="Reason" />
                     </Columns>

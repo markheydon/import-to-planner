@@ -9,6 +9,13 @@ public sealed class PlannerGatewayStub : IPlannerGateway
     private readonly List<PlannerPlan> plans = [];
     private readonly Dictionary<string, List<PlannerBucket>> buckets = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, List<PlannerTaskSnapshot>> tasks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<PlanMember> members = [];
+
+    public Exception? GetPlanMembersException { get; set; }
+
+    public IReadOnlyList<string>? LastCreateAssigneeIds { get; private set; }
+
+    public int GetPlanMembersCallCount { get; private set; }
 
     public Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<PlannerContainer>>([]);
@@ -44,8 +51,34 @@ public sealed class PlannerGatewayStub : IPlannerGateway
     public Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>(tasks.GetValueOrDefault(planId, []));
 
-    public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, DateOnly? dueDate, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<PlanMember>> GetPlanMembersAsync(
+        string containerId,
+        ContainerType containerType,
+        CancellationToken cancellationToken)
     {
+        GetPlanMembersCallCount++;
+
+        if (GetPlanMembersException is not null)
+        {
+            return Task.FromException<IReadOnlyList<PlanMember>>(GetPlanMembersException);
+        }
+
+        return Task.FromResult<IReadOnlyList<PlanMember>>(members);
+    }
+
+    public Task<CreatedPlannerTask> CreateTaskAsync(
+        string planId,
+        string bucketId,
+        string taskName,
+        string? description,
+        int? priority,
+        string? goal,
+        DateOnly? dueDate,
+        IReadOnlyList<string> assigneeUserIds,
+        CancellationToken cancellationToken)
+    {
+        LastCreateAssigneeIds = assigneeUserIds;
+
         if (!tasks.TryGetValue(planId, out var planTasks))
         {
             planTasks = [];
@@ -55,12 +88,12 @@ public sealed class PlannerGatewayStub : IPlannerGateway
         var existing = planTasks.FirstOrDefault(task => string.Equals(task.Title, taskName, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
         {
-            return Task.FromResult(existing);
+            return Task.FromResult(new CreatedPlannerTask(existing, assigneeUserIds));
         }
 
         var task = new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId);
         planTasks.Add(task);
-        return Task.FromResult(task);
+        return Task.FromResult(new CreatedPlannerTask(task, assigneeUserIds));
     }
 
     public void AddPlan(string planId, string containerId, ContainerType containerType, string planName)
@@ -68,6 +101,18 @@ public sealed class PlannerGatewayStub : IPlannerGateway
         plans.Add(new PlannerPlan(planId, planName, containerId, containerType));
         buckets.TryAdd(planId, []);
         tasks.TryAdd(planId, []);
+    }
+
+    public void AddMember(PlanMember member)
+    {
+        members.Add(member);
+    }
+
+    public void SeedDefaultMembers()
+    {
+        members.Clear();
+        members.Add(new PlanMember("user-1", "a@contoso.com", "a@contoso.com"));
+        members.Add(new PlanMember("guest-1", "guest@external.com", "guest_external.com#EXT#@contoso.com"));
     }
 }
 

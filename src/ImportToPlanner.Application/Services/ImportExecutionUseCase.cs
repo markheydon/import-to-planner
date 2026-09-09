@@ -227,7 +227,8 @@ public sealed class ImportExecutionUseCase(
             try
             {
                 var sourceRow = rowsByNumber[taskAction.RowNumber];
-                var createdTask = await plannerGateway.CreateTaskAsync(
+                var assigneeIds = taskAction.ResolvedAssigneeIds ?? [];
+                var createdTaskResult = await plannerGateway.CreateTaskAsync(
                     plan.Id,
                     bucket.Id,
                     sourceRow.TaskName,
@@ -235,9 +236,21 @@ public sealed class ImportExecutionUseCase(
                     sourceRow.Priority,
                     sourceRow.Goal,
                     sourceRow.DueDate,
+                    assigneeIds,
                     cancellationToken);
 
+                var createdTask = createdTaskResult.Snapshot;
                 created.Add(new ImportExecutionItem(PlannerFailureTarget.Task, createdTask.Title, createdTask.Id));
+
+                foreach (var followUp in BuildAssigneeFollowUps(taskAction, createdTaskResult.AppliedAssigneeIds))
+                {
+                    manualActions.Add(new ManualAction(
+                        "AssignPersonToTask",
+                        null,
+                        sourceRow.TaskName,
+                        followUp.ReasonCode,
+                        followUp.Address));
+                }
 
                 if (request.Metering is not null)
                 {
@@ -390,6 +403,39 @@ public sealed class ImportExecutionUseCase(
     private static bool IsTaskAlreadyExistsReason(string? reason)
     {
         return string.Equals(reason, "already exists", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static IEnumerable<(string Address, string ReasonCode)> BuildAssigneeFollowUps(
+        ImportTaskPlanItem taskAction,
+        IReadOnlyList<string> appliedAssigneeIds)
+    {
+        foreach (var unresolved in taskAction.UnresolvedAssignees ?? [])
+        {
+            yield return (unresolved.Address, unresolved.ReasonCode);
+        }
+
+        var resolvedIds = taskAction.ResolvedAssigneeIds ?? [];
+        if (resolvedIds.Count == 0)
+        {
+            yield break;
+        }
+
+        var appliedSet = new HashSet<string>(appliedAssigneeIds, StringComparer.Ordinal);
+        if (resolvedIds.All(appliedSet.Contains))
+        {
+            yield break;
+        }
+
+        var emittedMemberIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var resolved in taskAction.ResolvedAssignees ?? [])
+        {
+            if (appliedSet.Contains(resolved.MemberId) || !emittedMemberIds.Add(resolved.MemberId))
+            {
+                continue;
+            }
+
+            yield return (resolved.Address, "assignment-refused");
+        }
     }
 
     private static PlannerOperationFailure CreateCreditFailure(

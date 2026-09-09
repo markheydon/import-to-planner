@@ -64,6 +64,7 @@ Operational notes:
 - Keep the hosted app registration and the self-hosted app registration separate by default so a tenant-owned self-hosted deployment does not inherit shared hosted consent and redirect-URI requirements.
 - The hosted deployment must keep `AzureAd:TenantId` aligned to the app-registration tenant and set `AzureAd:HomeTenantId=multiple` for shared hosted sign-in.
 - Keep the delegated Graph scope set aligned with `src/ImportToPlanner.Web/appsettings.json`: `User.Read`, `Group.Read.All`, `GroupMember.Read.All`, and `Tasks.ReadWrite`.
+- Optional CSV **Assigned To** resolution uses the existing `GroupMember.Read.All` delegated scope (paginated group user lookup and `/me` for personal plans). Do not add a separate permission for assignee preview in this increment.
 
 Further reading
 ---------------

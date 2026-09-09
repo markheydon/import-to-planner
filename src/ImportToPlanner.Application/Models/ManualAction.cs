@@ -7,8 +7,10 @@ namespace ImportToPlanner.Application.Models;
 /// <param name="GoalName">The optional goal name.</param>
 /// <param name="TaskName">The optional task name.</param>
 /// <param name="Details">Optional additional details.</param>
+/// <param name="PersonIdentifier">The CSV assignee address for <c>AssignPersonToTask</c> actions.</param>
 public sealed record ManualAction(
     string ActionType,
     string? GoalName,
     string? TaskName,
-    string? Details);
+    string? Details,
+    string? PersonIdentifier = null);

@@ -13,6 +13,8 @@ internal sealed class PlannerGatewayStub : IPlannerGateway
 
     public Exception? CreateTaskException { get; set; }
 
+    public Exception? GetPlanMembersException { get; set; }
+
     public IReadOnlyList<PlannerContainer> Containers { get; set; } =
     [
         new PlannerContainer("container-1", "Test Container", ContainerType.Group),
@@ -55,14 +57,38 @@ internal sealed class PlannerGatewayStub : IPlannerGateway
     public Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<PlannerTaskSnapshot>>([]);
 
-    public Task<PlannerTaskSnapshot> CreateTaskAsync(string planId, string bucketId, string taskName, string? description, int? priority, string? goal, DateOnly? dueDate, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<PlanMember>> GetPlanMembersAsync(
+        string containerId,
+        ContainerType containerType,
+        CancellationToken cancellationToken)
+    {
+        if (GetPlanMembersException is not null)
+        {
+            return Task.FromException<IReadOnlyList<PlanMember>>(GetPlanMembersException);
+        }
+
+        return Task.FromResult<IReadOnlyList<PlanMember>>([]);
+    }
+
+    public Task<CreatedPlannerTask> CreateTaskAsync(
+        string planId,
+        string bucketId,
+        string taskName,
+        string? description,
+        int? priority,
+        string? goal,
+        DateOnly? dueDate,
+        IReadOnlyList<string> assigneeUserIds,
+        CancellationToken cancellationToken)
     {
         if (CreateTaskException is not null)
         {
-            return Task.FromException<PlannerTaskSnapshot>(CreateTaskException);
+            return Task.FromException<CreatedPlannerTask>(CreateTaskException);
         }
 
-        return Task.FromResult(new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId));
+        return Task.FromResult(new CreatedPlannerTask(
+            new PlannerTaskSnapshot(Guid.NewGuid().ToString("N"), taskName, planId),
+            assigneeUserIds));
     }
 
     public static PlannerOperationException AuthenticationFailure()

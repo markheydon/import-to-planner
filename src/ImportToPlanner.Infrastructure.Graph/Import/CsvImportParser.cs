@@ -17,6 +17,7 @@ public sealed class CsvImportParser : ICsvImportParser
     private const string BucketHeader = "bucket";
     private const string GoalHeader = "goal";
     private const string DueDateHeader = "due date";
+    private const string AssignedToHeader = "assigned to";
     private const int MaxDescriptionLength = 32_768;
     private const char Utf8Bom = '\uFEFF';
 
@@ -28,6 +29,7 @@ public sealed class CsvImportParser : ICsvImportParser
         "Bucket",
         "Goal",
         "Due Date",
+        "Assigned To",
     };
 
     /// <inheritdoc/>
@@ -101,6 +103,7 @@ public sealed class CsvImportParser : ICsvImportParser
             var bucket = Normalise(csv.GetField(BucketHeader));
             var goal = Normalise(csv.GetField(GoalHeader));
             var dueDateText = Normalise(csv.GetField(DueDateHeader));
+            var assignedToText = csv.GetField(AssignedToHeader);
 
             if (string.IsNullOrWhiteSpace(taskName))
             {
@@ -135,7 +138,15 @@ public sealed class CsvImportParser : ICsvImportParser
                 continue;
             }
 
-            rows.Add(new CsvTaskRow(rowNumber, taskName, description, priority, bucket, goal, dueDate));
+            rows.Add(new CsvTaskRow(
+                rowNumber,
+                taskName,
+                description,
+                priority,
+                bucket,
+                goal,
+                dueDate,
+                ParseAssigneeAddresses(assignedToText)));
         }
 
         return Task.FromResult(new CsvParseResult(rows, errors));
@@ -379,6 +390,33 @@ public sealed class CsvImportParser : ICsvImportParser
     private static string? Normalise(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static List<string> ParseAssigneeAddresses(string? assignedToText)
+    {
+        if (string.IsNullOrWhiteSpace(assignedToText))
+        {
+            return [];
+        }
+
+        var addresses = new List<string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var part in assignedToText.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = part.Trim();
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+
+            if (seen.Add(trimmed))
+            {
+                addresses.Add(trimmed);
+            }
+        }
+
+        return addresses;
     }
 
     private enum FieldSeparatorDetection

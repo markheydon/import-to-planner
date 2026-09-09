@@ -200,7 +200,7 @@ public sealed class CsvImportParserTests
     public async Task ParseAsync_WithSemicolonDelimitedExtraColumnsAndIgnoreEnabled_ParsesSuccessfully()
     {
         // Arrange
-        const string csv = "Task Name;Description;Priority;Bucket;Goal;Owner;Due Date\nTask with extras;Contains additional columns;5;Operations;Q2 Delivery;Mark;2026-05-31";
+        const string csv = "Task Name;Description;Priority;Bucket;Goal;Assigned To;Owner;Due Date\nTask with extras;Contains additional columns;5;Operations;Q2 Delivery;;Mark;2026-05-31";
         var parser = new CsvImportParser();
 
         // Act
@@ -651,5 +651,118 @@ public sealed class CsvImportParserTests
         Assert.DoesNotContain(result.ValidationErrors, error => error.Field == "File");
         Assert.Single(result.Rows);
         Assert.Equal("Task A", result.Rows[0].TaskName);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithoutAssignedToColumn_LeavesAssigneeAddressesEmpty()
+    {
+        const string csv = "Task Name,Description\nTask A,Desc";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Empty(result.Rows[0].AssigneeAddresses!);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithEmptyAssignedToCell_LeavesAssigneeAddressesEmpty()
+    {
+        const string csv = "Task Name,Assigned To\nTask A,";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Empty(result.Rows[0].AssigneeAddresses!);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithWhitespaceOnlyAssignedToCell_LeavesAssigneeAddressesEmpty()
+    {
+        const string csv = "Task Name,Assigned To\nTask A,   ";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+        Assert.Empty(result.Rows[0].AssigneeAddresses!);
+    }
+
+    [Theory]
+    [InlineData("\"a@contoso.com, b@contoso.com\"", "a@contoso.com", "b@contoso.com")]
+    [InlineData("a@contoso.com; b@contoso.com", "a@contoso.com", "b@contoso.com")]
+    public async Task ParseAsync_WithAssignedToList_SplitsOnCommaOrSemicolon(
+        string assignedToCell,
+        string firstAddress,
+        string secondAddress)
+    {
+        var csv = $"Task Name,Assigned To\nTask A,{assignedToCell}";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Equal(2, result.Rows[0].AssigneeAddresses!.Count);
+        Assert.Equal(firstAddress, result.Rows[0].AssigneeAddresses![0]);
+        Assert.Equal(secondAddress, result.Rows[0].AssigneeAddresses![1]);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithQuotedAssignedToList_ParsesMultipleAddresses()
+    {
+        const string csv = "Task Name,Assigned To\nTask A,\"a@contoso.com; b@contoso.com\"";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Equal(2, result.Rows[0].AssigneeAddresses!.Count);
+        Assert.Equal("a@contoso.com", result.Rows[0].AssigneeAddresses![0]);
+        Assert.Equal("b@contoso.com", result.Rows[0].AssigneeAddresses![1]);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithDuplicateAssignedToAddresses_IgnoresCaseInsensitiveDuplicates()
+    {
+        const string csv = "Task Name,Assigned To\nTask A,A@contoso.com, a@contoso.com";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows[0].AssigneeAddresses!);
+        Assert.Equal("A@contoso.com", result.Rows[0].AssigneeAddresses![0]);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithNonAddressAssignedToText_StillSucceeds()
+    {
+        const string csv = "Task Name,Assigned To\nTask A,Not a person";
+        var parser = new CsvImportParser();
+
+        var result = await parser.ParseAsync(csv, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows[0].AssigneeAddresses!);
+        Assert.Equal("Not a person", result.Rows[0].AssigneeAddresses![0]);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithSemicolonDelimitedAssignedTo_MatchesCommaEquivalent()
+    {
+        const string commaCsv = "Task Name,Assigned To\nTask A,\"a@contoso.com; b@contoso.com\"";
+        const string semicolonCsv = "Task Name;Assigned To\nTask A;\"a@contoso.com; b@contoso.com\"";
+        var parser = new CsvImportParser();
+
+        var commaResult = await parser.ParseAsync(commaCsv, CancellationToken.None);
+        var semicolonResult = await parser.ParseAsync(semicolonCsv, CancellationToken.None);
+
+        Assert.False(commaResult.HasErrors);
+        Assert.False(semicolonResult.HasErrors);
+        Assert.Equal(commaResult.Rows[0].AssigneeAddresses, semicolonResult.Rows[0].AssigneeAddresses);
     }
 }

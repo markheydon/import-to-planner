@@ -52,6 +52,22 @@ Common causes:
 
 Fix the file using the [CSV format](./csv-format) guide, then upload again.
 
+## Preview blocked when Assigned To cannot be resolved
+
+If your CSV includes Assigned To addresses and preview fails with a message about destination members or permissions, the app could not load the member list for the selected group or plan.
+
+What to check:
+
+- Your account has permission to read group membership (`GroupMember.Read.All` when admin consent is required).
+- The selected destination is available and you still have access.
+- Sign out and sign in again if consent or permissions recently changed.
+
+Individual unknown people in Assigned To cells are not a preview block — they appear as manual follow-up after import. Only a failed member lookup blocks preview.
+
+## Unmatched people in Assigned To
+
+When an address does not match a destination member, the row still imports and the execution report lists **Assign person to task** follow-up items. Add the person to the destination in Microsoft 365 first, or assign them manually in Planner after import.
+
 ## Due date looks wrong in Planner after import
 
 The app stores due dates at 10:00 UTC on the calendar day from your CSV. Preview shows the date in UK `dd/MM/yyyy` form. Microsoft Planner then displays that timestamp in your signed-in timezone.
