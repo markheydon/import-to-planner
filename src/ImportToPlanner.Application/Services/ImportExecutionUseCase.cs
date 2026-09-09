@@ -234,6 +234,7 @@ public sealed class ImportExecutionUseCase(
                     sourceRow.Description,
                     sourceRow.Priority,
                     sourceRow.Goal,
+                    sourceRow.DueDate,
                     cancellationToken);
 
                 created.Add(new ImportExecutionItem(PlannerFailureTarget.Task, createdTask.Title, createdTask.Id));

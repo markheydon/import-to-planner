@@ -65,6 +65,7 @@ public interface IPlannerGateway
     /// <param name="description">The optional description.</param>
     /// <param name="priority">The optional priority.</param>
     /// <param name="goal">The optional goal value from CSV.</param>
+    /// <param name="dueDate">The optional calendar due date to set on the new task.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created task snapshot.</returns>
     Task<PlannerTaskSnapshot> CreateTaskAsync(
@@ -74,5 +75,6 @@ public interface IPlannerGateway
         string? description,
         int? priority,
         string? goal,
+        DateOnly? dueDate,
         CancellationToken cancellationToken);
 }

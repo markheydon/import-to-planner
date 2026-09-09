@@ -11,6 +11,7 @@ namespace ImportToPlanner.Application.Models;
 /// <param name="Reason">Optional reason for skipped actions.</param>
 /// <param name="IsStale">Indicates whether this item became stale before execution.</param>
 /// <param name="ReportStatus">The user-facing report status for this item.</param>
+/// <param name="DueDate">The optional due date from CSV, shown in preview even when the row is skipped.</param>
 public sealed record ImportTaskPlanItem(
     int RowNumber,
     string TaskName,
@@ -19,4 +20,5 @@ public sealed record ImportTaskPlanItem(
     PlannedEntityAction Action,
     string? Reason = null,
     bool IsStale = false,
-    string? ReportStatus = null);
+    string? ReportStatus = null,
+    DateOnly? DueDate = null);

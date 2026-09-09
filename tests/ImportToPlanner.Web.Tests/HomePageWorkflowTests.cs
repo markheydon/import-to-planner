@@ -733,6 +733,29 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task HomePage_WhenPreviewIncludesDueDate_ShowsFormattedDueDateInTaskGrid()
+    {
+        await using var ctx = new HomePageTestContext();
+        ctx.CsvParser.UseRealParser = true;
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = ctx.Services.GetRequiredService<WorkflowCoordinationState>();
+        var cut = ctx.Render<Home>();
+
+        await SelectLocationAndPlanAsync(cut, ctx);
+        await UploadCsvAsync(cut, "due-dates.csv", "Task Name,Due Date\nKick-off,31/05/2026");
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+        cut.Render();
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.NotNull(state.PlanningViewModel);
+            Assert.Contains("Due date", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("31/05/2026", cut.Markup, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public async Task HomePage_WhenCsvReplacedFromPreviewStep_AdvancesToPreviewAndConfirm()
     {
         await using var ctx = new HomePageTestContext();

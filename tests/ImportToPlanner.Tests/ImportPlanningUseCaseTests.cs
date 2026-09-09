@@ -111,6 +111,104 @@ public sealed class ImportPlanningUseCaseTests
         Assert.Equal(ConsentResolutionStatus.AdminConsentRequired, ex.Resolution.Status);
     }
 
+    [Fact]
+    public async Task HandleAsync_WithDueDate_PopulatesPreviewDueDate()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var dueDate = new DateOnly(2026, 5, 31);
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, dueDate)]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        Assert.NotNull(output.Response);
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Equal(dueDate, task.DueDate);
+        Assert.Equal(PlannedEntityAction.Create, task.Action);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithExistingTaskAndDueDate_SkipsWhileRetainingDueDateForDisplay()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var bucket = await gateway.CreateBucketAsync("plan-a", "Ops", CancellationToken.None);
+        await gateway.CreateTaskAsync("plan-a", bucket.Id, "Existing Task", null, null, null, null, CancellationToken.None);
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var dueDate = new DateOnly(2026, 6, 15);
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Existing Task", null, null, "Ops", null, dueDate)]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Equal(PlannedEntityAction.Skip, task.Action);
+        Assert.Equal("already exists", task.Reason);
+        Assert.Equal(dueDate, task.DueDate);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithDuplicateCsvRowAndDueDate_SkipsWhileRetainingDueDateForDisplay()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var dueDate = new DateOnly(2026, 5, 31);
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [
+                new CsvTaskRow(2, "Task A", null, null, "Ops", null, dueDate),
+                new CsvTaskRow(3, "Task A", null, null, "Ops", null, dueDate),
+            ]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        Assert.Equal(2, output.Response!.TaskActions.Count);
+        var duplicate = Assert.Single(output.Response.TaskActions, task => task.Reason == "duplicate in CSV");
+        Assert.Equal(dueDate, duplicate.DueDate);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenDueDateChanges_ProducesDifferentRequestFingerprint()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        var useCase = CreateUseCase(gateway);
+        var firstOutput = new CapturePlanningOutputBoundary();
+        var secondOutput = new CapturePlanningOutputBoundary();
+        var firstRequest = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, new DateOnly(2026, 5, 31))]);
+        var secondRequest = firstRequest with
+        {
+            Rows = [new CsvTaskRow(2, "Task A", null, null, "Ops", null, new DateOnly(2026, 6, 1))],
+        };
+
+        await useCase.HandleAsync(firstRequest, firstOutput, CancellationToken.None);
+        await useCase.HandleAsync(secondRequest, secondOutput, CancellationToken.None);
+
+        Assert.NotEqual(firstOutput.Response!.RequestFingerprint, secondOutput.Response!.RequestFingerprint);
+    }
+
     private static ImportPlanningUseCase CreateUseCase(
         IPlannerGateway gateway,
         ITenantOperationalMetadataStore? metadataStore = null)

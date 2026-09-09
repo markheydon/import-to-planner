@@ -16,6 +16,7 @@ public sealed class CsvImportParser : ICsvImportParser
     private const string PriorityHeader = "priority";
     private const string BucketHeader = "bucket";
     private const string GoalHeader = "goal";
+    private const string DueDateHeader = "due date";
     private const int MaxDescriptionLength = 32_768;
     private const char Utf8Bom = '\uFEFF';
 
@@ -26,6 +27,7 @@ public sealed class CsvImportParser : ICsvImportParser
         "Priority",
         "Bucket",
         "Goal",
+        "Due Date",
     };
 
     /// <inheritdoc/>
@@ -98,6 +100,7 @@ public sealed class CsvImportParser : ICsvImportParser
             var priorityText = Normalise(csv.GetField(PriorityHeader));
             var bucket = Normalise(csv.GetField(BucketHeader));
             var goal = Normalise(csv.GetField(GoalHeader));
+            var dueDateText = Normalise(csv.GetField(DueDateHeader));
 
             if (string.IsNullOrWhiteSpace(taskName))
             {
@@ -123,7 +126,16 @@ public sealed class CsvImportParser : ICsvImportParser
                 continue;
             }
 
-            rows.Add(new CsvTaskRow(rowNumber, taskName, description, priority, bucket, goal));
+            if (!TryParseDueDate(dueDateText, out var dueDate))
+            {
+                errors.Add(new ImportValidationError(
+                    rowNumber,
+                    "Due Date",
+                    "Due Date must be empty or a recognised date (ISO yyyy-MM-dd or a UK day/month/year date)."));
+                continue;
+            }
+
+            rows.Add(new CsvTaskRow(rowNumber, taskName, description, priority, bucket, goal, dueDate));
         }
 
         return Task.FromResult(new CsvParseResult(rows, errors));
@@ -317,6 +329,51 @@ public sealed class CsvImportParser : ICsvImportParser
         };
 
         return priority is not null;
+    }
+
+    private static readonly string[] DueDateFormats =
+    [
+        "yyyy-MM-dd",
+        "d/M/yyyy",
+        "dd/MM/yyyy",
+        "d/M/yy",
+        "dd/MM/yy",
+        "d-M-yyyy",
+        "dd-MM-yyyy",
+        "d-M-yy",
+        "dd-MM-yy",
+    ];
+
+    private static readonly CultureInfo DueDateCulture = CreateDueDateCulture();
+
+    private static CultureInfo CreateDueDateCulture()
+    {
+        var culture = (CultureInfo)CultureInfo.InvariantCulture.Clone();
+        culture.Calendar.TwoDigitYearMax = 2099;
+        return culture;
+    }
+
+    private static bool TryParseDueDate(string? dueDateText, out DateOnly? dueDate)
+    {
+        dueDate = null;
+
+        if (string.IsNullOrWhiteSpace(dueDateText))
+        {
+            return true;
+        }
+
+        if (DateOnly.TryParseExact(
+                dueDateText.Trim(),
+                DueDateFormats,
+                DueDateCulture,
+                DateTimeStyles.None,
+                out var parsed))
+        {
+            dueDate = parsed;
+            return true;
+        }
+
+        return false;
     }
 
     private static string? Normalise(string? value)

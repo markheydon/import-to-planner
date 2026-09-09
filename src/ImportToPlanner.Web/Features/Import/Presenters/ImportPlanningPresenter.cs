@@ -1,3 +1,4 @@
+using System.Globalization;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 
@@ -32,10 +33,16 @@ public sealed class ImportPlanningPresenter : IImportPlanningOutputBoundary
                     task.Bucket,
                     task.Goals is { Count: > 0 } ? string.Join(", ", task.Goals) : string.Empty,
                     task.Action.ToString(),
-                    task.Reason))
+                    task.Reason,
+                    FormatDueDateDisplay(task.DueDate)))
                 .ToArray());
 
         return Task.CompletedTask;
+    }
+
+    private static string FormatDueDateDisplay(DateOnly? dueDate)
+    {
+        return dueDate?.ToString("dd/MM/yyyy", CultureInfo.InvariantCulture) ?? string.Empty;
     }
 }
 
@@ -66,10 +73,12 @@ public sealed record ImportBucketActionViewModel(string BucketName, string Actio
 /// <param name="Goals">The goals string.</param>
 /// <param name="Action">The action label.</param>
 /// <param name="Reason">The optional reason text.</param>
+/// <param name="DueDateDisplay">The optional due date formatted for display.</param>
 public sealed record ImportTaskActionViewModel(
     int RowNumber,
     string TaskName,
     string Bucket,
     string Goals,
     string Action,
-    string? Reason);
+    string? Reason,
+    string DueDateDisplay);

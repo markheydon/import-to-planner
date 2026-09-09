@@ -69,7 +69,8 @@ public sealed class ImportPlanningUseCase(
                     resolvedBucket,
                     ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
-                    "duplicate in CSV"));
+                    "duplicate in CSV",
+                    DueDate: row.DueDate));
 
                 continue;
             }
@@ -82,7 +83,8 @@ public sealed class ImportPlanningUseCase(
                     resolvedBucket,
                     ResolveGoalList(row.Goal),
                     PlannedEntityAction.Skip,
-                    TaskAlreadyExistsReason));
+                    TaskAlreadyExistsReason,
+                    DueDate: row.DueDate));
 
                 continue;
             }
@@ -92,7 +94,8 @@ public sealed class ImportPlanningUseCase(
                 row.TaskName,
                 resolvedBucket,
                 ResolveGoalList(row.Goal),
-                PlannedEntityAction.Create));
+                PlannedEntityAction.Create,
+                DueDate: row.DueDate));
         }
 
         var requiredBuckets = taskActions

@@ -40,6 +40,9 @@ Common causes:
 - Unsupported or misspelled column headings.
 - Empty task names.
 - Invalid priority values.
+- Invalid due date values (row-level CSV validation, not a file separator error).
+- ISO due dates without zero-padded month or day (use `2026-05-31`, not `2026-5-31`).
+- Excel serial numbers in the Due Date column — use a recognised date shape instead.
 - Locale Excel CSV that uses semicolons — usually fine when the header uses semicolons consistently.
 - UTF-8 BOM at the start of the file — the app ignores a leading BOM; you do not need to remove it.
 - Mixed commas and semicolons in the header row — the app cannot determine the separator. Save as comma-separated UTF-8.
@@ -48,6 +51,12 @@ Common causes:
 **File-level separator errors** (for example, “separator could not be determined” or “not supported”) mean the app could not read the file layout. They are different from a **missing Task Name heading**, which only appears after a separator has been chosen.
 
 Fix the file using the [CSV format](./csv-format) guide, then upload again.
+
+## Due date looks wrong in Planner after import
+
+The app stores due dates at 10:00 UTC on the calendar day from your CSV. Preview shows the date in UK `dd/MM/yyyy` form. Microsoft Planner then displays that timestamp in your signed-in timezone.
+
+For most UK and European accounts, the Planner card shows the same calendar date as the CSV and preview. If you work in an extreme positive UTC offset (for example UTC+14), Planner may show the next calendar day even though preview matched your file. Adjust the CSV date or set the due date manually in Planner if you hit that edge case.
 
 ## Duplicate handling questions
 
