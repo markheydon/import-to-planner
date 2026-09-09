@@ -478,7 +478,14 @@ public sealed class GraphPlannerGateway : IPlannerGateway
 
         if (string.IsNullOrWhiteSpace(me?.Id))
         {
-            throw new InvalidOperationException("Graph returned an invalid user response.");
+            throw new PlannerOperationException(
+                new PlannerOperationFailure(
+                    PlannerFailureCategory.Validation,
+                    PlannerFailureTarget.Container,
+                    null,
+                    "Destination members could not be loaded for personal plans.",
+                    false,
+                    "InvalidUserResponse"));
         }
 
         return [MapPlanMember(me)];
@@ -607,12 +614,32 @@ public sealed class GraphPlannerGateway : IPlannerGateway
 
     private static bool IsAssignmentCreateFailure(PlannerOperationException exception)
     {
-        if (exception.InnerException is ApiException apiException)
+        if (exception.InnerException is not ApiException apiException)
         {
-            return apiException.ResponseStatusCode is 400 or 403;
+            return false;
         }
 
-        return false;
+        if (apiException.ResponseStatusCode is not 400 and not 403)
+        {
+            return false;
+        }
+
+        return LooksLikeAssignmentFailure(apiException);
+    }
+
+    private static bool LooksLikeAssignmentFailure(ApiException apiException)
+    {
+        var responseText = apiException.Message;
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            return false;
+        }
+
+        return responseText.Contains("assignment", StringComparison.OrdinalIgnoreCase)
+            || responseText.Contains("assignee", StringComparison.OrdinalIgnoreCase)
+            || responseText.Contains("assignedto", StringComparison.OrdinalIgnoreCase)
+            || responseText.Contains("user reference", StringComparison.OrdinalIgnoreCase)
+            || responseText.Contains("maximum number", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task UpdateTaskDescriptionAsync(

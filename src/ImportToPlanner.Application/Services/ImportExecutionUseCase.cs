@@ -426,18 +426,15 @@ public sealed class ImportExecutionUseCase(
             yield break;
         }
 
-        var unresolvedAddressSet = new HashSet<string>(
-            taskAction.UnresolvedAssignees?.Select(unresolved => unresolved.Address) ?? [],
-            StringComparer.OrdinalIgnoreCase);
-
-        foreach (var address in taskAction.AssigneeAddresses ?? [])
+        var emittedMemberIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var resolved in taskAction.ResolvedAssignees ?? [])
         {
-            if (unresolvedAddressSet.Contains(address))
+            if (appliedSet.Contains(resolved.MemberId) || !emittedMemberIds.Add(resolved.MemberId))
             {
                 continue;
             }
 
-            yield return (address, "assignment-refused");
+            yield return (resolved.Address, "assignment-refused");
         }
     }
 

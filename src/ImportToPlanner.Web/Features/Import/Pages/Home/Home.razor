@@ -419,6 +419,8 @@
            && preview is not null
            && currentRequest is not null
            && !isPreviewStale
+           && !preview.Preview.HasValidationErrors
+           && parseErrors.Count == 0
            && IsCurrentSelectionInSyncWithRequest()
            && !IsCreditConfirmBlocked();
 
@@ -427,6 +429,8 @@
            && preview is not null
            && currentRequest is not null
            && !isPreviewStale
+           && !preview.Preview.HasValidationErrors
+           && parseErrors.Count == 0
            && IsCurrentSelectionInSyncWithRequest();
 
     private Severity StatusMessageSeverity

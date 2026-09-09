@@ -163,6 +163,43 @@ public sealed class ImportPresenterTests
         Assert.Equal(string.Empty, undatedTask.DueDateDisplay);
     }
 
+    [Fact]
+    public async Task ImportPlanningPresenter_FormatsAssignedToDisplayForMatchedAndFollowUpRows()
+    {
+        var presenter = new ImportPlanningPresenter();
+        var response = new ImportPlanPreview
+        {
+            ContainerId = "group-a",
+            PlanId = "plan-a",
+            PlanName = "Plan A",
+            PlanAction = PlannedEntityAction.Reuse,
+            HasValidationErrors = false,
+            ValidationFindings = [],
+            RequestFingerprint = "request-fingerprint",
+            PlannerStateFingerprint = "state-fingerprint",
+            GeneratedAtUtc = DateTimeOffset.UtcNow,
+            BucketActions = new Dictionary<string, PlannedEntityAction>(StringComparer.OrdinalIgnoreCase),
+            TaskActions =
+            [
+                new ImportTaskPlanItem(
+                    2,
+                    "Task A",
+                    "Ops",
+                    null,
+                    PlannedEntityAction.Create,
+                    AssigneeAddresses: ["a@contoso.com", "unknown@contoso.com"],
+                    ResolvedAssigneeIds: ["user-1"],
+                    ResolvedAssignees: [new ResolvedAssignee("a@contoso.com", "user-1")],
+                    UnresolvedAssignees: [new UnresolvedAssignee("unknown@contoso.com", "not-a-member")]),
+            ],
+        };
+
+        await presenter.PresentAsync(response, CancellationToken.None);
+
+        var task = Assert.Single(presenter.ViewModel!.TaskActions);
+        Assert.Equal("a@contoso.com (follow-up: unknown@contoso.com)", task.AssignedToDisplay);
+    }
+
     [Theory]
     [InlineData("not-a-member", "not a member of the destination")]
     [InlineData("not-an-address", "not a work email or sign-in name")]

@@ -13,6 +13,8 @@ internal sealed class PlannerGatewayStub : IPlannerGateway
 
     public Exception? CreateTaskException { get; set; }
 
+    public Exception? GetPlanMembersException { get; set; }
+
     public IReadOnlyList<PlannerContainer> Containers { get; set; } =
     [
         new PlannerContainer("container-1", "Test Container", ContainerType.Group),
@@ -59,7 +61,14 @@ internal sealed class PlannerGatewayStub : IPlannerGateway
         string containerId,
         ContainerType containerType,
         CancellationToken cancellationToken)
-        => Task.FromResult<IReadOnlyList<PlanMember>>([]);
+    {
+        if (GetPlanMembersException is not null)
+        {
+            return Task.FromException<IReadOnlyList<PlanMember>>(GetPlanMembersException);
+        }
+
+        return Task.FromResult<IReadOnlyList<PlanMember>>([]);
+    }
 
     public Task<CreatedPlannerTask> CreateTaskAsync(
         string planId,

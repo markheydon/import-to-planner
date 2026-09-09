@@ -164,6 +164,37 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task Coordinator_WhenMemberLookupFails_AddsAssignedToValidationErrorAndSkipsPreview()
+    {
+        await using var ctx = new HomePageTestContext();
+        ctx.CsvParser.UseRealParser = true;
+        ctx.Gateway.GetPlanMembersException = new ImportToPlanner.Application.Exceptions.PlannerOperationException(
+            new PlannerOperationFailure(
+                PlannerFailureCategory.Authorisation,
+                PlannerFailureTarget.Container,
+                "container-1",
+                "Destination members could not be loaded.",
+                false,
+                "Authorisation"));
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = new WorkflowCoordinationState
+        {
+            SelectedContainer = ctx.Gateway.Containers[0],
+            SelectedPlan = ctx.Gateway.Plans[0],
+            CsvContent = "Task Name,Assigned To\nTask A,a@contoso.com",
+        };
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+
+        var validationError = Assert.Single(state.ParseErrors);
+        Assert.Equal(0, validationError.RowNumber);
+        Assert.Equal("Assigned To", validationError.Field);
+        Assert.Null(state.PlanningViewModel);
+        Assert.Null(state.CurrentPlanningRequest);
+        Assert.Equal(WorkflowStatusLevel.Error, state.StatusLevel);
+    }
+
+    [Fact]
     public async Task Coordinator_BuildPreviewWithoutSelectedLocation_UsesLocationValidationMessage()
     {
         await using var ctx = new HomePageTestContext();

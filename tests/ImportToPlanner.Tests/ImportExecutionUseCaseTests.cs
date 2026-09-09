@@ -876,6 +876,78 @@ public sealed class ImportExecutionUseCaseTests
     }
 
     [Fact]
+    public async Task HandleAsync_WhenDuplicateResolvedAddressesShareMember_EmitsSingleAssignmentRefusedFollowUp()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        gateway.AppliedAssigneeIdsOverride = [];
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [new CsvTaskRow(2, "Task A", null, 3, "Ops", null, null, ["a@contoso.com", "a@contoso.com"])]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        var output = new CaptureExecutionOutputBoundary();
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            output,
+            CancellationToken.None);
+
+        var followUp = Assert.Single(output.Response!.ManualActions, action => action.ActionType == "AssignPersonToTask");
+        Assert.Equal("a@contoso.com", followUp.PersonIdentifier);
+        Assert.Equal("assignment-refused", followUp.Details);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenMailAndUpnResolveSameMember_EmitsSingleAssignmentRefusedFollowUp()
+    {
+        var gateway = new FakePlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        gateway.SeedDefaultMembers();
+        gateway.AppliedAssigneeIdsOverride = [];
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [
+                new CsvTaskRow(
+                    2,
+                    "Task A",
+                    null,
+                    3,
+                    "Ops",
+                    null,
+                    null,
+                    ["guest@external.com", "guest_external.com#EXT#@contoso.com"]),
+            ]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, new NoOpImportTaskCreationQuota());
+        var output = new CaptureExecutionOutputBoundary();
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(request, planningOutput.Response!),
+            output,
+            CancellationToken.None);
+
+        var followUp = Assert.Single(output.Response!.ManualActions, action => action.ActionType == "AssignPersonToTask");
+        Assert.Equal("guest@external.com", followUp.PersonIdentifier);
+        Assert.Equal("assignment-refused", followUp.Details);
+    }
+
+    [Fact]
     public async Task HandleAsync_WithExistingTaskAndAssignees_DoesNotCreateOrEmitAssignPersonFollowUp()
     {
         var gateway = new FakePlannerGateway();

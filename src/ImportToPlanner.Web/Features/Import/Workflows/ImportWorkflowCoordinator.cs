@@ -167,11 +167,22 @@ public sealed class ImportWorkflowCoordinator(
                 parseResult.Rows);
 
             await planningUseCase.HandleAsync(request, planningPresenter, cancellationToken);
+            var preview = planningPresenter.ViewModel!.Preview;
+
+            if (preview.HasValidationErrors)
+            {
+                state.ParseErrors.AddRange(preview.ValidationFindings);
+                state.StatusMessage = "Preview could not be generated. Fix the reported issues and retry.";
+                state.StatusReferenceId = null;
+                state.StatusLevel = WorkflowStatusLevel.Error;
+                return;
+            }
+
             state.CurrentPlanningRequest = request;
             state.PlanningViewModel = planningPresenter.ViewModel;
             state.CreditBalanceSnapshot = await BuildCreditBalanceSnapshotAsync(
                 state,
-                planningPresenter.ViewModel!.Preview,
+                preview,
                 EnsureBalanceReason.Preview,
                 cancellationToken).ConfigureAwait(false);
             if (state.CreditBalanceSnapshot?.LedgerUnavailable == true)

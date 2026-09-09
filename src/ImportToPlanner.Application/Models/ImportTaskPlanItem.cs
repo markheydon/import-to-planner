@@ -14,6 +14,7 @@ namespace ImportToPlanner.Application.Models;
 /// <param name="DueDate">The optional due date from CSV, shown in preview even when the row is skipped.</param>
 /// <param name="AssigneeAddresses">The original CSV assignee addresses for preview display.</param>
 /// <param name="ResolvedAssigneeIds">The destination member identifiers to assign on create.</param>
+/// <param name="ResolvedAssignees">The CSV addresses resolved to destination members at preview.</param>
 /// <param name="UnresolvedAssignees">The assignee addresses that need manual follow-up at preview.</param>
 public sealed record ImportTaskPlanItem(
     int RowNumber,
@@ -27,4 +28,5 @@ public sealed record ImportTaskPlanItem(
     DateOnly? DueDate = null,
     IReadOnlyList<string>? AssigneeAddresses = null,
     IReadOnlyList<string>? ResolvedAssigneeIds = null,
+    IReadOnlyList<ResolvedAssignee>? ResolvedAssignees = null,
     IReadOnlyList<UnresolvedAssignee>? UnresolvedAssignees = null);

@@ -871,7 +871,7 @@ public sealed class GraphPlannerGatewayTests
         adapter.QueueSendAsyncResponse<GraphPlannerTask>(
             "createTaskSuccess",
             IsPlannerTaskCreate,
-            CreateApiException(400),
+            CreateApiException(400, message: "Invalid assignment reference for user."),
             CreatePlannerTaskWithEtag("task-1", "Task A", "plan-1"));
 
         var gateway = CreateGateway(adapter);
@@ -890,6 +890,73 @@ public sealed class GraphPlannerGatewayTests
         Assert.Equal("task-1", result.Snapshot.Id);
         Assert.Empty(result.AppliedAssigneeIds);
         Assert.Equal(2, adapter.GetCallCount("createTaskSuccess"));
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WhenNonAssignment400WithAssignees_ThrowsWithoutRetryingWithoutAssignments()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTask",
+            IsPlannerTaskCreate,
+            CreateApiException(400, message: "Title is required."));
+
+        var gateway = CreateGateway(adapter);
+
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
+            gateway.CreateTaskAsync(
+                "plan-1",
+                "bucket-1",
+                "Task A",
+                null,
+                3,
+                null,
+                null,
+                ["user-1"],
+                CancellationToken.None));
+
+        Assert.Equal(PlannerFailureCategory.Unknown, exception.Failure.Category);
+        Assert.Equal(1, adapter.GetCallCount("createTask"));
+    }
+
+    [Fact]
+    public async Task CreateTaskAsync_WhenAssignmentsRejectedWith403_RetriesWithoutAssignmentsAndReturnsEmptyAppliedIds()
+    {
+        var adapter = new StubRequestAdapter();
+        adapter.QueueSendAsyncResponse<GraphPlannerTask>(
+            "createTaskSuccess",
+            IsPlannerTaskCreate,
+            CreateApiException(403, message: "Insufficient privileges to set assignment."),
+            CreatePlannerTaskWithEtag("task-1", "Task A", "plan-1"));
+
+        var gateway = CreateGateway(adapter);
+
+        var result = await gateway.CreateTaskAsync(
+            "plan-1",
+            "bucket-1",
+            "Task A",
+            null,
+            3,
+            null,
+            null,
+            ["user-1"],
+            CancellationToken.None);
+
+        Assert.Equal("task-1", result.Snapshot.Id);
+        Assert.Empty(result.AppliedAssigneeIds);
+        Assert.Equal(2, adapter.GetCallCount("createTaskSuccess"));
+    }
+
+    [Fact]
+    public async Task GetPlanMembersAsync_WithRosterContainer_ThrowsAuthorisationFailure()
+    {
+        var adapter = new StubRequestAdapter();
+        var gateway = CreateGateway(adapter);
+
+        var exception = await Assert.ThrowsAsync<PlannerOperationException>(() =>
+            gateway.GetPlanMembersAsync("roster-1", ContainerType.Roster, CancellationToken.None));
+
+        Assert.Equal(PlannerFailureCategory.Authorisation, exception.Failure.Category);
     }
 
     [Fact]
@@ -958,9 +1025,9 @@ public sealed class GraphPlannerGatewayTests
             },
         };
 
-    private static ApiException CreateApiException(int statusCode, int? retryAfterSeconds = null)
+    private static ApiException CreateApiException(int statusCode, int? retryAfterSeconds = null, string? message = null)
     {
-        var exception = new ApiException($"HTTP {statusCode}")
+        var exception = new ApiException(message ?? $"HTTP {statusCode}")
         {
             ResponseStatusCode = statusCode,
         };

@@ -321,6 +321,30 @@ public sealed class ImportPlanningUseCaseTests
     }
 
     [Fact]
+    public async Task HandleAsync_WithDisplayNameOnlyAssignee_MarksUnresolvedWithNotAnAddress()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "group-a", ContainerType.Group, "Plan A");
+        gateway.SeedDefaultMembers();
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-a",
+            ContainerType.Group,
+            "plan-a",
+            "Plan A",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["Jane Smith"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        var task = Assert.Single(output.Response!.TaskActions);
+        Assert.Empty(task.ResolvedAssigneeIds!);
+        var unresolved = Assert.Single(task.UnresolvedAssignees!);
+        Assert.Equal("Jane Smith", unresolved.Address);
+        Assert.Equal("not-an-address", unresolved.ReasonCode);
+    }
+
+    [Fact]
     public async Task HandleAsync_WithAliasOnlyValue_MarksUnresolvedWithNotAMember()
     {
         var gateway = new PlannerGatewayStub();
@@ -394,6 +418,34 @@ public sealed class ImportPlanningUseCaseTests
         Assert.Equal("already exists", task.Reason);
         Assert.Equal(["a@contoso.com"], task.AssigneeAddresses);
         Assert.Empty(task.ResolvedAssigneeIds!);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithRosterContainerAndAssignees_SetsAssignedToValidationError()
+    {
+        var gateway = new PlannerGatewayStub();
+        gateway.AddPlan("plan-a", "roster-a", ContainerType.Roster, "Roster Plan");
+        gateway.GetPlanMembersException = new PlannerOperationException(new PlannerOperationFailure(
+            PlannerFailureCategory.Authorisation,
+            PlannerFailureTarget.Container,
+            "roster-a",
+            "Destination members could not be loaded for this container type.",
+            false,
+            "Authorisation"));
+        var useCase = CreateUseCase(gateway);
+        var output = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "roster-a",
+            ContainerType.Roster,
+            "plan-a",
+            "Roster Plan",
+            [new CsvTaskRow(2, "Task A", null, null, "Ops", null, null, ["a@contoso.com"])]);
+
+        await useCase.HandleAsync(request, output, CancellationToken.None);
+
+        Assert.True(output.Response!.HasValidationErrors);
+        Assert.Contains(output.Response.ValidationFindings, error =>
+            error.RowNumber == 0 && error.Field == "Assigned To");
     }
 
     [Fact]

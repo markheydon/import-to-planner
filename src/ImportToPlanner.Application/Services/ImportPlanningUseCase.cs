@@ -19,6 +19,7 @@ public sealed class ImportPlanningUseCase(
     private const string NotAMemberReasonCode = "not-a-member";
     private const string NotAnAddressReasonCode = "not-an-address";
     private static readonly IReadOnlyList<string> EmptyAssigneeIds = [];
+    private static readonly IReadOnlyList<ResolvedAssignee> EmptyResolvedAssignees = [];
     private static readonly IReadOnlyList<UnresolvedAssignee> EmptyUnresolvedAssignees = [];
 
     /// <inheritdoc/>
@@ -89,7 +90,7 @@ public sealed class ImportPlanningUseCase(
 
             var assigneeAddresses = NormaliseAssigneeAddresses(row.AssigneeAddresses);
             var assigneeResolution = destinationMembers is null
-                ? new AssigneeResolution(EmptyAssigneeIds, EmptyUnresolvedAssignees)
+                ? new AssigneeResolution(EmptyAssigneeIds, EmptyResolvedAssignees, EmptyUnresolvedAssignees)
                 : ResolveAssignees(assigneeAddresses, destinationMembers);
 
             if (!csvSeenTaskNames.Add(row.TaskName))
@@ -104,6 +105,7 @@ public sealed class ImportPlanningUseCase(
                     DueDate: row.DueDate,
                     AssigneeAddresses: assigneeAddresses,
                     ResolvedAssigneeIds: EmptyAssigneeIds,
+                    ResolvedAssignees: assigneeResolution.ResolvedAssignees,
                     UnresolvedAssignees: assigneeResolution.UnresolvedAssignees));
 
                 continue;
@@ -121,6 +123,7 @@ public sealed class ImportPlanningUseCase(
                     DueDate: row.DueDate,
                     AssigneeAddresses: assigneeAddresses,
                     ResolvedAssigneeIds: EmptyAssigneeIds,
+                    ResolvedAssignees: assigneeResolution.ResolvedAssignees,
                     UnresolvedAssignees: assigneeResolution.UnresolvedAssignees));
 
                 continue;
@@ -135,6 +138,7 @@ public sealed class ImportPlanningUseCase(
                 DueDate: row.DueDate,
                 AssigneeAddresses: assigneeAddresses,
                 ResolvedAssigneeIds: assigneeResolution.ResolvedAssigneeIds,
+                ResolvedAssignees: assigneeResolution.ResolvedAssignees,
                 UnresolvedAssignees: assigneeResolution.UnresolvedAssignees));
         }
 
@@ -192,10 +196,11 @@ public sealed class ImportPlanningUseCase(
     {
         if (assigneeAddresses.Count == 0)
         {
-            return new AssigneeResolution(EmptyAssigneeIds, EmptyUnresolvedAssignees);
+            return new AssigneeResolution(EmptyAssigneeIds, EmptyResolvedAssignees, EmptyUnresolvedAssignees);
         }
 
         var resolvedIds = new List<string>();
+        var resolvedAssignees = new List<ResolvedAssignee>();
         var unresolved = new List<UnresolvedAssignee>();
         var resolvedIdSet = new HashSet<string>(StringComparer.Ordinal);
 
@@ -216,13 +221,14 @@ public sealed class ImportPlanningUseCase(
                 continue;
             }
 
+            resolvedAssignees.Add(new ResolvedAssignee(address, matchedMember.Id));
             if (resolvedIdSet.Add(matchedMember.Id))
             {
                 resolvedIds.Add(matchedMember.Id);
             }
         }
 
-        return new AssigneeResolution(resolvedIds, unresolved);
+        return new AssigneeResolution(resolvedIds, resolvedAssignees, unresolved);
     }
 
     private static bool MatchesMember(string address, PlanMember member)
@@ -313,5 +319,6 @@ public sealed class ImportPlanningUseCase(
 
     private sealed record AssigneeResolution(
         IReadOnlyList<string> ResolvedAssigneeIds,
+        IReadOnlyList<ResolvedAssignee> ResolvedAssignees,
         IReadOnlyList<UnresolvedAssignee> UnresolvedAssignees);
 }

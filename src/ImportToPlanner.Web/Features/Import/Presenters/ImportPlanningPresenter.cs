@@ -48,9 +48,8 @@ public sealed class ImportPlanningPresenter : IImportPlanningOutputBoundary
 
     private static string FormatAssignedToDisplay(ImportTaskPlanItem task)
     {
-        var matched = task.ResolvedAssigneeIds is { Count: > 0 }
-            ? string.Join(", ", task.AssigneeAddresses?
-                .Where(address => !IsUnresolvedAddress(task, address)) ?? [])
+        var matched = task.ResolvedAssignees is { Count: > 0 }
+            ? string.Join(", ", task.ResolvedAssignees.Select(resolved => resolved.Address))
             : string.Empty;
 
         var followUp = task.UnresolvedAssignees is { Count: > 0 }
@@ -73,12 +72,6 @@ public sealed class ImportPlanningPresenter : IImportPlanningOutputBoundary
         }
 
         return $"{matched} (follow-up: {followUp})";
-    }
-
-    private static bool IsUnresolvedAddress(ImportTaskPlanItem task, string address)
-    {
-        return task.UnresolvedAssignees?.Any(unresolved =>
-            string.Equals(unresolved.Address, address, StringComparison.OrdinalIgnoreCase)) == true;
     }
 }
 

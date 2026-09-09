@@ -25,7 +25,7 @@ public partial class Home
         var planLabel = selectedPlan is null ? "Not yet chosen" : FormatPlan(selectedPlan);
         var csvFileName = hasSelectedCsv ? selectedFileName : "Not yet chosen";
 
-        var previewStatus = parseErrors.Count > 0
+        var previewStatus = parseErrors.Count > 0 || preview?.Preview.HasValidationErrors == true
             ? "Validation errors"
             : isPreviewStale
                 ? "Stale — regenerate preview"
@@ -60,7 +60,7 @@ public partial class Home
     }
 
     private Color GetSummaryPreviewChipColour()
-        => parseErrors.Count > 0 || isPreviewStale
+        => parseErrors.Count > 0 || preview?.Preview.HasValidationErrors == true || isPreviewStale
             ? Color.Warning
             : preview is not null
                 ? Color.Success
