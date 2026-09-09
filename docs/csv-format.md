@@ -22,6 +22,18 @@ Accepted columns are:
 
 Use these exact headings in the first row.
 
+## Separators and encoding
+
+The app accepts comma-separated or semicolon-separated CSV when the first row makes the choice clear.
+
+- Excel in many UK and EU locales saves CSV with semicolons instead of commas.
+- Excel “CSV UTF-8” may start with a UTF-8 byte order mark (BOM). The app ignores a leading BOM.
+- Tab-separated and pipe-separated files are not supported. Save as comma-separated UTF-8 if you see a separator error.
+
+If both commas and semicolons appear unquoted in the header row, the app cannot tell which separator you intended. Save the file as comma-separated UTF-8 and upload again.
+
+The examples on this page use comma-separated UTF-8 without a BOM.
+
 ## Priority values
 
 Priority accepts either:
@@ -56,7 +68,8 @@ Publish update,Post the final update to users,3,Delivery,Launch readiness
 - Wrong heading names: use the accepted headings exactly.
 - Invalid priority value: use 0-10 or one of Urgent/Important/Medium/Low.
 - Description too long: keep descriptions within 32,768 characters to match Planner limits.
-- Wrong delimiter: use commas unless your export tool is configured differently and your app instance supports it.
+- Mixed separators in the header: if both commas and semicolons appear unquoted in the first row, save as comma-separated UTF-8.
+- Unsupported separator: tab- or pipe-separated files are not supported; save as comma-separated UTF-8.
 - Extra columns: unexpected columns can be ignored for import, but keeping only supported columns reduces confusion.
 - Empty task names: each row must include a task name.
 
