@@ -134,14 +134,3 @@ public sealed class TenantOperationalMetadataStoreStub : ITenantOperationalMetad
     }
 }
 
-public sealed class CurrentTenantContextAccessorStub : ICurrentTenantContextAccessor
-{
-    public TenantContext Context { get; set; } = new(
-        "tenant-a",
-        "tenant-key-a",
-        "user-a",
-        SupportedAccountType.WorkOrSchool,
-        "Tenant A");
-
-    public TenantContext GetRequiredContext() => Context;
-}

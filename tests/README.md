@@ -38,10 +38,12 @@ Repository testing standards
 
 Repository testing notes
 ------------------------
-- Use NSubstitute or explicit boundary doubles for planner and tenant metadata
-  abstractions.
+- Use NSubstitute for thin interface doubles (for example, tenant context accessors,
+  token acquisition, and configurable use-case boundaries).
 - Keep handwritten stateful doubles when they model real behaviour (for example,
-  in-memory stores or adapter subclasses).
+  in-memory stores, planner gateway graphs, or adapter subclasses).
+- NSubstitute-backed helpers in `TestInfrastructure/` and `TestDoubles/` wrap
+  `Substitute.For<T>()` with test-friendly configuration where needed.
 - See `docs-internal/engineering-policies.md` for mandatory testing standards and
   architecture evidence gates. The constitution states the stack-independent
   testability and quality rules; this repository's named checks and packages
