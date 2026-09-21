@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using ImportToPlanner.Web.Tests.TestInfrastructure;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -22,9 +23,9 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     [Fact]
     public async Task GetAuthorizationTokenAsync_WhenUserIsUnauthenticated_ThrowsGraphUnauthenticatedContextException()
     {
-        var tokenAcquisition = new FakeTokenAcquisition();
+        var tokenAcquisition = new TokenAcquisitionSubstitute();
         var user = new ClaimsPrincipal(new ClaimsIdentity());
-        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
+        var provider = CreateProvider(tokenAcquisition.Instance, user, SpecificTenantAuthorityConfiguration);
 
         var exception = await Assert.ThrowsAsync<GraphUnauthenticatedContextException>(() =>
             provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken));
@@ -35,13 +36,13 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     [Fact]
     public async Task GetAuthorizationTokenAsync_WhenUserHasOidTid_AddsMappedAndUniqueAccountClaims()
     {
-        var tokenAcquisition = new FakeTokenAcquisition();
+        var tokenAcquisition = new TokenAcquisitionSubstitute();
         var user = new ClaimsPrincipal(new ClaimsIdentity(
         [
             new Claim("oid", "object-id"),
             new Claim("tid", "tenant-id"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
+        var provider = CreateProvider(tokenAcquisition.Instance, user, SpecificTenantAuthorityConfiguration);
 
         _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken);
 
@@ -56,12 +57,12 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     [Fact]
     public async Task GetAuthorizationTokenAsync_WhenSelfHostedAndTenantClaimMissing_UsesAuthorityTenantFallback()
     {
-        var tokenAcquisition = new FakeTokenAcquisition();
+        var tokenAcquisition = new TokenAcquisitionSubstitute();
         var user = new ClaimsPrincipal(new ClaimsIdentity(
         [
             new Claim("oid", "object-id"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
+        var provider = CreateProvider(tokenAcquisition.Instance, user, SpecificTenantAuthorityConfiguration);
 
         _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken);
 
@@ -73,14 +74,14 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     [Fact]
     public async Task GetAuthorizationTokenAsync_WhenPreferredUsernameMissing_AddsLoginHintClaims()
     {
-        var tokenAcquisition = new FakeTokenAcquisition();
+        var tokenAcquisition = new TokenAcquisitionSubstitute();
         var user = new ClaimsPrincipal(new ClaimsIdentity(
         [
             new Claim("oid", "object-id"),
             new Claim("tid", "tenant-id"),
             new Claim("upn", "person@contoso.com"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration);
+        var provider = CreateProvider(tokenAcquisition.Instance, user, SpecificTenantAuthorityConfiguration);
 
         _ = await provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken);
 
@@ -93,7 +94,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     public async Task GetAuthorizationTokenAsync_WhenUserNullChallengeOccurs_LogsClaimPresenceWithoutClaimValues()
     {
         var challengeException = CreateChallengeException("user_null");
-        var tokenAcquisition = new FakeTokenAcquisition(challengeException);
+        var tokenAcquisition = new TokenAcquisitionSubstitute(challengeException);
         var logger = new TestLogger<MicrosoftIdentityAccessTokenProvider>();
         var user = new ClaimsPrincipal(new ClaimsIdentity(
         [
@@ -105,7 +106,7 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             new Claim(ClaimTypes.Name, "Example Person"),
             new Claim(ClaimTypes.NameIdentifier, "name-identifier-123456"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration, logger);
+        var provider = CreateProvider(tokenAcquisition.Instance, user, SpecificTenantAuthorityConfiguration, logger);
 
         var exception = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
             provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken));
@@ -142,14 +143,14 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
     [Fact]
     public async Task GetAuthorizationTokenAsync_WhenUserNullChallengeOccurs_LogsMissingClaimsAsFalse()
     {
-        var tokenAcquisition = new FakeTokenAcquisition(CreateChallengeException("user_null"));
+        var tokenAcquisition = new TokenAcquisitionSubstitute(CreateChallengeException("user_null"));
         var logger = new TestLogger<MicrosoftIdentityAccessTokenProvider>();
         var user = new ClaimsPrincipal(new ClaimsIdentity(
         [
             new Claim("oid", "object-id"),
             new Claim("tid", "tenant-id"),
         ], authenticationType: "test-auth"));
-        var provider = CreateProvider(tokenAcquisition, user, SpecificTenantAuthorityConfiguration, logger);
+        var provider = CreateProvider(tokenAcquisition.Instance, user, SpecificTenantAuthorityConfiguration, logger);
 
         _ = await Assert.ThrowsAsync<MicrosoftIdentityWebChallengeUserException>(() =>
             provider.GetAuthorizationTokenAsync(new Uri("https://graph.microsoft.com/v1.0/me"), additionalAuthenticationContext: null, TestContext.Current.CancellationToken));
@@ -201,78 +202,6 @@ public sealed class MicrosoftIdentityAccessTokenProviderTests
             new MsalUiRequiredException(errorCode, "Interactive sign-in is required to acquire the downstream Graph token."),
             ["Tasks.ReadWrite"],
             userflow: string.Empty);
-
-    private sealed class FakeTokenAcquisition : ITokenAcquisition
-    {
-        private readonly Exception? exceptionToThrow;
-
-        public FakeTokenAcquisition(Exception? exceptionToThrow = null)
-        {
-            this.exceptionToThrow = exceptionToThrow;
-        }
-
-        public ClaimsPrincipal? CapturedUser { get; private set; }
-        public string? CapturedAuthenticationScheme { get; private set; }
-
-        public Task<string> GetAccessTokenForUserAsync(
-            IEnumerable<string> scopes,
-            string? authenticationScheme = null,
-            string? tenantId = null,
-            string? userFlow = null,
-            ClaimsPrincipal? user = null,
-            TokenAcquisitionOptions? tokenAcquisitionOptions = null)
-        {
-            CapturedUser = user;
-            CapturedAuthenticationScheme = authenticationScheme;
-
-            if (exceptionToThrow is not null)
-            {
-                return Task.FromException<string>(exceptionToThrow);
-            }
-
-            return Task.FromResult("token");
-        }
-
-        public Task<AuthenticationResult> GetAuthenticationResultForUserAsync(
-            IEnumerable<string> scopes,
-            string? authenticationScheme = null,
-            string? tenantId = null,
-            string? userFlow = null,
-            ClaimsPrincipal? user = null,
-            TokenAcquisitionOptions? tokenAcquisitionOptions = null)
-            => Task.FromException<AuthenticationResult>(new NotSupportedException());
-
-        public Task<string> GetAccessTokenForAppAsync(
-            string scope,
-            string? authenticationScheme = null,
-            string? tenant = null,
-            TokenAcquisitionOptions? tokenAcquisitionOptions = null)
-            => Task.FromResult("app-token");
-
-        public Task<AuthenticationResult> GetAuthenticationResultForAppAsync(
-            string scope,
-            string? authenticationScheme = null,
-            string? tenant = null,
-            TokenAcquisitionOptions? tokenAcquisitionOptions = null)
-            => Task.FromException<AuthenticationResult>(new NotSupportedException());
-
-        public void ReplyForbiddenWithWwwAuthenticateHeader(
-            IEnumerable<string> scopes,
-            MsalUiRequiredException msalUiRequiredException,
-            string? authenticationScheme = null,
-            HttpResponse? httpResponse = null)
-        {
-        }
-
-        public string GetEffectiveAuthenticationScheme(string? authenticationScheme)
-            => authenticationScheme ?? string.Empty;
-
-        public Task ReplyForbiddenWithWwwAuthenticateHeaderAsync(
-            IEnumerable<string> scopes,
-            MsalUiRequiredException msalUiRequiredException,
-            HttpResponse? httpResponse = null)
-            => Task.CompletedTask;
-    }
 
     private sealed class TestLogger<T> : ILogger<T>
     {

@@ -479,7 +479,7 @@ public sealed class ImportPlanningUseCaseTests
     {
         return new ImportPlanningUseCase(
             gateway,
-            new CurrentTenantContextAccessorStub(),
+            TenantContextAccessorSubstitute.Create(),
             metadataStore ?? new TenantOperationalMetadataStoreStub(),
             new ConsentResolutionDefaults(
                 ["Tasks.ReadWrite"],

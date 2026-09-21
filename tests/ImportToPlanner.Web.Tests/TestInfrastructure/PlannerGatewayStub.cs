@@ -120,24 +120,3 @@ internal sealed class TenantOperationalMetadataStoreStub : ITenantOperationalMet
     }
 }
 
-internal sealed class CurrentTenantContextAccessorStub : ICurrentTenantContextAccessor
-{
-    public Exception? GetRequiredContextException { get; set; }
-
-    public TenantContext Context { get; set; } = new(
-        "tenant-a",
-        "tenant-key-a",
-        "user-a",
-        SupportedAccountType.WorkOrSchool,
-        "Tenant A");
-
-    public TenantContext GetRequiredContext()
-    {
-        if (GetRequiredContextException is not null)
-        {
-            throw GetRequiredContextException;
-        }
-
-        return Context;
-    }
-}

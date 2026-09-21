@@ -1034,7 +1034,7 @@ public sealed class ImportExecutionUseCaseTests
     {
         return new ImportPlanningUseCase(
             plannerGateway,
-            new CurrentTenantContextAccessorStub(),
+            TenantContextAccessorSubstitute.Create(),
             new TenantOperationalMetadataStoreStub(),
             new ConsentResolutionDefaults(
                 ["Tasks.ReadWrite"],

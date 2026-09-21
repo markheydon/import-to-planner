@@ -366,7 +366,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
     private static ImportPlanningUseCase CreatePlanningUseCase(IPlannerGateway plannerGateway)
         => new(
             plannerGateway,
-            new CurrentTenantContextAccessorStub(),
+            TenantContextAccessorSubstitute.Create(),
             new TenantOperationalMetadataStoreStub(),
             new ConsentResolutionDefaults(
                 ["Tasks.ReadWrite"],

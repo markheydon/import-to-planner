@@ -1,7 +1,16 @@
 namespace ImportToPlanner.Web.Tests.TestInfrastructure;
 
-internal sealed class CreditEnsureUseCaseStub : IEnsureCurrentCreditBalanceUseCase
+internal sealed class CreditEnsureUseCaseSubstitute
 {
+    public CreditEnsureUseCaseSubstitute()
+    {
+        Instance = Substitute.For<IEnsureCurrentCreditBalanceUseCase>();
+        Instance.EnsureAsync(Arg.Any<EnsureCurrentCreditBalanceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(callInfo => BuildOutcome(callInfo.Arg<EnsureCurrentCreditBalanceRequest>()));
+    }
+
+    public IEnsureCurrentCreditBalanceUseCase Instance { get; }
+
     public int RemainingCredits { get; set; } = 25;
 
     public bool FailClosed { get; set; }
@@ -12,13 +21,10 @@ internal sealed class CreditEnsureUseCaseStub : IEnsureCurrentCreditBalanceUseCa
 
     public EnsureBalanceReason? LastReason { get; private set; }
 
-    public Task<EnsureCurrentCreditBalanceOutcome> EnsureAsync(
-        EnsureCurrentCreditBalanceRequest request,
-        CancellationToken cancellationToken)
+    private Task<EnsureCurrentCreditBalanceOutcome> BuildOutcome(EnsureCurrentCreditBalanceRequest request)
     {
         EnsureCallCount++;
         LastReason = request.Reason;
-        cancellationToken.ThrowIfCancellationRequested();
 
         if (FailClosed)
         {

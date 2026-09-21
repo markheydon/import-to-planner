@@ -4,7 +4,6 @@ using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial.Services;
-using ImportToPlanner.Infrastructure.Graph.Import;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,7 +20,7 @@ internal sealed class HomePageTestContext : BunitContext
         bool commercialModeEnabled = false,
         CommercialAccountStoreStub? commercialAccountStoreStub = null,
         CommercialAuditStoreStub? commercialAuditStoreStub = null,
-        CreditEnsureUseCaseStub? creditEnsureUseCaseStub = null)
+        CreditEnsureUseCaseSubstitute? creditEnsureUseCaseSubstitute = null)
     {
         Services.AddMudServices(configuration =>
         {
@@ -95,8 +94,8 @@ internal sealed class HomePageTestContext : BunitContext
                 serviceProvider.GetRequiredService<IHttpContextAccessor>(),
                 serviceProvider.GetRequiredService<TenantAuthorityConfiguration>())!);
 
-        CsvParser = new CsvImportParserStub();
-        Services.AddScoped<ICsvImportParser>(_ => CsvParser);
+        CsvParser = new CsvImportParserSubstitute();
+        Services.AddScoped<ICsvImportParser>(_ => CsvParser.Instance);
         Services.AddScoped<IPlannerGateway>(_ => Gateway);
         Services.AddScoped<ITenantOperationalMetadataStore, TenantOperationalMetadataStoreStub>();
         if (commercialModeEnabled)
@@ -111,18 +110,18 @@ internal sealed class HomePageTestContext : BunitContext
             Services.AddScoped<RestoreCommercialAccountUseCase>();
             Services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
             Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
-            CreditEnsureUseCase = creditEnsureUseCaseStub ?? new CreditEnsureUseCaseStub();
-            Services.AddScoped<IEnsureCurrentCreditBalanceUseCase>(_ => CreditEnsureUseCase);
+            CreditEnsureUseCase = creditEnsureUseCaseSubstitute ?? new CreditEnsureUseCaseSubstitute();
+            Services.AddScoped<IEnsureCurrentCreditBalanceUseCase>(_ => CreditEnsureUseCase.Instance);
         }
         else
         {
             CommercialAccountStore = commercialAccountStoreStub ?? new CommercialAccountStoreStub();
             CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
-            CreditEnsureUseCase = creditEnsureUseCaseStub ?? new CreditEnsureUseCaseStub();
+            CreditEnsureUseCase = creditEnsureUseCaseSubstitute ?? new CreditEnsureUseCaseSubstitute();
         }
 
-        Services.AddSingleton(TenantAccessor);
-        Services.AddScoped<ICurrentTenantContextAccessor>(_ => TenantAccessor);
+        Services.AddSingleton(TenantAccessor.Instance);
+        Services.AddScoped<ICurrentTenantContextAccessor>(_ => TenantAccessor.Instance);
         Services.AddApplication();
         Services.AddScoped<ImportPlanningPresenter>();
         Services.AddScoped<ImportExecutionPresenter>();
@@ -133,17 +132,17 @@ internal sealed class HomePageTestContext : BunitContext
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
-    public CsvImportParserStub CsvParser { get; }
+    public CsvImportParserSubstitute CsvParser { get; }
 
     public PlannerGatewayStub Gateway { get; } = new();
 
-    public CurrentTenantContextAccessorStub TenantAccessor { get; } = new();
+    public TenantContextAccessorSubstitute TenantAccessor { get; } = new();
 
     public CommercialAccountStoreStub CommercialAccountStore { get; }
 
     public CommercialAuditStoreStub CommercialAuditStore { get; }
 
-    public CreditEnsureUseCaseStub CreditEnsureUseCase { get; }
+    public CreditEnsureUseCaseSubstitute CreditEnsureUseCase { get; }
 
     private static ClaimsPrincipal CreatePrincipal(bool isAuthenticated)
     {
@@ -164,21 +163,3 @@ internal sealed class HomePageTestContext : BunitContext
     }
 }
 
-internal sealed class CsvImportParserStub : ICsvImportParser
-{
-    private readonly CsvImportParser innerParser = new();
-
-    public bool UseRealParser { get; set; }
-
-    public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken, bool ignoreExtraColumns = false)
-    {
-        if (UseRealParser)
-        {
-            return innerParser.ParseAsync(csvContent, cancellationToken, ignoreExtraColumns);
-        }
-
-        return Task.FromResult(new CsvParseResult(
-            [new CsvTaskRow(2, "Stub Task", null, null, null, null)],
-            []));
-    }
-}
