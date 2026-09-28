@@ -1,5 +1,4 @@
 using ImportToPlanner.E2E.Tests.Infrastructure;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Playwright;
 
 namespace ImportToPlanner.E2E.Tests;
@@ -10,8 +9,7 @@ public sealed class HomePageJourneyTests
     public async Task CommercialMode_WhenAnonymous_ShowsSignInGate()
     {
         await using var factory = new ImportToPlannerWebApplicationFactory(commercialModeEnabled: true);
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var baseAddress = client.BaseAddress ?? throw new InvalidOperationException("The test host did not expose a base address.");
+        var baseAddress = factory.ServerBaseAddress;
 
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await PlaywrightTestPrerequisites.LaunchChromiumAsync(playwright);
@@ -29,8 +27,7 @@ public sealed class HomePageJourneyTests
     public async Task SelfHost_WhenSignedIn_ShowsFiveStepImportWorkflow()
     {
         await using var factory = new ImportToPlannerWebApplicationFactory(commercialModeEnabled: false);
-        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = true });
-        var baseAddress = client.BaseAddress ?? throw new InvalidOperationException("The test host did not expose a base address.");
+        var baseAddress = factory.ServerBaseAddress;
 
         using var playwright = await Playwright.CreateAsync();
         await using var browser = await PlaywrightTestPrerequisites.LaunchChromiumAsync(playwright);
