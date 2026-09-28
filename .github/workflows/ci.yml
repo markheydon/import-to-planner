@@ -69,8 +69,7 @@ jobs:
       - name: Build solution
         run: dotnet build ImportToPlanner.slnx --no-restore
 
-      - name: Install Playwright browsers
-        run: pwsh tests/ImportToPlanner.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
-
       - name: Run tests
-        run: dotnet test --solution ImportToPlanner.slnx --no-build --verbosity normal
+        run: |
+          dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --no-build --verbosity normal
+          dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj --no-build --verbosity normal

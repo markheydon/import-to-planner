@@ -10,11 +10,14 @@ Where tests live
 
 Run tests
 ---------
-Run the solution tests:
+Run the solution tests (includes E2E when Chromium is installed locally):
 
 ```bash
 dotnet test ImportToPlanner.slnx
 ```
+
+CI runs unit and integration tests in `.github/workflows/ci.yml` and Playwright
+journeys separately in `.github/workflows/ci-e2e.yml`.
 
 Coverage (optional)
 -------------------

@@ -4,11 +4,15 @@ CI validates both the application and the AppHost.
 
 ## Validation Scope
 
-- Solution restore, format verification, build, and test on `ImportToPlanner.slnx`
+- Solution restore, format verification, build, and unit/integration tests on
+  `ImportToPlanner.slnx` (excluding `ImportToPlanner.E2E.Tests`)
+- Playwright browser journeys in `tests/ImportToPlanner.E2E.Tests/` via
+  `.github/workflows/ci-e2e.yml`
 - AppHost validation as part of solution-level restore/build on `ImportToPlanner.slnx`
 - JavaScript syntax validation for tracked `*.js` files via `node --check`
 
-See `.github/workflows/ci.yml` for the full pipeline.
+See `.github/workflows/ci.yml` for the core .NET pipeline and
+`.github/workflows/ci-e2e.yml` for Playwright E2E validation.
 
 ## Practical Notes
 
