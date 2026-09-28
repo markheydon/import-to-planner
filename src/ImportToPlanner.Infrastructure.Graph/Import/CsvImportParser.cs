@@ -2,7 +2,9 @@ using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Import;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Services;
 
 namespace ImportToPlanner.Infrastructure.Graph.Import;
 
@@ -11,31 +13,83 @@ namespace ImportToPlanner.Infrastructure.Graph.Import;
 /// </summary>
 public sealed class CsvImportParser : ICsvImportParser
 {
-    private const string TaskNameHeader = "task name";
-    private const string DescriptionHeader = "description";
-    private const string PriorityHeader = "priority";
-    private const string BucketHeader = "bucket";
-    private const string GoalHeader = "goal";
-    private const string DueDateHeader = "due date";
-    private const string AssignedToHeader = "assigned to";
     private const int MaxDescriptionLength = 32_768;
     private const char Utf8Bom = '\uFEFF';
 
-    private static readonly HashSet<string> SupportedHeaders = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Task Name",
-        "Description",
-        "Priority",
-        "Bucket",
-        "Goal",
-        "Due Date",
-        "Assigned To",
-    };
+    private readonly ICsvColumnMappingService columnMappingService;
 
-    /// <inheritdoc/>
+    /// <summary>
+    /// Creates a parser using the default in-process mapping service for legacy parse calls.
+    /// </summary>
+    public CsvImportParser()
+        : this(new CsvColumnMappingService())
+    {
+    }
+
+    /// <summary>
+    /// Creates a parser with the supplied mapping service.
+    /// </summary>
+    public CsvImportParser(ICsvColumnMappingService columnMappingService)
+    {
+        ArgumentNullException.ThrowIfNull(columnMappingService);
+        this.columnMappingService = columnMappingService;
+    }
+
+    /// <inheritdoc />
     public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken, bool ignoreExtraColumns = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        var peek = PeekHeadersInternal(csvContent);
+        if (peek.HasErrors)
+        {
+            return Task.FromResult(new CsvParseResult([], peek.ValidationErrors));
+        }
+
+        var proposal = columnMappingService.BuildProposal(peek.Headers, savedForLayout: null);
+        if (proposal.Status is ColumnMappingProposalStatus.NeedsTaskName)
+        {
+            return Task.FromResult(new CsvParseResult(
+                [],
+                [new ImportValidationError(0, "Task Name", "Task Name column is required.")]));
+        }
+
+        if (proposal.Status is ColumnMappingProposalStatus.Conflict)
+        {
+            return Task.FromResult(new CsvParseResult(
+                [],
+                [new ImportValidationError(0, "Mapping", "Column mapping conflict. Map each import field to a single source column.")]));
+        }
+
+        try
+        {
+            var mapping = columnMappingService.ToConfirmedMapping(proposal, proposal.SuggestedAssignments);
+            return ParseAsync(csvContent, mapping, ignoreExtraColumns, cancellationToken);
+        }
+        catch (InvalidOperationException exception)
+        {
+            return Task.FromResult(new CsvParseResult(
+                [],
+                [new ImportValidationError(0, "Mapping", exception.Message)]));
+        }
+    }
+
+    /// <inheritdoc />
+    public Task<CsvHeaderPeekResult> PeekHeadersAsync(string csvContent, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult(PeekHeadersInternal(csvContent));
+    }
+
+    /// <inheritdoc />
+    public Task<CsvParseResult> ParseAsync(
+        string csvContent,
+        CsvColumnMapping columnMapping,
+        bool ignoreExtraColumns,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(columnMapping);
 
         var normalisedContent = StripLeadingBom(csvContent);
 
@@ -44,42 +98,21 @@ public sealed class CsvImportParser : ICsvImportParser
             return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV file is empty.")]));
         }
 
-        var headerLine = GetFirstHeaderLine(normalisedContent);
-        var separatorDetection = DetectFieldSeparator(headerLine);
-
-        if (separatorDetection == FieldSeparatorDetection.Ambiguous)
+        if (!columnMapping.Assignments.ContainsKey(ImportColumnFieldIds.TaskName))
         {
             return Task.FromResult(new CsvParseResult(
                 [],
-                [new ImportValidationError(
-                    0,
-                    "File",
-                    "The field separator could not be determined. Save the file as comma-separated UTF-8 and upload again.")]));
+                [new ImportValidationError(0, "Task Name", "Task Name column is required.")]));
         }
 
-        if (separatorDetection == FieldSeparatorDetection.Unsupported)
+        var readerResult = TryCreateReader(normalisedContent);
+        if (readerResult.Error is not null)
         {
-            return Task.FromResult(new CsvParseResult(
-                [],
-                [new ImportValidationError(
-                    0,
-                    "File",
-                    "This separator is not supported. Save the file as comma-separated UTF-8 and upload again.")]));
+            return Task.FromResult(new CsvParseResult([], [readerResult.Error]));
         }
 
-        var delimiter = separatorDetection == FieldSeparatorDetection.Semicolon ? ";" : ",";
-
-        using var reader = new StringReader(normalisedContent);
-        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
-        {
-            Delimiter = delimiter,
-            IgnoreBlankLines = true,
-            TrimOptions = TrimOptions.Trim,
-            MissingFieldFound = null,
-            HeaderValidated = null,
-            PrepareHeaderForMatch = args => args.Header?.Trim().ToLowerInvariant() ?? string.Empty,
-        };
-
+        using var reader = readerResult.Reader!;
+        var config = readerResult.Configuration!;
         using var csv = new CsvReader(reader, config);
 
         var errors = new List<ImportValidationError>();
@@ -90,20 +123,28 @@ public sealed class CsvImportParser : ICsvImportParser
             return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV header row is missing.")]));
         }
 
-        ValidateHeaders(csv.HeaderRecord, errors, ignoreExtraColumns);
+        ValidateMappedHeaders(csv.HeaderRecord, columnMapping, errors, ignoreExtraColumns);
+
+        var taskNameHeader = ToCsvHelperHeader(columnMapping.Assignments[ImportColumnFieldIds.TaskName]);
+        var descriptionHeader = TryGetMappedHeader(columnMapping, ImportColumnFieldIds.Description);
+        var priorityHeader = TryGetMappedHeader(columnMapping, ImportColumnFieldIds.Priority);
+        var bucketHeader = TryGetMappedHeader(columnMapping, ImportColumnFieldIds.Bucket);
+        var goalHeader = TryGetMappedHeader(columnMapping, ImportColumnFieldIds.Goal);
+        var dueDateHeader = TryGetMappedHeader(columnMapping, ImportColumnFieldIds.DueDate);
+        var assignedToHeader = TryGetMappedHeader(columnMapping, ImportColumnFieldIds.AssignedTo);
 
         while (csv.Read())
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var rowNumber = csv.Parser.Row;
-            var taskName = csv.GetField(TaskNameHeader)?.Trim();
-            var description = Normalise(csv.GetField(DescriptionHeader));
-            var priorityText = Normalise(csv.GetField(PriorityHeader));
-            var bucket = Normalise(csv.GetField(BucketHeader));
-            var goal = Normalise(csv.GetField(GoalHeader));
-            var dueDateText = Normalise(csv.GetField(DueDateHeader));
-            var assignedToText = csv.GetField(AssignedToHeader);
+            var taskName = csv.GetField(taskNameHeader)?.Trim();
+            var description = Normalise(GetFieldOrNull(csv, descriptionHeader));
+            var priorityText = Normalise(GetFieldOrNull(csv, priorityHeader));
+            var bucket = Normalise(GetFieldOrNull(csv, bucketHeader));
+            var goal = Normalise(GetFieldOrNull(csv, goalHeader));
+            var dueDateText = Normalise(GetFieldOrNull(csv, dueDateHeader));
+            var assignedToText = GetFieldOrNull(csv, assignedToHeader);
 
             if (string.IsNullOrWhiteSpace(taskName))
             {
@@ -150,6 +191,175 @@ public sealed class CsvImportParser : ICsvImportParser
         }
 
         return Task.FromResult(new CsvParseResult(rows, errors));
+    }
+
+    private static CsvHeaderPeekResult PeekHeadersInternal(string? csvContent)
+    {
+        var normalisedContent = StripLeadingBom(csvContent);
+
+        if (string.IsNullOrWhiteSpace(normalisedContent))
+        {
+            return new CsvHeaderPeekResult
+            {
+                Headers = [],
+                ValidationErrors = [new ImportValidationError(0, "File", "CSV file is empty.")],
+            };
+        }
+
+        var readerResult = TryCreateReader(normalisedContent);
+        if (readerResult.Error is not null)
+        {
+            return new CsvHeaderPeekResult
+            {
+                Headers = [],
+                ValidationErrors = [readerResult.Error],
+            };
+        }
+
+        using var reader = readerResult.Reader!;
+        var config = readerResult.Configuration!;
+        using var csv = new CsvReader(reader, config);
+
+        if (!csv.Read() || !csv.ReadHeader() || csv.HeaderRecord is null)
+        {
+            return new CsvHeaderPeekResult
+            {
+                Headers = [],
+                ValidationErrors = [new ImportValidationError(0, "File", "CSV header row is missing.")],
+            };
+        }
+
+        var headers = csv.HeaderRecord.Select(header => header.Trim()).ToArray();
+        var duplicateErrors = FindDuplicateNormalisedHeaderErrors(headers);
+        if (duplicateErrors.Count > 0)
+        {
+            return new CsvHeaderPeekResult
+            {
+                Headers = headers,
+                ValidationErrors = duplicateErrors,
+            };
+        }
+
+        return new CsvHeaderPeekResult
+        {
+            Headers = headers,
+            ValidationErrors = [],
+        };
+    }
+
+    private static List<ImportValidationError> FindDuplicateNormalisedHeaderErrors(IReadOnlyList<string> headers)
+    {
+        var seen = new Dictionary<string, string>(StringComparer.Ordinal);
+        var errors = new List<ImportValidationError>();
+
+        foreach (var header in headers)
+        {
+            var normalised = ImportColumnHeaderNormalisation.NormaliseForMatch(header);
+            if (normalised.Length == 0)
+            {
+                continue;
+            }
+
+            if (seen.TryGetValue(normalised, out var firstHeader))
+            {
+                var message = string.Equals(firstHeader, header, StringComparison.Ordinal)
+                    ? $"Duplicate column heading detected: '{header}' appears more than once."
+                    : $"Duplicate column heading detected: '{header}' matches '{firstHeader}' after normalisation.";
+                errors.Add(new ImportValidationError(0, "Mapping", message));
+            }
+            else
+            {
+                seen[normalised] = header;
+            }
+        }
+
+        return errors;
+    }
+
+    private static void ValidateMappedHeaders(
+        IEnumerable<string> headers,
+        CsvColumnMapping columnMapping,
+        List<ImportValidationError> errors,
+        bool ignoreExtraColumns)
+    {
+        var rawHeaders = headers.Select(header => header.Trim()).ToHashSet(StringComparer.Ordinal);
+        var mappedSources = columnMapping.Assignments.Values.ToHashSet(StringComparer.Ordinal);
+
+        foreach (var mappedSource in mappedSources)
+        {
+            if (!rawHeaders.Contains(mappedSource))
+            {
+                errors.Add(new ImportValidationError(0, "Mapping", $"Mapped column '{mappedSource}' was not found in the header row."));
+            }
+        }
+
+        if (ignoreExtraColumns)
+        {
+            return;
+        }
+
+        foreach (var header in rawHeaders)
+        {
+            if (!mappedSources.Contains(header))
+            {
+                errors.Add(new ImportValidationError(0, header, "Unexpected column."));
+            }
+        }
+    }
+
+    private static string? TryGetMappedHeader(CsvColumnMapping columnMapping, string fieldId)
+        => columnMapping.Assignments.TryGetValue(fieldId, out var sourceHeader)
+            ? ToCsvHelperHeader(sourceHeader)
+            : null;
+
+    private static string ToCsvHelperHeader(string rawHeader)
+        => rawHeader.Trim().ToLowerInvariant();
+
+    private static string? GetFieldOrNull(CsvReader csv, string? csvHelperHeader)
+        => csvHelperHeader is null ? null : csv.GetField(csvHelperHeader);
+
+    private sealed record CsvReaderOpenResult(StringReader? Reader, CsvConfiguration? Configuration, ImportValidationError? Error);
+
+    private static CsvReaderOpenResult TryCreateReader(string normalisedContent)
+    {
+        var headerLine = GetFirstHeaderLine(normalisedContent);
+        var separatorDetection = DetectFieldSeparator(headerLine);
+
+        if (separatorDetection == FieldSeparatorDetection.Ambiguous)
+        {
+            return new CsvReaderOpenResult(
+                null,
+                null,
+                new ImportValidationError(
+                    0,
+                    "File",
+                    "The field separator could not be determined. Save the file as comma-separated UTF-8 and upload again."));
+        }
+
+        if (separatorDetection == FieldSeparatorDetection.Unsupported)
+        {
+            return new CsvReaderOpenResult(
+                null,
+                null,
+                new ImportValidationError(
+                    0,
+                    "File",
+                    "This separator is not supported. Save the file as comma-separated UTF-8 and upload again."));
+        }
+
+        var delimiter = separatorDetection == FieldSeparatorDetection.Semicolon ? ";" : ",";
+        var reader = new StringReader(normalisedContent);
+        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        {
+            Delimiter = delimiter,
+            IgnoreBlankLines = true,
+            TrimOptions = TrimOptions.Trim,
+            MissingFieldFound = null,
+            HeaderValidated = null,
+            PrepareHeaderForMatch = args => args.Header?.Trim().ToLowerInvariant() ?? string.Empty,
+        };
+
+        return new CsvReaderOpenResult(reader, config, null);
     }
 
     /// <summary>
@@ -284,29 +494,6 @@ public sealed class CsvImportParser : ICsvImportParser
         }
 
         return FieldSeparatorDetection.SingleColumn;
-    }
-
-    private static void ValidateHeaders(IEnumerable<string> headers, List<ImportValidationError> errors, bool ignoreExtraColumns = false)
-    {
-        var normalised = headers
-            .Select(header => header.Trim())
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        if (!normalised.Contains("Task Name"))
-        {
-            errors.Add(new ImportValidationError(0, "Task Name", "Task Name column is required."));
-        }
-
-        if (!ignoreExtraColumns)
-        {
-            foreach (var header in normalised)
-            {
-                if (!SupportedHeaders.Contains(header))
-                {
-                    errors.Add(new ImportValidationError(0, header, "Unexpected column."));
-                }
-            }
-        }
     }
 
     private static bool TryParsePriority(string? priorityText, out int? priority)

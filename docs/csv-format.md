@@ -22,7 +22,13 @@ Accepted columns are:
 - Due Date (optional)
 - Assigned To (optional)
 
-Use these exact headings in the first row.
+You can use the canonical headings below, or common synonyms (for example **Title** for **Task Name**). The import app maps your columns automatically and lets you adjust mappings before preview.
+
+Download ready-made examples from the upload step (or use `/samples/import-minimal.csv` and `/samples/import-full.csv` on the app site).
+
+## CSV only today; Excel later
+
+This release accepts comma-separated (CSV) files only. Excel workbook (`.xlsx`) import and native Planner export handling are planned separately and will reuse the same in-app column mapping layer as CSV upload (canonical fields, synonym headers, and remembered layouts). You will not need a second mapping system when workbook import ships.
 
 ## Assigned To values
 
@@ -90,7 +96,7 @@ Publish update,Post the final update to users,3,Delivery,Launch readiness,,
 ## Common mistakes and how to avoid them
 
 - Missing header row: always include headings in the first row.
-- Wrong heading names: use the accepted headings exactly.
+- Wrong heading names: use accepted headings or synonyms, or fix mappings in the upload step when preview is blocked.
 - Invalid priority value: use 0-10 or one of Urgent/Important/Medium/Low.
 - Invalid due date value: use ISO `yyyy-MM-dd` or a UK day/month/year date, or leave the cell empty.
 - Description too long: keep descriptions within 32,768 characters to match Planner limits.

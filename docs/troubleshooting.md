@@ -34,10 +34,18 @@ Try the following:
 
 ## CSV validation failures
 
+### Task Name could not be found
+
+If preview is blocked because **Task Name** could not be matched automatically:
+
+1. On the upload step, open **Column mapping** and assign **Task Name** to the correct source column (or download a [minimal sample](./csv-format) and compare headings).
+2. Use **Change mapping** on the automatic summary if a synonym was mapped incorrectly.
+3. See [CSV format](./csv-format) for accepted headings and common synonyms (for example **Title** for **Task Name**).
+
 Common causes:
 
-- Missing Task Name header.
-- Unsupported or misspelled column headings.
+- No source column mapped to **Task Name** (including files that use only unfamiliar headings).
+- Synonym headings that were not recognised — fix via the mapping editor rather than renaming the file externally.
 - Empty task names.
 - Invalid priority values.
 - Invalid due date values (row-level CSV validation, not a file separator error).

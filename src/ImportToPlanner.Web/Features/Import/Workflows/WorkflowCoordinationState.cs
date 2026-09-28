@@ -67,4 +67,16 @@ public sealed class WorkflowCoordinationState
     public ImportExecutionReportViewModel? ExecutionReport { get; set; }
 
     public WorkflowCreditBalanceSnapshot? CreditBalanceSnapshot { get; set; }
+
+    public CsvHeaderPeekResult? HeaderPeek { get; set; }
+
+    public ColumnMappingProposal? ColumnMappingProposal { get; set; }
+
+    public CsvColumnMapping? ConfirmedColumnMapping { get; set; }
+
+    public bool IsColumnMappingConfirmed { get; set; }
+
+    public bool ShowMappingEditor { get; set; }
+
+    public bool ShowMappingPrivacyNote { get; set; }
 }

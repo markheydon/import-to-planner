@@ -1,9 +1,11 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Import;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Domain;
 using ImportToPlanner.Web.Features.Import.Presenters;
+using ImportToPlanner.Web.Features.Import.Storage;
 
 namespace ImportToPlanner.Web.Features.Import.Workflows;
 
@@ -12,6 +14,8 @@ namespace ImportToPlanner.Web.Features.Import.Workflows;
 /// </summary>
 public sealed class ImportWorkflowCoordinator(
     ICsvImportParser csvImportParser,
+    ICsvColumnMappingService columnMappingService,
+    IImportColumnMappingLayoutStore columnMappingLayoutStore,
     IPlannerGateway plannerGateway,
     IImportPlanningUseCase planningUseCase,
     IImportExecutionUseCase executionUseCase,
@@ -113,6 +117,77 @@ public sealed class ImportWorkflowCoordinator(
         }
     }
 
+    public async Task ProcessCsvUploadAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        InvalidateColumnMappingState(state);
+        state.ParseErrors.Clear();
+
+        if (string.IsNullOrWhiteSpace(state.CsvContent))
+        {
+            return;
+        }
+
+        var peek = await csvImportParser.PeekHeadersAsync(state.CsvContent, cancellationToken);
+        state.HeaderPeek = peek;
+
+        if (peek.HasErrors)
+        {
+            state.ParseErrors.AddRange(peek.ValidationErrors);
+            state.StatusMessage = "The CSV header row could not be read. Fix the reported issues and upload again.";
+            state.StatusLevel = WorkflowStatusLevel.Error;
+            return;
+        }
+
+        var layoutSignature = ImportColumnHeaderNormalisation.BuildLayoutSignature(peek.Headers);
+        var savedLayout = await columnMappingLayoutStore.GetAsync(layoutSignature, cancellationToken);
+        var proposal = columnMappingService.BuildProposal(peek.Headers, savedLayout);
+        state.ColumnMappingProposal = proposal;
+
+        if (proposal.Status is ColumnMappingProposalStatus.Conflict or ColumnMappingProposalStatus.NeedsTaskName)
+        {
+            state.ShowMappingEditor = true;
+            state.IsColumnMappingConfirmed = false;
+            state.ConfirmedColumnMapping = null;
+            return;
+        }
+
+        if (proposal.Status is ColumnMappingProposalStatus.Ready or ColumnMappingProposalStatus.NeedsConfirmation)
+        {
+            ApplyConfirmedMapping(state, proposal, proposal.SuggestedAssignments);
+            await PersistLayoutMappingAsync(state, proposal.SuggestedAssignments, savedLayout is null, cancellationToken);
+            return;
+        }
+
+        state.ShowMappingEditor = false;
+        state.IsColumnMappingConfirmed = false;
+        state.ConfirmedColumnMapping = null;
+    }
+
+    public async Task ConfirmColumnMappingAsync(
+        WorkflowCoordinationState state,
+        IReadOnlyDictionary<string, string?> userAssignments,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(userAssignments);
+
+        if (state.ColumnMappingProposal is null)
+        {
+            throw new InvalidOperationException("No column mapping proposal is available.");
+        }
+
+        var confirmed = columnMappingService.ToConfirmedMapping(state.ColumnMappingProposal, userAssignments);
+        state.ConfirmedColumnMapping = confirmed;
+        state.IsColumnMappingConfirmed = true;
+        state.ShowMappingEditor = false;
+        InvalidatePreviewAndExecutionState(state);
+        state.IsPreviewStale = state.PlanningViewModel is not null || state.CurrentPlanningRequest is not null;
+
+        await PersistLayoutMappingAsync(state, userAssignments, showPrivacyNote: true, cancellationToken);
+    }
+
     public async Task BuildPreviewAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -148,7 +223,28 @@ public sealed class ImportWorkflowCoordinator(
                 return;
             }
 
-            var parseResult = await csvImportParser.ParseAsync(state.CsvContent, cancellationToken, state.IgnoreExtraColumns);
+            if (state.ColumnMappingProposal is null)
+            {
+                await ProcessCsvUploadAsync(state, cancellationToken);
+                if (state.ParseErrors.Count > 0)
+                {
+                    return;
+                }
+            }
+
+            if (state.ShowMappingEditor
+                || !state.IsColumnMappingConfirmed
+                || state.ConfirmedColumnMapping is null)
+            {
+                state.ParseErrors.Add(new ImportValidationError(0, "Mapping", "Confirm column mapping before preview."));
+                return;
+            }
+
+            var parseResult = await csvImportParser.ParseAsync(
+                state.CsvContent,
+                state.ConfirmedColumnMapping,
+                state.IgnoreExtraColumns,
+                cancellationToken);
             state.ParseErrors.AddRange(parseResult.ValidationErrors);
 
             if (parseResult.HasErrors)
@@ -290,6 +386,79 @@ public sealed class ImportWorkflowCoordinator(
             ApplyFailureSignals(state, exception);
             throw;
         }
+    }
+
+    private void ApplyConfirmedMapping(
+        WorkflowCoordinationState state,
+        ColumnMappingProposal proposal,
+        IReadOnlyDictionary<string, string?> assignments)
+    {
+        state.ConfirmedColumnMapping = columnMappingService.ToConfirmedMapping(proposal, assignments);
+        state.IsColumnMappingConfirmed = true;
+        state.ShowMappingEditor = false;
+    }
+
+    private async Task PersistLayoutMappingAsync(
+        WorkflowCoordinationState state,
+        IReadOnlyDictionary<string, string?> userAssignments,
+        bool showPrivacyNote,
+        CancellationToken cancellationToken)
+    {
+        if (state.ColumnMappingProposal is null)
+        {
+            return;
+        }
+
+        var savedAssignments = BuildSavedAssignments(state.ColumnMappingProposal, userAssignments);
+        await columnMappingLayoutStore.SaveAsync(
+            new SavedLayoutMapping
+            {
+                LayoutSignature = state.ColumnMappingProposal.LayoutSignature,
+                Assignments = savedAssignments,
+                UpdatedUtc = DateTimeOffset.UtcNow,
+            },
+            cancellationToken);
+
+        if (showPrivacyNote)
+        {
+            state.ShowMappingPrivacyNote = true;
+        }
+    }
+
+    private static Dictionary<string, string?> BuildSavedAssignments(
+        ColumnMappingProposal proposal,
+        IReadOnlyDictionary<string, string?> userAssignments)
+    {
+        var saved = new Dictionary<string, string?>(StringComparer.Ordinal);
+
+        foreach (var sourceHeader in proposal.SourceHeaders)
+        {
+            saved[sourceHeader] = null;
+        }
+
+        foreach (var field in ImportColumnFieldCatalog.EnabledFields)
+        {
+            if (!userAssignments.TryGetValue(field.FieldId, out var sourceHeader)
+                || string.IsNullOrWhiteSpace(sourceHeader))
+            {
+                continue;
+            }
+
+            saved[sourceHeader] = field.FieldId;
+        }
+
+        return saved;
+    }
+
+    public static void InvalidateColumnMappingState(WorkflowCoordinationState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        state.HeaderPeek = null;
+        state.ColumnMappingProposal = null;
+        state.ConfirmedColumnMapping = null;
+        state.IsColumnMappingConfirmed = false;
+        state.ShowMappingEditor = false;
     }
 
     private static void InvalidatePreviewAndExecutionState(WorkflowCoordinationState state)

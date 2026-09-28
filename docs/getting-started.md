@@ -49,7 +49,7 @@ If your organisation is preparing first-time access to the hosted service, make 
 1. Sign in.
 2. Select a group.
 3. Enter or select a plan name.
-4. Upload your CSV file.
+4. Upload your CSV file, or download the minimal or full sample from the upload step to get started quickly.
 5. Review validation and preview results.
 6. Confirm execution.
 7. Review the final report.
