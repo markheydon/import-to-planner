@@ -85,7 +85,7 @@ public partial class Home
 
         try
         {
-            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, WorkflowCancellation);
 
             if (hasTokenReauthenticationQuery)
             {

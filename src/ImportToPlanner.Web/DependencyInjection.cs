@@ -7,12 +7,10 @@ using ImportToPlanner.Web.Features.Import.Workflows;
 using ImportToPlanner.Web.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Graph;
 using Microsoft.Identity.Web;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
-using Microsoft.Kiota.Abstractions.Authentication;
 using MudBlazor.Services;
 
 namespace ImportToPlanner.Web;
@@ -67,8 +65,7 @@ public static class DependencyInjection
         services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
         services.AddScoped<ISessionIdentityContextAccessor, ClaimsSessionIdentityContextAccessor>();
 
-        var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(configuration);
-        services.TryAddSingleton(tenantAuthorityConfiguration);
+        var graphScopes = TenantAuthorityConfiguration.FromConfiguration(configuration).RequiredScopes;
 
         if (E2ETestingHostEnvironment.IsE2ETesting(hostEnvironment))
         {
@@ -76,8 +73,6 @@ public static class DependencyInjection
             services.AddControllers();
             return services;
         }
-
-        var graphScopes = tenantAuthorityConfiguration.RequiredScopes;
 
         services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
             .AddMicrosoftIdentityWebApp(configuration.GetSection("AzureAd"))
@@ -178,17 +173,25 @@ public static class DependencyInjection
                 };
             });
 
-        services.AddScoped<GraphServiceClient>(serviceProvider =>
+        services.AddScoped<MicrosoftIdentityAccessTokenProvider>(serviceProvider =>
         {
-            var tokenAcquisition = serviceProvider.GetRequiredService<ITokenAcquisition>();
-            var httpContextAccessor = serviceProvider.GetRequiredService<IHttpContextAccessor>();
             var configuredAuthority = serviceProvider.GetRequiredService<TenantAuthorityConfiguration>();
-            var logger = serviceProvider.GetRequiredService<ILogger<MicrosoftIdentityAccessTokenProvider>>();
-            var failureDiagnostics = serviceProvider.GetRequiredService<UserFacingFailureDiagnostics>();
-            var accessTokenProvider = new MicrosoftIdentityAccessTokenProvider(tokenAcquisition, httpContextAccessor, configuredAuthority, logger, graphScopes, failureDiagnostics);
-            var authenticationProvider = new BaseBearerTokenAuthenticationProvider(accessTokenProvider);
-            return new GraphServiceClient(authenticationProvider);
+            return new MicrosoftIdentityAccessTokenProvider(
+                serviceProvider.GetRequiredService<ITokenAcquisition>(),
+                serviceProvider.GetRequiredService<IHttpContextAccessor>(),
+                configuredAuthority,
+                serviceProvider.GetRequiredService<ILogger<MicrosoftIdentityAccessTokenProvider>>(),
+                graphScopes,
+                serviceProvider.GetRequiredService<UserFacingFailureDiagnostics>());
         });
+
+        services.AddHttpClient<DelegatedMicrosoftGraphClient>(client =>
+        {
+            client.BaseAddress = new Uri("https://graph.microsoft.com/v1.0/");
+        });
+
+        services.AddScoped<GraphServiceClient>(serviceProvider =>
+            serviceProvider.GetRequiredService<DelegatedMicrosoftGraphClient>().ServiceClient);
 
         services.AddControllersWithViews()
             .AddMicrosoftIdentityUI();

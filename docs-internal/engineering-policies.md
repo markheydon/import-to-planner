@@ -102,11 +102,27 @@ authentication endpoints; production and normal development hosts are unaffected
 ## C# patterns (hosted web application)
 
 - Register configuration through `IOptions<T>` at the composition root
-  (`ImportToPlanner.Web`).
+  (`ImportToPlanner.Web`). Libraries take plain options objects or configure via
+  `IServiceCollection` extension methods; they do not depend on `IOptions<T>`.
 - Use constructor injection and `IServiceCollection` extension methods in libraries.
-- Use `IHttpContextAccessor` in the web host; do not use `HttpContext.Current`.
+- Use `IHttpContextAccessor` in the ASP.NET web host; do not use
+  `HttpContext.Current`.
 - Use `async`/`await` end to end; do not block with `.Wait()` or
   `GetAwaiter().GetResult()`.
+- Propagate `CancellationToken` on public async I/O APIs. ASP.NET and Blazor callers
+  should pass `HttpContext.RequestAborted` when invoking use cases from a request
+  scope (for example via `IHttpContextAccessor`).
+- Outbound HTTP must use `IHttpClientFactory` and typed clients registered with
+  `AddHttpClient<TClient>()`. Do not `new HttpClient()` per call or register a
+  long-lived singleton `HttpClient` manually. Configure retries, timeouts, and circuit
+  breaking on the `AddHttpClient` handler pipeline (for example
+  `Microsoft.Extensions.Http.Resilience` via Aspire service defaults), not with
+  hand-rolled per-call logic. Microsoft Graph uses Kiota with a factory-managed
+  `HttpClient` (see `DelegatedMicrosoftGraphClient` in the web host).
+- Enable nullable reference types on projects (`Directory.Build.props` sets this
+  solution-wide). Tighten nullability when touching an area.
+- Prefer `record` / `record struct` for immutable DTOs, options snapshots, and message
+  shapes; use classes when mutable identity or inheritance is required.
 
 ## User Experience and Accessibility
 

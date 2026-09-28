@@ -57,7 +57,7 @@ public partial class Home
             await WorkflowCoordinator.ConfirmColumnMappingAsync(
                 WorkflowState,
                 MappingEditorAssignments,
-                CancellationToken.None);
+                WorkflowCancellation);
             SetStatus("Column mapping confirmed.", WorkflowStatusLevel.Success);
             parseErrors.Clear();
             MaybeAdvanceViewedStep();

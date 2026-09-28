@@ -18,7 +18,7 @@ public partial class Home
         isBusy = true;
         try
         {
-            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, WorkflowCancellation);
 
             SetStatus("Location list refreshed.", WorkflowStatusLevel.Success);
             SyncViewedStepAfterWorkflowInvalidation();
@@ -48,7 +48,7 @@ public partial class Home
         isBusy = true;
         try
         {
-            await WorkflowCoordinator.LoadPlansAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.LoadPlansAsync(WorkflowState, WorkflowCancellation);
             SetStatus("Plan list refreshed.", WorkflowStatusLevel.Success);
             SyncViewedStepAfterWorkflowInvalidation();
         }
@@ -88,7 +88,7 @@ public partial class Home
         isBusy = true;
         try
         {
-            await WorkflowCoordinator.ProcessCsvUploadAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.ProcessCsvUploadAsync(WorkflowState, WorkflowCancellation);
             if (parseErrors.Count > 0)
             {
                 SetStatus("The CSV could not be read. Fix the reported issues and try again.", WorkflowStatusLevel.Error);
@@ -160,7 +160,7 @@ public partial class Home
         isBusy = true;
         try
         {
-            await WorkflowCoordinator.LoadPlansAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.LoadPlansAsync(WorkflowState, WorkflowCancellation);
         }
         catch (Exception ex)
         {
@@ -279,7 +279,7 @@ public partial class Home
         isBusy = true;
         try
         {
-            await WorkflowCoordinator.BuildPreviewAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.BuildPreviewAsync(WorkflowState, WorkflowCancellation);
         }
         catch (Exception ex)
         {
@@ -308,7 +308,7 @@ public partial class Home
 
         await WorkflowCoordinator.RefreshCreditBalanceSnapshotForConfirmAsync(
             WorkflowState,
-            CancellationToken.None);
+            WorkflowCancellation);
     }
 
     private async Task ExecuteAsync()
@@ -322,7 +322,7 @@ public partial class Home
         SetStatus(null, WorkflowStatusLevel.Info);
         try
         {
-            await WorkflowCoordinator.ExecuteAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.ExecuteAsync(WorkflowState, WorkflowCancellation);
         }
         catch (ImportToPlanner.Application.Exceptions.StaleImportPreviewException ex)
         {

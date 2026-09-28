@@ -39,7 +39,7 @@ public partial class Home
         var accessDecision = await CommercialAccessUseCase.ResolveAccessAsync(
             sessionIdentity,
             DateTimeOffset.UtcNow,
-            CancellationToken.None);
+            WorkflowCancellation);
 
         showFirstCommercialSignInGuidance = accessDecision.Decision == CommercialAccessDecisionType.CreateAccount;
         showCommercialDeletedAccountGate = false;
@@ -81,7 +81,7 @@ public partial class Home
                     sessionIdentity.UserId,
                     DateTimeOffset.UtcNow,
                     EnsureBalanceReason.SignIn),
-                CancellationToken.None);
+                WorkflowCancellation);
         }
         catch (Exception)
         {
@@ -113,7 +113,7 @@ public partial class Home
         isRestoringCommercialAccount = true;
         try
         {
-            var restoreResult = await CommercialProfileUseCase.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+            var restoreResult = await CommercialProfileUseCase.RestoreAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, WorkflowCancellation);
             switch (restoreResult)
             {
                 case CommercialAccountRestoreResult.Restored:

@@ -3,7 +3,7 @@ namespace ImportToPlanner.Application.Models;
 /// <summary>
 /// Result of reading the header row from a CSV upload.
 /// </summary>
-public sealed class CsvHeaderPeekResult
+public sealed record CsvHeaderPeekResult
 {
     public required IReadOnlyList<string> Headers { get; init; }
 

@@ -30,6 +30,12 @@ public partial class Profile
     [Inject]
     internal AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
 
+    [Inject]
+    internal IHttpContextAccessor HttpContextAccessor { get; set; } = default!;
+
+    private CancellationToken RequestCancellation
+        => HttpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
+
     private CommercialAccount? account;
     private bool isBusy;
     private bool isDeletingAccount;
@@ -71,7 +77,7 @@ public partial class Profile
         isBusy = true;
         try
         {
-            account = await CommercialProfileUseCase.GetProfileAsync(sessionIdentity, CancellationToken.None);
+            account = await CommercialProfileUseCase.GetProfileAsync(sessionIdentity, RequestCancellation);
         }
         finally
         {
@@ -121,7 +127,7 @@ public partial class Profile
         isDeletingAccount = true;
         try
         {
-            await CommercialProfileUseCase.DeleteAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, CancellationToken.None);
+            await CommercialProfileUseCase.DeleteAccountAsync(sessionIdentity, DateTimeOffset.UtcNow, RequestCancellation);
         }
         finally
         {

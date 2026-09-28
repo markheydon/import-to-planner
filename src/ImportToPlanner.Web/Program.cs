@@ -19,12 +19,6 @@ if (!isE2ETesting)
     builder.AddWebStorageClients();
 }
 
-var commercialModeEnabled = builder.Configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-if (commercialModeEnabled && !isE2ETesting)
-{
-    builder.AddCommercialStorageClients();
-}
-
 ApplyLegacyCertificatePathOverrides(builder.Configuration);
 ApplyCertificateBase64Overrides(builder.Configuration);
 StartupConfigurationValidator.Validate(builder.Configuration);
@@ -43,7 +37,15 @@ builder.Services
     .Bind(builder.Configuration.GetSection(CommercialModeOptions.ConfigurationSectionName))
     .ValidateOnStart();
 builder.Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
-if (commercialModeEnabled && builder.Configuration.GetValue<bool>("Features:CommercialMode:RetentionSweepEnabled"))
+
+var commercialModeOptions = CommercialModeOptions.FromConfiguration(builder.Configuration);
+var commercialModeEnabled = commercialModeOptions.Enabled;
+if (commercialModeEnabled && !isE2ETesting)
+{
+    builder.AddCommercialStorageClients();
+}
+
+if (commercialModeOptions.RetentionSweepEnabled && commercialModeEnabled)
 {
     builder.Services.AddHostedService<CommercialAccountRetentionHostedService>();
 }

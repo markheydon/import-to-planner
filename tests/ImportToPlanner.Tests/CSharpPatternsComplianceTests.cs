@@ -7,6 +7,7 @@ public sealed class CSharpPatternsComplianceTests
         "HttpContext.Current",
         ".Wait(",
         "GetAwaiter().GetResult()",
+        "new HttpClient(",
     ];
 
     [Fact]

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph;
 
 namespace ImportToPlanner.Web.Tests;
 
@@ -139,6 +140,17 @@ public sealed class HostedAuthenticationEventTests
         Assert.False(authority.IsSharedOrganisations);
     }
 
+    [Fact]
+    public void AddWebHostServices_RegistersGraphServiceClientThroughTypedHttpClient()
+    {
+        var serviceProvider = BuildHostedServiceProvider("tenant-specific", "tenant-specific");
+
+        using var scope = serviceProvider.CreateScope();
+        var graphServiceClient = scope.ServiceProvider.GetService<GraphServiceClient>();
+
+        Assert.NotNull(graphServiceClient);
+    }
+
     private static ServiceProvider BuildHostedServiceProvider(string tenantId, string? homeTenantId)
     {
         var services = new ServiceCollection();
@@ -154,6 +166,7 @@ public sealed class HostedAuthenticationEventTests
         services.AddSingleton(storage);
         services.AddSingleton(new ConsentResolutionDefaults(authority.RequiredScopes, authority.AdminConsentUri));
 
+        services.AddLogging();
         services.AddSingleton<IHostEnvironment>(new TestHostEnvironment { EnvironmentName = Environments.Development });
         services.AddWebHostServices(configuration, new TestHostEnvironment { EnvironmentName = Environments.Development });
 
