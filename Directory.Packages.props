@@ -23,7 +23,7 @@
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
 
     <!-- Blazor UI (MudBlazor) -->
-    <PackageVersion Include="MudBlazor" Version="9.10.0" />
+    <PackageVersion Include="MudBlazor" Version="9.11.0" />
 
     <!-- Microsoft Graph & Kiota -->
     <PackageVersion Include="Microsoft.Graph" Version="6.7.0" />
@@ -43,7 +43,7 @@
     <!-- Azure SDKs -->
     <PackageVersion Include="Aspire.Azure.Data.Tables" Version="13.5.4" />
     <PackageVersion Include="Aspire.Azure.Storage.Blobs" Version="13.5.4" />
-    <PackageVersion Include="Azure.Data.Tables" Version="12.12.0" />
+    <PackageVersion Include="Azure.Data.Tables" Version="12.13.0" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.4" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
