@@ -97,7 +97,9 @@ Where end-to-end testing is required, use **Playwright**.
 
 End-to-end browser tests live in `tests/ImportToPlanner.E2E.Tests/` (C# Playwright
 with xUnit v3). They run under the `E2ETesting` host environment with test-only
-authentication endpoints; production and normal development hosts are unaffected.
+authentication endpoints. The host refuses to start in `E2ETesting` unless
+`IMPORT_TO_PLANNER_ALLOW_E2E_TESTING=true` is set (the E2E test factory sets this
+for browser journeys only). Production and normal development hosts are unaffected.
 
 ## C# patterns (hosted web application)
 

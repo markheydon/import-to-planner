@@ -3,12 +3,15 @@ using Microsoft.Playwright;
 
 namespace ImportToPlanner.E2E.Tests;
 
+[Collection(nameof(BrowserE2ETests))]
 public sealed class HomePageJourneyTests
 {
     [Fact]
     public async Task CommercialMode_WhenAnonymous_ShowsSignInGate()
     {
-        await using var factory = new ImportToPlannerWebApplicationFactory(commercialModeEnabled: true);
+        await using var factory = await ImportToPlannerWebApplicationFactory.StartAsync(
+            commercialModeEnabled: true,
+            TestContext.Current.CancellationToken);
         var baseAddress = factory.ServerBaseAddress;
 
         using var playwright = await Playwright.CreateAsync();
@@ -26,7 +29,9 @@ public sealed class HomePageJourneyTests
     [Fact]
     public async Task SelfHost_WhenSignedIn_ShowsFiveStepImportWorkflow()
     {
-        await using var factory = new ImportToPlannerWebApplicationFactory(commercialModeEnabled: false);
+        await using var factory = await ImportToPlannerWebApplicationFactory.StartAsync(
+            commercialModeEnabled: false,
+            TestContext.Current.CancellationToken);
         var baseAddress = factory.ServerBaseAddress;
 
         using var playwright = await Playwright.CreateAsync();
