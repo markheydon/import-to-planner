@@ -1,0 +1,4 @@
+Task Name,Description,Priority,Bucket,Goal,Due Date,Assigned To
+Prepare release notes,Draft version 1 for review,Urgent,Planning,Launch readiness,31/05/2026,owner@contoso.com
+Confirm sign-off,Collect final approval from stakeholders,Important,Approvals,Launch readiness,2026-06-15,"reviewer@contoso.com; approver@contoso.com"
+Publish update,Post the final update to users,3,Delivery,Launch readiness,,

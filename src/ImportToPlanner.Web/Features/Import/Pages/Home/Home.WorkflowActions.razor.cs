@@ -85,7 +85,28 @@ public partial class Home
         using var reader = new StreamReader(stream);
         csvContent = await reader.ReadToEndAsync();
 
-        SetStatus("CSV file loaded. Click Preview import.", WorkflowStatusLevel.Info);
+        isBusy = true;
+        try
+        {
+            await WorkflowCoordinator.ProcessCsvUploadAsync(WorkflowState, CancellationToken.None);
+            if (parseErrors.Count > 0)
+            {
+                SetStatus("The CSV could not be read. Fix the reported issues and try again.", WorkflowStatusLevel.Error);
+            }
+            else if (mappingBlocksPreview)
+            {
+                SetStatus("Review column mapping before preview.", WorkflowStatusLevel.Info);
+            }
+            else
+            {
+                SetStatus("CSV file loaded. Click Preview import.", WorkflowStatusLevel.Info);
+            }
+        }
+        finally
+        {
+            isBusy = false;
+        }
+
         FocusSetupStepIfReviewingLaterSteps(3);
         MaybeAdvanceViewedStep();
     }
@@ -204,6 +225,7 @@ public partial class Home
     private void ResetFlowState()
     {
         parseErrors.Clear();
+        ImportWorkflowCoordinator.InvalidateColumnMappingState(WorkflowState);
         ResetPreviewState();
         ResetExecutionState();
         SetStatus(null, WorkflowStatusLevel.Info);

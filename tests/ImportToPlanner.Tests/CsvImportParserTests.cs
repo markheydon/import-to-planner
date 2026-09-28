@@ -1,3 +1,6 @@
+using ImportToPlanner.Application.Import;
+using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Services;
 using ImportToPlanner.Infrastructure.Graph.Import;
 using ImportToPlanner.Tests.TestData;
 
@@ -764,5 +767,152 @@ public sealed class CsvImportParserTests
         Assert.False(commaResult.HasErrors);
         Assert.False(semicolonResult.HasErrors);
         Assert.Equal(commaResult.Rows[0].AssigneeAddresses, semicolonResult.Rows[0].AssigneeAddresses);
+    }
+
+    [Fact]
+    public async Task PeekHeadersAsync_WithCanonicalHeaders_ReturnsHeadersWithoutErrors()
+    {
+        const string csv = "Task Name,Description\nTask A,Notes";
+        var parser = new CsvImportParser();
+
+        var peek = await parser.PeekHeadersAsync(csv, CancellationToken.None);
+
+        Assert.False(peek.HasErrors);
+        Assert.Equal(["Task Name", "Description"], peek.Headers);
+    }
+
+    [Fact]
+    public async Task PeekHeadersAsync_WithDuplicateNormalisedHeaders_ReturnsFileLevelError()
+    {
+        const string csv = "Task Name,TaskName\nA,B";
+        var parser = new CsvImportParser();
+
+        var peek = await parser.PeekHeadersAsync(csv, CancellationToken.None);
+
+        Assert.True(peek.HasErrors);
+        Assert.Contains(peek.ValidationErrors, error => error.RowNumber == 0 && error.Field == "Mapping");
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithMapping_UsesAliasHeaders()
+    {
+        const string csv = "Title,Notes\nTask A,Body text";
+        var parser = new CsvImportParser();
+        var mappingService = new CsvColumnMappingService();
+        var proposal = mappingService.BuildProposal(["Title", "Notes"], savedForLayout: null);
+        var mapping = mappingService.ToConfirmedMapping(proposal, proposal.SuggestedAssignments);
+
+        var result = await parser.ParseAsync(csv, mapping, ignoreExtraColumns: true, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Equal("Task A", result.Rows[0].TaskName);
+        Assert.Equal("Body text", result.Rows[0].Description);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithIdentityMapping_MatchesCanonicalParserOutput()
+    {
+        const string csv = "Task Name,Description,Priority\nTask A,Notes,Low";
+        var parser = new CsvImportParser();
+        var mappingService = new CsvColumnMappingService();
+        var proposal = mappingService.BuildProposal(["Task Name", "Description", "Priority"], savedForLayout: null);
+        var mapping = mappingService.ToConfirmedMapping(proposal, proposal.SuggestedAssignments);
+
+        var legacyResult = await parser.ParseAsync(csv, CancellationToken.None);
+        var mappedResult = await parser.ParseAsync(csv, mapping, ignoreExtraColumns: true, CancellationToken.None);
+
+        Assert.False(legacyResult.HasErrors);
+        Assert.False(mappedResult.HasErrors);
+        Assert.Equal(legacyResult.Rows[0].TaskName, mappedResult.Rows[0].TaskName);
+        Assert.Equal(legacyResult.Rows[0].Description, mappedResult.Rows[0].Description);
+        Assert.Equal(legacyResult.Rows[0].Priority, mappedResult.Rows[0].Priority);
+    }
+
+    [Fact]
+    public async Task ParseAsync_WithMapping_IgnoreExtraColumns_IgnoresUnmappedHeaders()
+    {
+        const string csv = "Task Name,Extra\nTask A,Ignored";
+        var parser = new CsvImportParser();
+        var mapping = new CsvColumnMapping
+        {
+            LayoutSignature = "TASKNAME",
+            Assignments = new Dictionary<string, string> { [ImportColumnFieldIds.TaskName] = "Task Name" },
+        };
+
+        var result = await parser.ParseAsync(csv, mapping, ignoreExtraColumns: true, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.Single(result.Rows);
+    }
+
+    [Fact]
+    public async Task ParseAsync_SampleMinimalFile_WithIdentityMapping_HasNoFileErrors()
+    {
+        var csv = await File.ReadAllTextAsync(ResolveSamplePath("import-minimal.csv"), TestContext.Current.CancellationToken);
+        var parser = new CsvImportParser();
+        var mappingService = new CsvColumnMappingService();
+        var peek = await parser.PeekHeadersAsync(csv, CancellationToken.None);
+        var proposal = mappingService.BuildProposal(peek.Headers, savedForLayout: null);
+        var mapping = mappingService.ToConfirmedMapping(proposal, proposal.SuggestedAssignments);
+
+        var result = await parser.ParseAsync(csv, mapping, ignoreExtraColumns: true, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.True(result.Rows.Count >= 2);
+    }
+
+    [Fact]
+    public async Task ParseAsync_SampleFullFile_WithIdentityMapping_HasNoFileErrors()
+    {
+        var csv = await File.ReadAllTextAsync(ResolveSamplePath("import-full.csv"), TestContext.Current.CancellationToken);
+        var parser = new CsvImportParser();
+        var mappingService = new CsvColumnMappingService();
+        var peek = await parser.PeekHeadersAsync(csv, CancellationToken.None);
+        var proposal = mappingService.BuildProposal(peek.Headers, savedForLayout: null);
+        var mapping = mappingService.ToConfirmedMapping(proposal, proposal.SuggestedAssignments);
+
+        var result = await parser.ParseAsync(csv, mapping, ignoreExtraColumns: true, CancellationToken.None);
+
+        Assert.False(result.HasErrors);
+        Assert.True(result.Rows.Count >= 2);
+    }
+
+    [Fact]
+    public async Task ParseAsync_CanonicalAndAliasHeaderFiles_ProduceEquivalentRows()
+    {
+        const string canonicalCsv = "Task Name,Description,Priority\nAlpha,Notes,Low";
+        const string aliasCsv = "Title,Notes,Pri\nAlpha,Notes,Low";
+        var parser = new CsvImportParser();
+        var mappingService = new CsvColumnMappingService();
+        var canonicalProposal = mappingService.BuildProposal(["Task Name", "Description", "Priority"], savedForLayout: null);
+        var aliasProposal = mappingService.BuildProposal(["Title", "Notes", "Pri"], savedForLayout: null);
+        var canonicalMapping = mappingService.ToConfirmedMapping(canonicalProposal, canonicalProposal.SuggestedAssignments);
+        var aliasMapping = mappingService.ToConfirmedMapping(aliasProposal, aliasProposal.SuggestedAssignments);
+
+        var canonicalResult = await parser.ParseAsync(canonicalCsv, canonicalMapping, ignoreExtraColumns: true, CancellationToken.None);
+        var aliasResult = await parser.ParseAsync(aliasCsv, aliasMapping, ignoreExtraColumns: true, CancellationToken.None);
+
+        Assert.False(canonicalResult.HasErrors);
+        Assert.False(aliasResult.HasErrors);
+        Assert.Equal(canonicalResult.Rows[0].TaskName, aliasResult.Rows[0].TaskName);
+        Assert.Equal(canonicalResult.Rows[0].Description, aliasResult.Rows[0].Description);
+        Assert.Equal(canonicalResult.Rows[0].Priority, aliasResult.Rows[0].Priority);
+    }
+
+    private static string ResolveSamplePath(string fileName)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            var candidate = Path.Combine(directory.FullName, "src", "ImportToPlanner.Web", "wwwroot", "samples", fileName);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new FileNotFoundException($"Sample file '{fileName}' was not found.");
     }
 }

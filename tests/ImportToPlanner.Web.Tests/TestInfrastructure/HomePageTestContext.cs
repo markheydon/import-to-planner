@@ -20,7 +20,8 @@ internal sealed class HomePageTestContext : BunitContext
         bool commercialModeEnabled = false,
         CommercialAccountStoreStub? commercialAccountStoreStub = null,
         CommercialAuditStoreStub? commercialAuditStoreStub = null,
-        CreditEnsureUseCaseSubstitute? creditEnsureUseCaseSubstitute = null)
+        CreditEnsureUseCaseSubstitute? creditEnsureUseCaseSubstitute = null,
+        IImportColumnMappingLayoutStore? layoutStore = null)
     {
         Services.AddMudServices(configuration =>
         {
@@ -126,6 +127,7 @@ internal sealed class HomePageTestContext : BunitContext
         Services.AddScoped<ImportPlanningPresenter>();
         Services.AddScoped<ImportExecutionPresenter>();
         Services.AddScoped<SessionIdentityPresenter>();
+        Services.AddScoped<IImportColumnMappingLayoutStore>(_ => layoutStore ?? new NullImportColumnMappingLayoutStore());
         Services.AddScoped<WorkflowCoordinationState>();
         Services.AddScoped<ImportWorkflowCoordinator>();
 

@@ -2,6 +2,7 @@ using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Diagnostics;
 using ImportToPlanner.Web.Features.Authentication;
 using ImportToPlanner.Web.Features.Import.Presenters;
+using ImportToPlanner.Web.Features.Import.Storage;
 using ImportToPlanner.Web.Features.Import.Workflows;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -202,6 +203,7 @@ public static class DependencyInjection
         services.AddScoped<ImportExecutionPresenter>();
         services.AddScoped<SessionIdentityPresenter>();
         services.AddScoped<WorkflowCoordinationState>();
+        services.AddScoped<IImportColumnMappingLayoutStore, ImportColumnMappingLayoutStore>();
         services.AddScoped<ImportWorkflowCoordinator>();
 
         return services;
