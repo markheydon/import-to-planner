@@ -34,6 +34,9 @@ Pull requests that add or change code MUST include evidence for:
 - Boundary leakage checks: use-case outputs and domain models MUST NOT carry
   provider payload residue, SDK exception taxonomies, UI component types, or
   delivery-specific wording.
+- Modern C# pattern checks for blocking async and legacy ASP.NET context access.
+  The automated check lives in
+  `tests/ImportToPlanner.Tests/CSharpPatternsComplianceTests.cs`.
 
 ## Testing and Runtime Behaviour
 
@@ -92,8 +95,18 @@ Where end-to-end testing is required, use **Playwright**.
 - End-to-end tests MUST validate complete user workflows rather than individual UI
   elements.
 
-This repository does not currently include a Playwright suite. Add one only when a
-complete user journey explicitly requires end-to-end coverage.
+End-to-end browser tests live in `tests/ImportToPlanner.E2E.Tests/` (C# Playwright
+with xUnit v3). They run under the `E2ETesting` host environment with test-only
+authentication endpoints; production and normal development hosts are unaffected.
+
+## C# patterns (hosted web application)
+
+- Register configuration through `IOptions<T>` at the composition root
+  (`ImportToPlanner.Web`).
+- Use constructor injection and `IServiceCollection` extension methods in libraries.
+- Use `IHttpContextAccessor` in the web host; do not use `HttpContext.Current`.
+- Use `async`/`await` end to end; do not block with `.Wait()` or
+  `GetAwaiter().GetResult()`.
 
 ## User Experience and Accessibility
 

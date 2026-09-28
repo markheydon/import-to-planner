@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace ImportToPlanner.Web.Tests;
@@ -17,9 +19,12 @@ public sealed class HostedDataProtectionConfiguratorTests
         var configuration = BuildStorageConfiguration();
         var storageConfiguration = StorageConfiguration.FromConfiguration(configuration);
 
+        services.AddSingleton(storageConfiguration);
+        var hostEnvironment = new TestHostEnvironment { EnvironmentName = Environments.Production };
+
         var exception = Record.Exception(() => HostedDataProtectionConfigurator.Configure(
             services,
-            storageConfiguration));
+            hostEnvironment));
 
         Assert.Null(exception);
 
@@ -66,6 +71,20 @@ public sealed class HostedDataProtectionConfiguratorTests
         Assert.Contains("Storage:DataProtectionBlob", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Configure_InE2ETestingEnvironment_UsesEphemeralFileSystemKeys()
+    {
+        var services = new ServiceCollection();
+        var hostEnvironment = new TestHostEnvironment { EnvironmentName = E2ETestingHostEnvironment.EnvironmentName };
+
+        var exception = Record.Exception(() => HostedDataProtectionConfigurator.Configure(services, hostEnvironment));
+
+        Assert.Null(exception);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        Assert.NotNull(serviceProvider.GetRequiredService<IDataProtectionProvider>());
+    }
+
     private static IConfiguration BuildStorageConfiguration()
         => new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -74,4 +93,15 @@ public sealed class HostedDataProtectionConfiguratorTests
                 ["Storage:DataProtectionBlob"] = "keys.xml",
             })
             .Build();
+
+    private sealed class TestHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Production;
+
+        public string ApplicationName { get; set; } = "ImportToPlanner.Web.Tests";
+
+        public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
 }

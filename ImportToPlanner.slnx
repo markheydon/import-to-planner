@@ -11,5 +11,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj" />
     <Project Path="tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj" />
+    <Project Path="tests/ImportToPlanner.E2E.Tests/ImportToPlanner.E2E.Tests.csproj" />
   </Folder>
 </Solution>

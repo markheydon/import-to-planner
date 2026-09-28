@@ -12,10 +12,15 @@ using Microsoft.Extensions.Options;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
-builder.AddWebStorageClients();
+
+var isE2ETesting = E2ETestingHostEnvironment.IsE2ETesting(builder.Environment);
+if (!isE2ETesting)
+{
+    builder.AddWebStorageClients();
+}
 
 var commercialModeEnabled = builder.Configuration.GetValue<bool>("Features:CommercialMode:Enabled");
-if (commercialModeEnabled)
+if (commercialModeEnabled && !isE2ETesting)
 {
     builder.AddCommercialStorageClients();
 }
@@ -25,14 +30,14 @@ ApplyCertificateBase64Overrides(builder.Configuration);
 StartupConfigurationValidator.Validate(builder.Configuration);
 AzureAdConfigurationNormalizer.Apply(builder.Configuration);
 
-var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(builder.Configuration);
-var storageConfiguration = StorageConfiguration.FromConfiguration(builder.Configuration);
-
-builder.Services.AddSingleton(tenantAuthorityConfiguration);
-builder.Services.AddSingleton(storageConfiguration);
-builder.Services.AddSingleton(new ConsentResolutionDefaults(
-    tenantAuthorityConfiguration.RequiredScopes,
-    tenantAuthorityConfiguration.AdminConsentUri));
+builder.Services.AddWebApplicationOptions(builder.Configuration);
+builder.Services.AddSingleton(serviceProvider =>
+{
+    var tenantAuthorityConfiguration = serviceProvider.GetRequiredService<TenantAuthorityConfiguration>();
+    return new ConsentResolutionDefaults(
+        tenantAuthorityConfiguration.RequiredScopes,
+        tenantAuthorityConfiguration.AdminConsentUri);
+});
 builder.Services
     .AddOptions<CommercialModeOptions>()
     .Bind(builder.Configuration.GetSection(CommercialModeOptions.ConfigurationSectionName))
@@ -45,17 +50,17 @@ if (commercialModeEnabled && builder.Configuration.GetValue<bool>("Features:Comm
 
 // Add services to the container.
 builder.Services
-    .AddWebHostServices(builder.Configuration)
+    .AddWebHostServices(builder.Configuration, builder.Environment)
     .AddApplication()
     .AddImportWorkflow()
     .AddInfrastructure(builder.Configuration);
 
-if (commercialModeEnabled)
+if (commercialModeEnabled && !isE2ETesting)
 {
     builder.Services.AddCommercial(builder.Configuration);
 }
 
-HostedDataProtectionConfigurator.Configure(builder.Services, storageConfiguration);
+HostedDataProtectionConfigurator.Configure(builder.Services, builder.Environment);
 
 var app = builder.Build();
 
@@ -79,6 +84,7 @@ app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 app.MapDefaultEndpoints();
+app.MapE2ETestingEndpointsIfEnabled(app.Environment);
 
 app.Run();
 

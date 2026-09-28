@@ -1,6 +1,7 @@
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Features.Import.Presenters;
 using ImportToPlanner.Web.Features.Import.Workflows;
+using ImportToPlanner.Web.Infrastructure;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace ImportToPlanner.Web.Features.Import.Pages;
@@ -70,6 +71,11 @@ public partial class Home
             if (hasAuthErrorFromQuery)
             {
                 // Keep the user on the page with the auth error message instead of re-triggering sign-in.
+                return;
+            }
+
+            if (E2ETestingHostEnvironment.IsE2ETesting(HostEnvironment))
+            {
                 return;
             }
 

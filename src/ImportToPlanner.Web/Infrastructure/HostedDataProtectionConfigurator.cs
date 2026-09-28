@@ -9,19 +9,34 @@ internal static class HostedDataProtectionConfigurator
     internal const string HostedApplicationDiscriminator = "ImportToPlanner.Hosted";
     internal static readonly TimeSpan HostedKeyLifetime = TimeSpan.FromDays(14);
 
-    public static void Configure(
-        IServiceCollection services,
-        StorageConfiguration storageConfiguration)
+    public static void Configure(IServiceCollection services, IHostEnvironment hostEnvironment)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(storageConfiguration);
+        ArgumentNullException.ThrowIfNull(hostEnvironment);
 
-        var storageSettings = HostedDataProtectionStorageSettings.FromStorageConfiguration(storageConfiguration);
+        var dataProtectionBuilder = services.AddDataProtection();
 
-        services
-            .AddDataProtection()
-            .PersistKeysToAzureBlobStorage(serviceProvider =>
-                storageSettings.CreateBlobClient(serviceProvider.GetRequiredService<BlobServiceClient>()));
+        if (E2ETestingHostEnvironment.IsE2ETesting(hostEnvironment))
+        {
+            var keysDirectory = Path.Combine(Path.GetTempPath(), "import-to-planner-e2e-dataprotection");
+            Directory.CreateDirectory(keysDirectory);
+            dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(keysDirectory));
+        }
+        else
+        {
+            dataProtectionBuilder.PersistKeysToAzureBlobStorage(serviceProvider =>
+            {
+                var storageConfiguration = serviceProvider.GetRequiredService<StorageConfiguration>();
+                var storageSettings = HostedDataProtectionStorageSettings.FromStorageConfiguration(storageConfiguration);
+                return storageSettings.CreateBlobClient(serviceProvider.GetRequiredService<BlobServiceClient>());
+            });
+
+            services.AddSingleton(serviceProvider =>
+            {
+                var storageConfiguration = serviceProvider.GetRequiredService<StorageConfiguration>();
+                return HostedDataProtectionStorageSettings.FromStorageConfiguration(storageConfiguration);
+            });
+        }
 
         services.Configure<DataProtectionOptions>(options =>
         {
@@ -32,8 +47,6 @@ internal static class HostedDataProtectionConfigurator
         {
             options.NewKeyLifetime = HostedKeyLifetime;
         });
-
-        services.AddSingleton(storageSettings);
     }
 }
 

@@ -6,6 +6,7 @@ Where tests live
 ----------------
 - Application and infrastructure unit tests: `tests/ImportToPlanner.Tests/` (xUnit v3).
 - Blazor component unit tests: `tests/ImportToPlanner.Web.Tests/` (bUnit + xUnit v3).
+- Browser end-to-end tests: `tests/ImportToPlanner.E2E.Tests/` (C# Playwright + xUnit v3).
 
 Run tests
 ---------
@@ -30,8 +31,14 @@ Repository testing standards
   `Assert` methods only.
 - Blazor UI tests use **bUnit** as component unit tests; they are not end-to-end tests.
 - **AppHost modelling and orchestration are not tested** in this repository.
-- **Playwright** is the approved end-to-end tool when complete user journeys need
-  coverage. This repository does not currently include a Playwright suite.
+- **Playwright** (C#) in `tests/ImportToPlanner.E2E.Tests/` covers a small set of
+  high-value browser journeys. Install browsers once per machine after upgrading
+  the `Microsoft.Playwright` package:
+
+```bash
+dotnet build tests/ImportToPlanner.E2E.Tests/ImportToPlanner.E2E.Tests.csproj
+pwsh tests/ImportToPlanner.E2E.Tests/bin/Debug/net10.0/playwright.ps1 install chromium
+```
 - Do not introduce FluentAssertions, AwesomeAssertions, Shouldly, Moq, NUnit, or MSTest.
 - Test projects inherit `TreatWarningsAsErrors`; new test code must compile without
   warnings.

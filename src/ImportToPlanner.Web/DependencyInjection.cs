@@ -4,6 +4,7 @@ using ImportToPlanner.Web.Features.Authentication;
 using ImportToPlanner.Web.Features.Import.Presenters;
 using ImportToPlanner.Web.Features.Import.Storage;
 using ImportToPlanner.Web.Features.Import.Workflows;
+using ImportToPlanner.Web.Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -46,11 +47,16 @@ public static class DependencyInjection
     /// </summary>
     /// <param name="services">The service collection to register dependencies with.</param>
     /// <param name="configuration">Application configuration used for authentication and Graph scopes.</param>
+    /// <param name="hostEnvironment">The host environment used to enable test-only authentication wiring.</param>
     /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
-    public static IServiceCollection AddWebHostServices(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddWebHostServices(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment hostEnvironment)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(hostEnvironment);
 
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
@@ -61,13 +67,15 @@ public static class DependencyInjection
         services.AddScoped<ImportToPlanner.Application.Abstractions.ICurrentTenantContextAccessor, ClaimsTenantContextAccessor>();
         services.AddScoped<ISessionIdentityContextAccessor, ClaimsSessionIdentityContextAccessor>();
 
-        var tenantAuthorityConfiguration = services
-            .Where(descriptor => descriptor.ServiceType == typeof(TenantAuthorityConfiguration))
-            .Select(descriptor => descriptor.ImplementationInstance)
-            .OfType<TenantAuthorityConfiguration>()
-            .LastOrDefault()
-            ?? TenantAuthorityConfiguration.FromConfiguration(configuration);
+        var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(configuration);
         services.TryAddSingleton(tenantAuthorityConfiguration);
+
+        if (E2ETestingHostEnvironment.IsE2ETesting(hostEnvironment))
+        {
+            services.AddE2ETestingAuthenticationIfEnabled(hostEnvironment);
+            services.AddControllers();
+            return services;
+        }
 
         var graphScopes = tenantAuthorityConfiguration.RequiredScopes;
 
