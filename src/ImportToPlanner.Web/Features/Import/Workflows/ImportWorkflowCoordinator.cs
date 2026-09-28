@@ -232,7 +232,9 @@ public sealed class ImportWorkflowCoordinator(
                 }
             }
 
-            if (!state.IsColumnMappingConfirmed || state.ConfirmedColumnMapping is null)
+            if (state.ShowMappingEditor
+                || !state.IsColumnMappingConfirmed
+                || state.ConfirmedColumnMapping is null)
             {
                 state.ParseErrors.Add(new ImportValidationError(0, "Mapping", "Confirm column mapping before preview."));
                 return;

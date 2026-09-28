@@ -111,8 +111,17 @@ As any importer, when every required field mapped uniquely without my input, I s
 - **FR-007**: The system MUST NOT apply alias rules that collide with Planner-export semantics (for example MUST NOT map Status to Bucket); Planner-specific handling remains with Excel/Planner export work.
 - **FR-008**: If Task Name cannot be resolved to exactly one source column, the system MUST block preview and import until the user maps Task Name.
 - **FR-009**: If two or more source columns compete for one canonical field, the system MUST require user resolution before preview.
-- **FR-010**: The mapping experience MUST allow optional canonical fields to be set to “do not import” and MUST require explicit user confirmation when automatic mapping is incomplete or ambiguous.
+- **FR-010**: The mapping experience MUST allow optional canonical fields to be set to “do not import” and MUST require explicit user confirmation when automatic mapping is **incomplete** or **ambiguous** (see **Confirmation policy** below).
 - **FR-011**: When automatic mapping fully satisfies required fields without conflict, the system MAY skip the full mapping interaction but MUST still show a compact mapping summary with a way to edit assignments before preview.
+
+#### Confirmation policy (FR-010 and FR-011)
+
+For this feature, terms in FR-010 are interpreted as follows:
+
+- **Incomplete** — Task Name is not assigned to exactly one source column (`NeedsTaskName`). Preview and import MUST remain blocked until the user maps Task Name and confirms in the mapping editor.
+- **Ambiguous** — Two or more source columns compete for the same canonical field (`Conflict`). Preview and import MUST remain blocked until the user resolves the competition and confirms in the mapping editor.
+- **Explicit user confirmation** — The user completes the mapping editor (including **Confirm mapping**) for `NeedsTaskName` and `Conflict` only. Optional fields MAY be set to “do not import” in that editor.
+- **Not incomplete or ambiguous** — When every required field is uniquely assigned and there is no conflict, including when matches used **aliases** (`NeedsConfirmation`) or **canonical** headings (`Ready`). FR-011 applies: show the compact summary, allow **Change mapping**, and MAY proceed to preview without a separate confirm click. Alias-based mapping is transparent via the summary, not a blocking gate under FR-010.
 - **FR-012**: When the user confirms a mapping, the system MUST remember it keyed by normalised header layout (not file name, not row data) and MUST apply it on subsequent uploads with the same layout, while still applying aliases for any new headers.
 - **FR-013**: Users MUST be able to change a remembered mapping; the latest confirmed mapping for that layout MUST be used on the next upload.
 - **FR-014**: Mapping memory MUST NOT store CSV row contents or task data from imported files.

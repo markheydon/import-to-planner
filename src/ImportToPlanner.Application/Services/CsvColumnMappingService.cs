@@ -118,6 +118,20 @@ public sealed class CsvColumnMappingService : ICsvColumnMappingService
             throw new InvalidOperationException("Task Name must be mapped before import.");
         }
 
+        var sourceToField = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (fieldId, sourceHeader) in assignments)
+        {
+            if (sourceToField.TryGetValue(sourceHeader, out var existingFieldId))
+            {
+                var existingLabel = ImportColumnFieldCatalog.FindByFieldId(existingFieldId)?.DisplayName ?? existingFieldId;
+                var duplicateLabel = ImportColumnFieldCatalog.FindByFieldId(fieldId)?.DisplayName ?? fieldId;
+                throw new InvalidOperationException(
+                    $"Source column '{sourceHeader}' cannot map to both {existingLabel} and {duplicateLabel}. Choose one import field per column.");
+            }
+
+            sourceToField[sourceHeader] = fieldId;
+        }
+
         return new CsvColumnMapping
         {
             LayoutSignature = proposal.LayoutSignature,

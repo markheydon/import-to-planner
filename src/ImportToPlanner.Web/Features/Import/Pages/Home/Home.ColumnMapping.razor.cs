@@ -26,7 +26,8 @@ public partial class Home
 
     private bool mappingBlocksPreview
         => columnMappingProposal is not null
-           && (!isColumnMappingConfirmed
+           && (showMappingEditor
+               || !isColumnMappingConfirmed
                || columnMappingProposal.Status is ColumnMappingProposalStatus.Conflict
                    or ColumnMappingProposalStatus.NeedsTaskName);
 
@@ -40,6 +41,7 @@ public partial class Home
         MappingEditorAssignments = columnMappingProposal.SuggestedAssignments
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         WorkflowState.ShowMappingEditor = true;
+        WorkflowState.IsColumnMappingConfirmed = false;
     }
 
     private async Task ConfirmMappingFromEditorAsync()

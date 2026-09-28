@@ -260,13 +260,12 @@ public sealed class CsvImportParser : ICsvImportParser
                 continue;
             }
 
-            if (seen.TryGetValue(normalised, out var firstHeader)
-                && !string.Equals(firstHeader, header, StringComparison.Ordinal))
+            if (seen.TryGetValue(normalised, out var firstHeader))
             {
-                errors.Add(new ImportValidationError(
-                    0,
-                    "Mapping",
-                    $"Duplicate column heading detected: '{header}' matches '{firstHeader}' after normalisation."));
+                var message = string.Equals(firstHeader, header, StringComparison.Ordinal)
+                    ? $"Duplicate column heading detected: '{header}' appears more than once."
+                    : $"Duplicate column heading detected: '{header}' matches '{firstHeader}' after normalisation.";
+                errors.Add(new ImportValidationError(0, "Mapping", message));
             }
             else
             {

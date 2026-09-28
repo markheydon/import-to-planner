@@ -43,7 +43,7 @@ Rules:
 3. For each unassigned source header, try canonical exact match, then alias match (catalog order).
 4. Detect duplicate assignment to one `FieldId` → `Status = Conflict`.
 5. If Task Name unassigned → `Status = NeedsTaskName` (even if other fields mapped).
-6. If all required fields uniquely assigned and no conflict → `Status = Ready` (may still require explicit user confirmation per product rules).
+6. If all required fields uniquely assigned and no conflict → `Status = Ready` when every assigned source header is an exact canonical heading for that field; otherwise `Status = NeedsConfirmation` (alias or non-canonical match). Neither status is incomplete or ambiguous under FR-010; FR-011 allows preview after the compact summary without a separate confirm click. FR-010 explicit confirmation applies only to `NeedsTaskName` and `Conflict` (mapping editor + **Confirm mapping**).
 
 ### `ToConfirmedMapping`
 

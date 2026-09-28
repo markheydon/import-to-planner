@@ -79,6 +79,43 @@ public sealed class ImportColumnMappingWorkflowTests
     }
 
     [Fact]
+    public async Task ProcessCsvUploadAsync_WithCompetingTaskNameHeaders_OpensEditorAndBlocksPreview()
+    {
+        await using var ctx = CreateContextWithLayoutStore();
+        ctx.CsvParser.UseRealParser = true;
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = CreateReadyState(ctx, "Title,Task\nDo something,Also a task");
+
+        await coordinator.ProcessCsvUploadAsync(state, CancellationToken.None);
+
+        Assert.True(state.ShowMappingEditor);
+        Assert.False(state.IsColumnMappingConfirmed);
+        Assert.Equal(ColumnMappingProposalStatus.Conflict, state.ColumnMappingProposal!.Status);
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+
+        Assert.Contains(state.ParseErrors, error => error.Field == "Mapping");
+    }
+
+    [Fact]
+    public async Task BuildPreviewAsync_WhenMappingEditorOpen_BlocksUntilMappingConfirmed()
+    {
+        await using var ctx = CreateContextWithLayoutStore();
+        var coordinator = ctx.Services.GetRequiredService<ImportWorkflowCoordinator>();
+        var state = CreateReadyState(ctx, "Title,Notes\nTask A,Body");
+
+        await coordinator.ProcessCsvUploadAsync(state, CancellationToken.None);
+        Assert.True(state.IsColumnMappingConfirmed);
+
+        state.ShowMappingEditor = true;
+        state.IsColumnMappingConfirmed = false;
+
+        await coordinator.BuildPreviewAsync(state, CancellationToken.None);
+
+        Assert.Contains(state.ParseErrors, error => error.Field == "Mapping");
+    }
+
+    [Fact]
     public async Task ProcessCsvUploadAsync_WithSavedLayout_ReappliesMappingWithoutManualConfirm()
     {
         await using var ctx = CreateContextWithLayoutStore();

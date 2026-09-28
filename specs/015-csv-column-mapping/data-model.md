@@ -47,7 +47,7 @@ Used by `ParseAsync` to read row values. Inverse view of saved layout for persis
 | ----- | ---- | ----- |
 | `SourceHeaders` | string[] | Raw first-row labels after delimiter detection |
 | `SuggestedAssignments` | map `FieldId` → source header or null | From exact match, alias, or saved layout |
-| `Status` | enum | `Ready` (unique Task Name, no conflicts), `NeedsTaskName`, `Conflict`, `NeedsConfirmation` |
+| `Status` | enum | `Ready` (unique Task Name, no conflicts, canonical headings only); `NeedsConfirmation` (unique Task Name, no conflicts, at least one alias/non-canonical match — FR-011 summary path, not an FR-010 blocking gate); `NeedsTaskName`; `Conflict` (FR-010 — block until editor confirm) |
 | `Conflicts` | list | Pairs of source headers competing for one `FieldId` |
 
 ### CsvHeaderPeekResult (transient)

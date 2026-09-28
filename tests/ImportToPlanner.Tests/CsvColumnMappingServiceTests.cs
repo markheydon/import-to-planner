@@ -118,4 +118,17 @@ public sealed class CsvColumnMappingServiceTests
 
         Assert.Equal("Task Name", mapping.Assignments[ImportColumnFieldIds.TaskName]);
     }
+
+    [Fact]
+    public void ToConfirmedMapping_WithDuplicateSourceColumn_Throws()
+    {
+        var proposal = service.BuildProposal(["Task Name", "Notes"], savedForLayout: null);
+        var assignments = proposal.SuggestedAssignments.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        assignments[ImportColumnFieldIds.Description] = "Task Name";
+
+        var exception = Assert.Throws<InvalidOperationException>(() => service.ToConfirmedMapping(proposal, assignments));
+
+        Assert.Contains("Task Name", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("cannot map", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }

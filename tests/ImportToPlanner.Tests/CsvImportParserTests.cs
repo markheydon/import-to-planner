@@ -794,6 +794,22 @@ public sealed class CsvImportParserTests
     }
 
     [Fact]
+    public async Task PeekHeadersAsync_WithIdenticalDuplicateHeaders_ReturnsFileLevelError()
+    {
+        const string csv = "Task Name,Task Name\nA,B";
+        var parser = new CsvImportParser();
+
+        var peek = await parser.PeekHeadersAsync(csv, CancellationToken.None);
+
+        Assert.True(peek.HasErrors);
+        Assert.Contains(
+            peek.ValidationErrors,
+            error => error.RowNumber == 0
+                     && error.Field == "Mapping"
+                     && error.Message.Contains("more than once", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task ParseAsync_WithMapping_UsesAliasHeaders()
     {
         const string csv = "Title,Notes\nTask A,Body text";
