@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 
 namespace ImportToPlanner.Web.Tests;
 
+[Collection(nameof(E2ETestingEndpointRouteTests))]
 public sealed class E2ETestingHostEnvironmentTests
 {
     [Fact]

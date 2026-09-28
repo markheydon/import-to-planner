@@ -99,7 +99,13 @@ End-to-end browser tests live in `tests/ImportToPlanner.E2E.Tests/` (C# Playwrig
 with xUnit v3). They run under the `E2ETesting` host environment with test-only
 authentication endpoints. The host refuses to start in `E2ETesting` unless
 `IMPORT_TO_PLANNER_ALLOW_E2E_TESTING=true` is set (the E2E test factory sets this
-for browser journeys only). Production and normal development hosts are unaffected.
+for browser journeys only). Those endpoints are not registered outside
+`E2ETesting`, and each request re-checks the opt-in variable so clearing it at
+runtime disables sign-in without restarting the process.
+
+**Never** set `ASPNETCORE_ENVIRONMENT=E2ETesting` (or enable
+`IMPORT_TO_PLANNER_ALLOW_E2E_TESTING`) on deployed or internet-facing hosts. The
+environment exists only for automated browser tests on loopback.
 
 ## C# patterns (hosted web application)
 
@@ -113,7 +119,10 @@ for browser journeys only). Production and normal development hosts are unaffect
   `GetAwaiter().GetResult()`.
 - Propagate `CancellationToken` on public async I/O APIs. ASP.NET and Blazor callers
   should pass `HttpContext.RequestAborted` when invoking use cases from a request
-  scope (for example via `IHttpContextAccessor`).
+  scope (for example via `IHttpContextAccessor`). On interactive Blazor Server
+  circuits, `HttpContext` is often unavailable after the initial request, so
+  disconnect cancellation may not reach later user actions unless you add circuit-level
+  handling.
 - Outbound HTTP must use `IHttpClientFactory` and typed clients registered with
   `AddHttpClient<TClient>()`. Do not `new HttpClient()` per call or register a
   long-lived singleton `HttpClient` manually. Configure retries, timeouts, and circuit

@@ -16,6 +16,12 @@ internal static class E2ETestingHostEnvironment
         return string.Equals(hostEnvironment.EnvironmentName, EnvironmentName, StringComparison.OrdinalIgnoreCase);
     }
 
+    public static bool IsE2ETestingOptInEnabled()
+    {
+        var allowed = Environment.GetEnvironmentVariable(AllowEnvironmentVariableName);
+        return string.Equals(allowed, "true", StringComparison.OrdinalIgnoreCase);
+    }
+
     public static void EnsureStartupAllowed(IHostEnvironment hostEnvironment)
     {
         ArgumentNullException.ThrowIfNull(hostEnvironment);
@@ -25,8 +31,7 @@ internal static class E2ETestingHostEnvironment
             return;
         }
 
-        var allowed = Environment.GetEnvironmentVariable(AllowEnvironmentVariableName);
-        if (!string.Equals(allowed, "true", StringComparison.OrdinalIgnoreCase))
+        if (!IsE2ETestingOptInEnabled())
         {
             throw new InvalidOperationException(
                 $"The {EnvironmentName} environment is reserved for automated browser tests. " +

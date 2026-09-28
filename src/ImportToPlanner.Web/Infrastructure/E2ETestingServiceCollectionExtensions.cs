@@ -8,16 +8,17 @@ internal static class E2ETestingServiceCollectionExtensions
 {
     public const string AuthenticationScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 
-    public static IServiceCollection AddE2ETestingAuthenticationIfEnabled(
+    public static bool AddE2ETestingAuthenticationIfEnabled(
         this IServiceCollection services,
         IHostEnvironment hostEnvironment)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(hostEnvironment);
 
-        if (!E2ETestingHostEnvironment.IsE2ETesting(hostEnvironment))
+        if (!E2ETestingHostEnvironment.IsE2ETesting(hostEnvironment)
+            || !E2ETestingHostEnvironment.IsE2ETestingOptInEnabled())
         {
-            return services;
+            return false;
         }
 
         services.AddAuthentication(AuthenticationScheme)
@@ -28,7 +29,7 @@ internal static class E2ETestingServiceCollectionExtensions
 
         services.AddAuthorization();
 
-        return services;
+        return true;
     }
 
     public static IEndpointRouteBuilder MapE2ETestingEndpointsIfEnabled(
@@ -38,7 +39,8 @@ internal static class E2ETestingServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(endpoints);
         ArgumentNullException.ThrowIfNull(hostEnvironment);
 
-        if (!E2ETestingHostEnvironment.IsE2ETesting(hostEnvironment))
+        if (!E2ETestingHostEnvironment.IsE2ETesting(hostEnvironment)
+            || !E2ETestingHostEnvironment.IsE2ETestingOptInEnabled())
         {
             return endpoints;
         }
@@ -47,6 +49,12 @@ internal static class E2ETestingServiceCollectionExtensions
             "/e2e/sign-in",
             static async context =>
             {
+                if (!E2ETestingHostEnvironment.IsE2ETestingOptInEnabled())
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    return;
+                }
+
                 var claims = new[]
                 {
                     new Claim(ClaimTypes.Name, "e2e-test-user"),
@@ -65,6 +73,12 @@ internal static class E2ETestingServiceCollectionExtensions
             "/e2e/sign-out",
             static async context =>
             {
+                if (!E2ETestingHostEnvironment.IsE2ETestingOptInEnabled())
+                {
+                    context.Response.StatusCode = StatusCodes.Status404NotFound;
+                    return;
+                }
+
                 await context.SignOutAsync(AuthenticationScheme);
                 context.Response.Redirect("/");
             }).AllowAnonymous();
