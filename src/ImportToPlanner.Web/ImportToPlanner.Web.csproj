@@ -23,4 +23,9 @@
     <UserSecretsId>490a41e7-db10-4f53-9f8e-869bf8b4188e</UserSecretsId>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ImportToPlanner.Web.Tests" />
+    <InternalsVisibleTo Include="ImportToPlanner.E2E.Tests" />
+  </ItemGroup>
+
 </Project>

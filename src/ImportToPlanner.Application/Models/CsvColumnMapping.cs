@@ -3,7 +3,7 @@ namespace ImportToPlanner.Application.Models;
 /// <summary>
 /// User-confirmed mapping from import fields to source CSV headers for one upload session.
 /// </summary>
-public sealed class CsvColumnMapping
+public sealed record CsvColumnMapping
 {
     public required string LayoutSignature { get; init; }
 

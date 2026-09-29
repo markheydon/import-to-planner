@@ -4,9 +4,12 @@ using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial.Services;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using MudBlazor.Services;
 
@@ -59,15 +62,14 @@ internal sealed class HomePageTestContext : BunitContext
             })
             .Build();
 
-        var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(config);
-        var storageConfiguration = StorageConfiguration.FromConfiguration(config);
-
         Services.AddSingleton<IConfiguration>(config);
-        Services.AddSingleton(tenantAuthorityConfiguration);
-        Services.AddSingleton(storageConfiguration);
+        Services.AddSingleton<IWebHostEnvironment>(new TestWebHostEnvironment());
+        Services.AddWebApplicationOptions(config);
         Services.AddOptions<CommercialModeOptions>()
             .Bind(config.GetSection(CommercialModeOptions.ConfigurationSectionName));
         Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
+
+        var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(config);
         Services.AddSingleton(new ConsentResolutionDefaults(
             tenantAuthorityConfiguration.RequiredScopes,
             tenantAuthorityConfiguration.AdminConsentUri));
@@ -145,6 +147,21 @@ internal sealed class HomePageTestContext : BunitContext
     public CommercialAuditStoreStub CommercialAuditStore { get; }
 
     public CreditEnsureUseCaseSubstitute CreditEnsureUseCase { get; }
+
+    private sealed class TestWebHostEnvironment : IWebHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = Environments.Development;
+
+        public string ApplicationName { get; set; } = "ImportToPlanner.Web.Tests";
+
+        public string WebRootPath { get; set; } = Directory.GetCurrentDirectory();
+
+        public IFileProvider WebRootFileProvider { get; set; } = new NullFileProvider();
+
+        public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
 
     private static ClaimsPrincipal CreatePrincipal(bool isAuthenticated)
     {

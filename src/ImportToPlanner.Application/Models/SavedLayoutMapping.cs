@@ -3,7 +3,7 @@ namespace ImportToPlanner.Application.Models;
 /// <summary>
 /// Browser-persisted mapping for a normalised header layout.
 /// </summary>
-public sealed class SavedLayoutMapping
+public sealed record SavedLayoutMapping
 {
     public required string LayoutSignature { get; init; }
 

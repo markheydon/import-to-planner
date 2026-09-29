@@ -1,4 +1,5 @@
 using ImportToPlanner.Commercial.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace ImportToPlanner.Web.Features.CommercialAccounts;
 
@@ -7,7 +8,7 @@ namespace ImportToPlanner.Web.Features.CommercialAccounts;
 /// </summary>
 internal sealed class CommercialAccountRetentionHostedService(
     IServiceScopeFactory serviceScopeFactory,
-    CommercialModeOptions commercialModeOptions,
+    IOptions<CommercialModeOptions> commercialModeOptions,
     ILogger<CommercialAccountRetentionHostedService> logger) : BackgroundService
 {
     private static readonly TimeSpan SweepInterval = TimeSpan.FromHours(24);
@@ -15,7 +16,7 @@ internal sealed class CommercialAccountRetentionHostedService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!commercialModeOptions.Enabled || !commercialModeOptions.RetentionSweepEnabled)
+        if (!commercialModeOptions.Value.Enabled || !commercialModeOptions.Value.RetentionSweepEnabled)
         {
             logger.LogInformation("Commercial retention sweep hosted service is disabled by configuration.");
             return;

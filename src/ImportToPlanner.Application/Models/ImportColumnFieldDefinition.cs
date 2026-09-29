@@ -3,7 +3,7 @@ namespace ImportToPlanner.Application.Models;
 /// <summary>
 /// Catalog entry describing one importable CSV column.
 /// </summary>
-public sealed class ImportColumnFieldDefinition
+public sealed record ImportColumnFieldDefinition
 {
     public required string FieldId { get; init; }
 

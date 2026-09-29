@@ -150,8 +150,8 @@ This project follows a strict layered clean architecture. Respect the existing l
 - Tests use [xUnit v3](https://xunit.net/) with built-in `Assert` methods and
   [NSubstitute](https://nsubstitute.github.io/) for interface doubles.
 - Do not introduce FluentAssertions, AwesomeAssertions, Shouldly, Moq, NUnit, or MSTest.
-- AppHost modelling and orchestration are not tested. End-to-end coverage, when required,
-  uses Playwright (not currently present in this repository).
+- AppHost modelling and orchestration are not tested. End-to-end coverage uses C#
+  Playwright in `tests/ImportToPlanner.E2E.Tests/` (see `tests/README.md`).
 - Aim for tests that cover the behaviour, not the implementation detail.
 - See `docs-internal/engineering-policies.md` for the full testing standard.
 

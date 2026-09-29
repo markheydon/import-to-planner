@@ -34,6 +34,9 @@ Pull requests that add or change code MUST include evidence for:
 - Boundary leakage checks: use-case outputs and domain models MUST NOT carry
   provider payload residue, SDK exception taxonomies, UI component types, or
   delivery-specific wording.
+- Modern C# pattern checks for blocking async and legacy ASP.NET context access.
+  The automated check lives in
+  `tests/ImportToPlanner.Tests/CSharpPatternsComplianceTests.cs`.
 
 ## Testing and Runtime Behaviour
 
@@ -92,8 +95,45 @@ Where end-to-end testing is required, use **Playwright**.
 - End-to-end tests MUST validate complete user workflows rather than individual UI
   elements.
 
-This repository does not currently include a Playwright suite. Add one only when a
-complete user journey explicitly requires end-to-end coverage.
+End-to-end browser tests live in `tests/ImportToPlanner.E2E.Tests/` (C# Playwright
+with xUnit v3). They run under the `E2ETesting` host environment with test-only
+authentication endpoints. The host refuses to start in `E2ETesting` unless
+`IMPORT_TO_PLANNER_ALLOW_E2E_TESTING=true` is set (the E2E test factory sets this
+for browser journeys only). Those endpoints are not registered outside
+`E2ETesting`, and each request re-checks the opt-in variable so clearing it at
+runtime disables sign-in without restarting the process.
+
+**Never** set `ASPNETCORE_ENVIRONMENT=E2ETesting` (or enable
+`IMPORT_TO_PLANNER_ALLOW_E2E_TESTING`) on deployed or internet-facing hosts. The
+environment exists only for automated browser tests on loopback.
+
+## C# patterns (hosted web application)
+
+- Register configuration through `IOptions<T>` at the composition root
+  (`ImportToPlanner.Web`). Libraries take plain options objects or configure via
+  `IServiceCollection` extension methods; they do not depend on `IOptions<T>`.
+- Use constructor injection and `IServiceCollection` extension methods in libraries.
+- Use `IHttpContextAccessor` in the ASP.NET web host; do not use
+  `HttpContext.Current`.
+- Use `async`/`await` end to end; do not block with `.Wait()` or
+  `GetAwaiter().GetResult()`.
+- Propagate `CancellationToken` on public async I/O APIs. ASP.NET and Blazor callers
+  should pass `HttpContext.RequestAborted` when invoking use cases from a request
+  scope (for example via `IHttpContextAccessor`). On interactive Blazor Server
+  circuits, `HttpContext` is often unavailable after the initial request, so
+  disconnect cancellation may not reach later user actions unless you add circuit-level
+  handling.
+- Outbound HTTP must use `IHttpClientFactory` and typed clients registered with
+  `AddHttpClient<TClient>()`. Do not `new HttpClient()` per call or register a
+  long-lived singleton `HttpClient` manually. Configure retries, timeouts, and circuit
+  breaking on the `AddHttpClient` handler pipeline (for example
+  `Microsoft.Extensions.Http.Resilience` via Aspire service defaults), not with
+  hand-rolled per-call logic. Microsoft Graph uses Kiota with a factory-managed
+  `HttpClient` (see `DelegatedMicrosoftGraphClient` in the web host).
+- Enable nullable reference types on projects (`Directory.Build.props` sets this
+  solution-wide). Tighten nullability when touching an area.
+- Prefer `record` / `record struct` for immutable DTOs, options snapshots, and message
+  shapes; use classes when mutable identity or inheritance is required.
 
 ## User Experience and Accessibility
 

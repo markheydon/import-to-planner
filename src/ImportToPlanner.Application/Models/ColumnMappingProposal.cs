@@ -3,7 +3,7 @@ namespace ImportToPlanner.Application.Models;
 /// <summary>
 /// Suggested column mapping for an uploaded CSV before user confirmation.
 /// </summary>
-public sealed class ColumnMappingProposal
+public sealed record ColumnMappingProposal
 {
     public required string LayoutSignature { get; init; }
 

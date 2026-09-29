@@ -4,13 +4,15 @@
 @using ImportToPlanner.Commercial.Abstractions
 @using ImportToPlanner.Web.Features.Import.Presenters
 @using ImportToPlanner.Web.Features.Import.Workflows
+@using ImportToPlanner.Web.Features.Authentication
 @using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
 @inject WorkflowCoordinationState WorkflowState
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager NavigationManager
 @inject ILogger<Home> Logger
-@inject IConfiguration Configuration
+@inject TenantAuthorityConfiguration TenantAuthorityConfiguration
+@inject IWebHostEnvironment HostEnvironment
 @inject UserFacingFailureDiagnostics FailureDiagnostics
 @inject ISessionIdentityContextAccessor SessionIdentityContextAccessor
 @inject SessionIdentityPresenter SessionIdentityPresenter

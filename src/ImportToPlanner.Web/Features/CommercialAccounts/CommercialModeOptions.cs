@@ -19,4 +19,16 @@ public sealed class CommercialModeOptions
     /// Gets or sets a value indicating whether scheduled retention sweeps are enabled.
     /// </summary>
     public bool RetentionSweepEnabled { get; set; }
+
+    /// <summary>
+    /// Reads commercial mode settings from application configuration at startup.
+    /// </summary>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The bound commercial mode options.</returns>
+    public static CommercialModeOptions FromConfiguration(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return configuration.GetSection(ConfigurationSectionName).Get<CommercialModeOptions>() ?? new CommercialModeOptions();
+    }
 }

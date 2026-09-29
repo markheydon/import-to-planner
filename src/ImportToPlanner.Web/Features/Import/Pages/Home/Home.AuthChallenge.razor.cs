@@ -86,7 +86,7 @@ public partial class Home
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        var scopes = Configuration.GetSection("DownstreamApis:MicrosoftGraph:Scopes").Get<string[]>() ?? ["User.Read"];
+        var scopes = TenantAuthorityConfiguration.RequiredScopes;
         var challengeScope = string.Join(' ', scopes);
         var loginHint = user.FindFirst("preferred_username")?.Value ?? user.Identity?.Name ?? string.Empty;
         var redirectUri = $"/?{TokenReauthenticationQueryKey}=1";

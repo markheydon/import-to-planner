@@ -70,4 +70,6 @@ jobs:
         run: dotnet build ImportToPlanner.slnx --no-restore
 
       - name: Run tests
-        run: dotnet test --solution ImportToPlanner.slnx --no-build --verbosity normal
+        run: |
+          dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --no-build --verbosity normal
+          dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj --no-build --verbosity normal

@@ -16,7 +16,12 @@ public sealed class TestingStandardsComplianceTests
     private static readonly string[] RequiredTestPackages =
     [
         "xunit.v3",
-        "NSubstitute",
+    ];
+
+    private static readonly string[] TestProjectsRequiringNSubstitute =
+    [
+        "ImportToPlanner.Tests",
+        "ImportToPlanner.Web.Tests",
     ];
 
     [Fact]
@@ -55,6 +60,15 @@ public sealed class TestingStandardsComplianceTests
             {
                 Assert.Contains(
                     $"Include=\"{requiredPackage}\"",
+                    projectContent,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (TestProjectsRequiringNSubstitute.Any(
+                    projectName => testProjectFile.Contains(projectName, StringComparison.OrdinalIgnoreCase)))
+            {
+                Assert.Contains(
+                    "Include=\"NSubstitute\"",
                     projectContent,
                     StringComparison.OrdinalIgnoreCase);
             }

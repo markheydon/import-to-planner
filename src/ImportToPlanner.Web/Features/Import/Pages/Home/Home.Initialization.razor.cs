@@ -1,6 +1,7 @@
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Web.Features.Import.Presenters;
 using ImportToPlanner.Web.Features.Import.Workflows;
+using ImportToPlanner.Web.Infrastructure;
 using Microsoft.AspNetCore.WebUtilities;
 
 namespace ImportToPlanner.Web.Features.Import.Pages;
@@ -73,13 +74,18 @@ public partial class Home
                 return;
             }
 
+            if (E2ETestingHostEnvironment.IsE2ETesting(HostEnvironment))
+            {
+                return;
+            }
+
             NavigationManager.NavigateTo("MicrosoftIdentity/Account/SignIn", forceLoad: true);
             return;
         }
 
         try
         {
-            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, CancellationToken.None);
+            await WorkflowCoordinator.LoadContainersAsync(WorkflowState, WorkflowCancellation);
 
             if (hasTokenReauthenticationQuery)
             {
