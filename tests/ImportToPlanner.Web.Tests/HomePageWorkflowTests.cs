@@ -48,6 +48,34 @@ public sealed class HomePageWorkflowTests
         Assert.Contains("Alpha Task", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Created: 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Manual: 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Download report", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HomeExecutionReport_WithNullExecutionResult_DoesNotRenderDownloadReport()
+    {
+        await using var ctx = new HomePageTestContext();
+        var cut = ctx.Render<HomeExecutionReport>();
+        Assert.DoesNotContain("Download report", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HomeExecutionReport_WhenReportHasNoExportableRows_DisablesDownloadReport()
+    {
+        await using var ctx = new HomePageTestContext();
+        var report = new ImportExecutionReportViewModel(
+            "plan-1",
+            [],
+            [],
+            [],
+            ["Planner provider is unavailable."],
+            new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true));
+
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, report));
+
+        var button = cut.Find("button[aria-label='Download execution report as CSV']");
+        Assert.True(button.HasAttribute("disabled"));
     }
 
     [Fact]

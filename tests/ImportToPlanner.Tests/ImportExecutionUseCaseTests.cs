@@ -130,6 +130,10 @@ public sealed class ImportExecutionUseCaseTests
         var failure = Assert.Single(output.Response.FailureItems);
         Assert.Equal(PlannerFailureTarget.Workflow, failure.Target);
         Assert.True(output.Response.OutcomeSummary.IsFullFailure);
+        var outcomes = output.Response.SourceRowOutcomes;
+        Assert.Single(outcomes);
+        Assert.Equal(2, outcomes[0].RowNumber);
+        Assert.Equal(ImportSourceRowOutcomeKind.Failed, outcomes[0].Outcome);
     }
 
     [Fact]
@@ -252,6 +256,15 @@ public sealed class ImportExecutionUseCaseTests
         Assert.Contains(output.Response.CreatedItems, item => item.Target == PlannerFailureTarget.Task);
         Assert.Contains(output.Response.CreatedItems, item => item.Target == PlannerFailureTarget.Bucket);
         Assert.Equal(4, output.Response.ReusedOrSkippedItems.Count);
+
+        var outcomes = output.Response.SourceRowOutcomes;
+        Assert.Equal(3, outcomes.Count);
+        Assert.Equal(ImportSourceRowOutcomeKind.ReusedOrSkipped, outcomes.Single(o => o.RowNumber == 2).Outcome);
+        Assert.Equal(ImportSourceRowOutcomeKind.ReusedOrSkipped, outcomes.Single(o => o.RowNumber == 3).Outcome);
+        var createdOutcome = outcomes.Single(o => o.RowNumber == 4);
+        Assert.Equal(ImportSourceRowOutcomeKind.Created, createdOutcome.Outcome);
+        Assert.False(string.IsNullOrWhiteSpace(createdOutcome.TaskIdentifier));
+        Assert.DoesNotContain("tenant", createdOutcome.Reason ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -283,6 +296,11 @@ public sealed class ImportExecutionUseCaseTests
 
         Assert.Single(output.Response!.CreatedItems);
         Assert.Contains(output.Response.FailureItems, failure => failure.DiagnosticCode == "credits.usage_record_failed");
+        var createdOutcome = Assert.Single(output.Response.SourceRowOutcomes);
+        Assert.Equal(ImportSourceRowOutcomeKind.Created, createdOutcome.Outcome);
+        Assert.Equal(
+            "Import stopped because a credit usage record could not be saved after a task was created.",
+            createdOutcome.Reason);
     }
 
     [Fact]

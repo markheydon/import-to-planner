@@ -8,6 +8,8 @@ permalink: /faq
 
 Not always. The import report identifies tasks as Created or Reused or skipped.
 
+After import, use **Download report** on the execution report step to save a CSV you can share or edit before uploading a corrected source file. The app does not offer a separate retry-failed-only control.
+
 ## Can I import into an existing plan?
 
 Yes. Use the target group and the same plan name. The app can match and reuse an existing plan by name.

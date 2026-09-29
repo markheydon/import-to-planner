@@ -59,6 +59,7 @@ public sealed class ImportExecutionUseCase(
         var reusedOrSkipped = new List<ImportExecutionItem>();
         var failures = new List<PlannerOperationFailure>();
         var manualActions = new List<ManualAction>();
+        var sourceRowOutcomes = new List<ImportSourceRowOutcome>();
         var emittedGoalTaskLinks = new HashSet<(string Goal, string TaskName)>(GoalTaskLinkComparer.Instance);
 
         PlannerPlan plan;
@@ -76,7 +77,7 @@ public sealed class ImportExecutionUseCase(
         catch (PlannerOperationException ex)
         {
             failures.Add(CreateBoundaryFailure(ex, planningRequest.PlanId));
-            await PresentFailureOnlyResultAsync(planningRequest.PlanId, outputBoundary, failures, cancellationToken);
+            await PresentFailureOnlyResultAsync(planningRequest.PlanId, preview, outputBoundary, failures, cancellationToken);
             return;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -86,7 +87,7 @@ public sealed class ImportExecutionUseCase(
                 planningRequest.PlanId,
                 "UnexpectedPlanLookupFailure",
                 ex));
-            await PresentFailureOnlyResultAsync(planningRequest.PlanId, outputBoundary, failures, cancellationToken);
+            await PresentFailureOnlyResultAsync(planningRequest.PlanId, preview, outputBoundary, failures, cancellationToken);
             return;
         }
 
@@ -147,6 +148,7 @@ public sealed class ImportExecutionUseCase(
             if (taskAction.Action != PlannedEntityAction.Create)
             {
                 reusedOrSkipped.Add(new ImportExecutionItem(PlannerFailureTarget.Task, taskAction.TaskName));
+                sourceRowOutcomes.Add(CreateReusedOrSkippedOutcome(taskAction));
 
                 if (IsTaskAlreadyExistsReason(taskAction.Reason))
                 {
@@ -168,12 +170,15 @@ public sealed class ImportExecutionUseCase(
 
             if (stopFurtherCreates)
             {
+                var stopMessage = stopDiagnosticCode == CreditUsageRecordFailedDiagnosticCode
+                    ? CreditUsageRecordFailedMessage
+                    : CreditExhaustedMessage;
                 failures.Add(CreateCreditFailure(
+                    taskAction.RowNumber,
                     taskAction.TaskName,
                     stopDiagnosticCode ?? CreditExhaustedDiagnosticCode,
-                    stopDiagnosticCode == CreditUsageRecordFailedDiagnosticCode
-                        ? CreditUsageRecordFailedMessage
-                        : CreditExhaustedMessage));
+                    stopMessage));
+                sourceRowOutcomes.Add(CreateFailedOutcome(taskAction, stopMessage));
                 continue;
             }
 
@@ -192,9 +197,11 @@ public sealed class ImportExecutionUseCase(
                 if (quotaResult.Status == TaskCreationQuotaStatus.Unavailable)
                 {
                     failures.Add(CreateCreditFailure(
+                        taskAction.RowNumber,
                         taskAction.TaskName,
                         quotaResult.DiagnosticCode ?? CreditUnavailableDiagnosticCode,
                         CreditUnavailableMessage));
+                    sourceRowOutcomes.Add(CreateFailedOutcome(taskAction, CreditUnavailableMessage));
                     stopFurtherCreates = true;
                     stopDiagnosticCode = quotaResult.DiagnosticCode ?? CreditUnavailableDiagnosticCode;
                     continue;
@@ -203,9 +210,11 @@ public sealed class ImportExecutionUseCase(
                 if (quotaResult.Status == TaskCreationQuotaStatus.Exhausted)
                 {
                     failures.Add(CreateCreditFailure(
+                        taskAction.RowNumber,
                         taskAction.TaskName,
                         CreditExhaustedDiagnosticCode,
                         CreditExhaustedMessage));
+                    sourceRowOutcomes.Add(CreateFailedOutcome(taskAction, CreditExhaustedMessage));
                     stopFurtherCreates = true;
                     stopDiagnosticCode = CreditExhaustedDiagnosticCode;
                     continue;
@@ -214,15 +223,21 @@ public sealed class ImportExecutionUseCase(
 
             if (!bucketCache.TryGetValue(taskAction.Bucket, out var bucket))
             {
+                var bucketMessage =
+                    $"Task '{taskAction.TaskName}' failed because bucket '{taskAction.Bucket}' is unavailable.";
                 failures.Add(new PlannerOperationFailure(
                     PlannerFailureCategory.Validation,
                     PlannerFailureTarget.Task,
                     taskAction.TaskName,
-                    $"Task '{taskAction.TaskName}' failed because bucket '{taskAction.Bucket}' is unavailable.",
+                    bucketMessage,
                     false,
-                    "BucketUnavailable"));
+                    "BucketUnavailable",
+                    taskAction.RowNumber));
+                sourceRowOutcomes.Add(CreateFailedOutcome(taskAction, bucketMessage));
                 continue;
             }
+
+            string? createdTaskFollowUpReason = null;
 
             try
             {
@@ -268,9 +283,11 @@ public sealed class ImportExecutionUseCase(
                     {
                         // Planner task is intentionally retained when usage recording fails; credits may need manual reconciliation.
                         failures.Add(CreateCreditFailure(
+                            taskAction.RowNumber,
                             taskAction.TaskName,
                             recordResult.DiagnosticCode ?? CreditUsageRecordFailedDiagnosticCode,
                             CreditUsageRecordFailedMessage));
+                        createdTaskFollowUpReason = CreditUsageRecordFailedMessage;
                         stopFurtherCreates = true;
                         stopDiagnosticCode = recordResult.DiagnosticCode ?? CreditUsageRecordFailedDiagnosticCode;
                     }
@@ -292,18 +309,35 @@ public sealed class ImportExecutionUseCase(
                             null));
                     }
                 }
+
+                sourceRowOutcomes.Add(new ImportSourceRowOutcome(
+                    taskAction.RowNumber,
+                    sourceRow.TaskName,
+                    ImportSourceRowOutcomeKind.Created,
+                    createdTask.Id,
+                    createdTaskFollowUpReason));
             }
             catch (PlannerOperationException ex)
             {
-                failures.Add(ex.Failure with { Target = PlannerFailureTarget.Task, Reference = taskAction.TaskName });
+                var failure = ex.Failure with
+                {
+                    Target = PlannerFailureTarget.Task,
+                    Reference = taskAction.TaskName,
+                    SourceRowNumber = taskAction.RowNumber,
+                };
+                failures.Add(failure);
+                sourceRowOutcomes.Add(CreateFailedOutcome(taskAction, failure.Message));
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                failures.Add(CreateUnexpectedFailure(
+                var failure = CreateUnexpectedFailure(
                     PlannerFailureTarget.Task,
                     taskAction.TaskName,
                     "UnexpectedTaskFailure",
-                    ex));
+                    ex,
+                    taskAction.RowNumber);
+                failures.Add(failure);
+                sourceRowOutcomes.Add(CreateFailedOutcome(taskAction, failure.Message));
             }
         }
 
@@ -329,6 +363,9 @@ public sealed class ImportExecutionUseCase(
         }
 
         var outcomeSummary = BuildOutcomeSummary(created, reusedOrSkipped, failures, manualActions);
+        var orderedSourceRowOutcomes = sourceRowOutcomes
+            .OrderBy(outcome => outcome.RowNumber)
+            .ToList();
         var response = new ImportExecutionResult
         {
             PlanId = plan.Id,
@@ -339,6 +376,7 @@ public sealed class ImportExecutionUseCase(
             OutcomeSummary = outcomeSummary,
             CreditsUsed = request.Metering is null ? null : creditsUsed,
             RemainingCredits = request.Metering is null ? null : remainingCredits,
+            SourceRowOutcomes = orderedSourceRowOutcomes,
         };
 
         await outputBoundary.PresentAsync(response, cancellationToken);
@@ -346,12 +384,14 @@ public sealed class ImportExecutionUseCase(
 
     private static async Task PresentFailureOnlyResultAsync(
         string planId,
+        ImportPlanPreview preview,
         IImportExecutionOutputBoundary outputBoundary,
         List<PlannerOperationFailure> failures,
         CancellationToken cancellationToken)
     {
         var emptyItems = new List<ImportExecutionItem>();
         var manualActions = new List<ManualAction>();
+        var sourceRowOutcomes = BuildAbortedSourceRowOutcomes(preview, failures);
         var response = new ImportExecutionResult
         {
             PlanId = planId,
@@ -360,9 +400,21 @@ public sealed class ImportExecutionUseCase(
             FailureItems = failures,
             ManualActions = manualActions,
             OutcomeSummary = BuildOutcomeSummary(emptyItems, emptyItems, failures, manualActions),
+            SourceRowOutcomes = sourceRowOutcomes,
         };
 
         await outputBoundary.PresentAsync(response, cancellationToken);
+    }
+
+    private static List<ImportSourceRowOutcome> BuildAbortedSourceRowOutcomes(
+        ImportPlanPreview preview,
+        List<PlannerOperationFailure> failures)
+    {
+        var message = failures.Count > 0 ? failures[0].Message : "Import could not complete.";
+        return preview.TaskActions
+            .OrderBy(task => task.RowNumber)
+            .Select(task => CreateFailedOutcome(task, message))
+            .ToList();
     }
 
     private static ImportExecutionOutcomeSummary BuildOutcomeSummary(
@@ -405,6 +457,36 @@ public sealed class ImportExecutionUseCase(
         return string.Equals(reason, "already exists", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static ImportSourceRowOutcome CreateReusedOrSkippedOutcome(ImportTaskPlanItem taskAction)
+    {
+        return new ImportSourceRowOutcome(
+            taskAction.RowNumber,
+            taskAction.TaskName,
+            ImportSourceRowOutcomeKind.ReusedOrSkipped,
+            Reason: FormatSkipReason(taskAction.Reason));
+    }
+
+    private static ImportSourceRowOutcome CreateFailedOutcome(ImportTaskPlanItem taskAction, string reason)
+    {
+        return new ImportSourceRowOutcome(
+            taskAction.RowNumber,
+            taskAction.TaskName,
+            ImportSourceRowOutcomeKind.Failed,
+            Reason: reason);
+    }
+
+    private static string? FormatSkipReason(string? reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return null;
+        }
+
+        return IsTaskAlreadyExistsReason(reason)
+            ? "Task already exists in the destination plan."
+            : reason;
+    }
+
     private static IEnumerable<(string Address, string ReasonCode)> BuildAssigneeFollowUps(
         ImportTaskPlanItem taskAction,
         IReadOnlyList<string> appliedAssigneeIds)
@@ -439,6 +521,7 @@ public sealed class ImportExecutionUseCase(
     }
 
     private static PlannerOperationFailure CreateCreditFailure(
+        int sourceRowNumber,
         string taskName,
         string diagnosticCode,
         string message)
@@ -448,7 +531,8 @@ public sealed class ImportExecutionUseCase(
             taskName,
             message,
             Retryable: false,
-            diagnosticCode);
+            diagnosticCode,
+            sourceRowNumber);
 
     private static PlannerOperationFailure CreateCreditBalanceReportFailure()
         => new(
@@ -463,7 +547,8 @@ public sealed class ImportExecutionUseCase(
         PlannerFailureTarget target,
         string? reference,
         string diagnosticCode,
-        Exception exception)
+        Exception exception,
+        int? sourceRowNumber = null)
     {
         ArgumentNullException.ThrowIfNull(exception);
 
@@ -473,7 +558,8 @@ public sealed class ImportExecutionUseCase(
             reference,
             exception.Message,
             false,
-            diagnosticCode);
+            diagnosticCode,
+            sourceRowNumber);
     }
 
     private static PlannerOperationFailure CreateBoundaryFailure(

@@ -1,10 +1,24 @@
 @namespace ImportToPlanner.Web.Features.Import.Pages
 @using ImportToPlanner.Web.Features.Import.Presenters
+@using Microsoft.JSInterop
+@using MudBlazor
+@inject ImportExecutionPresenter ExecutionPresenter
+@inject IJSRuntime JSRuntime
+@inject ISnackbar Snackbar
 
 @if (ExecutionResult is not null)
 {
     <MudStack Spacing="2">
-        <MudText Typo="Typo.h6">Execution Report</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.h6">Execution Report</MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       Disabled="@(!ExecutionResult.HasExportableContent)"
+                       aria-label="Download execution report as CSV"
+                       OnClick="DownloadReportAsync">
+                Download report
+            </MudButton>
+        </MudStack>
 
         @if (ExecutionResult.PlanId is not null)
         {
@@ -151,6 +165,32 @@
 @code {
     [Parameter]
     public ImportExecutionReportViewModel? ExecutionResult { get; set; }
+
+    private async Task DownloadReportAsync()
+    {
+        var file = ExecutionPresenter.TryBuildExecutionReportCsvDownload(ExecutionResult);
+        if (file is null)
+        {
+            Snackbar.Add("Could not generate the report file. Try running the import again.", Severity.Warning);
+            return;
+        }
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "importToPlannerExecutionReportDownload.downloadCsv",
+                file.FileName,
+                Convert.ToBase64String(file.Content));
+        }
+        catch (JSDisconnectedException)
+        {
+            Snackbar.Add("The download could not start because the connection was interrupted. Refresh the page and try again.", Severity.Warning);
+        }
+        catch (JSException)
+        {
+            Snackbar.Add("The download could not start. Refresh the page and try again.", Severity.Warning);
+        }
+    }
 
     private static Color GetManualActionColour(string actionType)
         => actionType switch
