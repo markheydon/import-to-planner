@@ -1,0 +1,124 @@
+# Import To Planner public product site (Hextra).
+baseURL: "https://docs.importplanner.app/"
+title: "Import To Planner"
+locale: en-gb
+defaultContentLanguage: en-gb
+enableRobotsTXT: true
+enableGitInfo: true
+
+outputs:
+  home: [html]
+  page: [html, markdown]
+  section: [html, rss, markdown]
+
+module:
+  hugoVersion:
+    extended: true
+    min: "0.146.0"
+  imports:
+    - path: github.com/imfing/hextra
+
+markup:
+  highlight:
+    noClasses: false
+  goldmark:
+    renderer:
+      unsafe: true
+
+menu:
+  main:
+    - name: Home
+      pageRef: /
+      weight: 1
+    - name: Getting started
+      pageRef: /getting-started
+      weight: 2
+    - name: CSV format
+      pageRef: /csv-format
+      weight: 3
+    - name: Import workflow
+      pageRef: /import-workflow
+      weight: 4
+    - name: Troubleshooting
+      pageRef: /troubleshooting
+      weight: 5
+    - name: FAQ
+      pageRef: /faq
+      weight: 6
+    - name: Privacy and security
+      pageRef: /privacy-and-security
+      weight: 7
+    - name: Self-hosted
+      pageRef: /self-hosted
+      weight: 20
+    - name: Credits and billing
+      pageRef: /credits-and-billing
+      weight: 21
+    - name: Search
+      weight: 30
+      params:
+        type: search
+    - name: GitHub
+      weight: 31
+      url: "https://github.com/markheydon/import-to-planner"
+      params:
+        icon: github
+    - name: Theme Toggle
+      weight: 32
+      params:
+        type: theme-toggle
+
+params:
+  description: "End-user guides for importing CSV tasks into Microsoft Planner."
+  externalLinkDecoration: false
+  releaseVersion: unreleased
+
+  navbar:
+    displayTitle: true
+    displayLogo: false
+    width: wide
+
+  theme:
+    default: system
+    displayToggle: true
+
+  footer:
+    enable: true
+    displayCopyright: true
+    displayPoweredBy: true
+    width: normal
+
+  displayUpdatedDate: true
+  dateFormat: "2 January 2006"
+
+  search:
+    enable: true
+    type: flexsearch
+
+  flexsearch:
+    index: content
+    tokenize: forward
+
+  editURL:
+    enable: true
+    base: "https://github.com/markheydon/import-to-planner/edit/main/website/content"
+
+  page:
+    width: normal
+    contextMenu:
+      enable: true
+
+  imageZoom:
+    enable: true
+
+  toc:
+    displayTags: false
+
+  highlight:
+    copy:
+      enable: true
+      display: hover
+
+caches:
+  images:
+    dir: ":cacheDir/images"

@@ -1,5 +1,8 @@
+using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Web.Features.Demo;
 using ImportToPlanner.Web.Themes;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
 using MudBlazor;
 
@@ -21,6 +24,46 @@ public sealed partial class MainLayout
 
     [Inject]
     private ILogger<MainLayout> Logger { get; set; } = default!;
+
+    [Inject]
+    private IDemoModeSession DemoModeSession { get; set; } = default!;
+
+    [Inject]
+    private IDemoModeAuthorisationService DemoModeAuthorisation { get; set; } = default!;
+
+    [Inject]
+    private IOptions<DocsExternalLinksOptions> DocsLinks { get; set; } = default!;
+
+    private IDemoModeSession _demoModeSession => DemoModeSession;
+
+    private bool _canShowDemoControls => DemoModeAuthorisation.CanShowDemoControls();
+
+    private string _docsBaseUrl => DocsLinks.Value.DocsBaseUrl.TrimEnd('/');
+
+    private string _docsHomeUrl => $"{_docsBaseUrl}/";
+
+    private string _termsUrl => $"{_docsBaseUrl}/terms";
+
+    private string _privacyUrl => $"{_docsBaseUrl}/privacy-and-security";
+
+    private string _supportUrl => $"{_docsBaseUrl}/support";
+
+    private void OnDemoModeToggled(bool enabled)
+    {
+        if (!DemoModeAuthorisation.CanActivateDemo())
+        {
+            return;
+        }
+
+        if (enabled)
+        {
+            DemoModeSession.Activate();
+        }
+        else
+        {
+            DemoModeSession.Deactivate();
+        }
+    }
 
     /// <summary>The current theme state, cascaded to child components.</summary>
     private ThemeState ThemeContext => new(_themeMode, _isDarkMode, SetThemeModeAsync);

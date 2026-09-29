@@ -6,10 +6,29 @@
 <MudThemeProvider @ref="_themeProvider" Theme="@_theme" IsDarkMode="@_isDarkMode" />
 
 <MudLayout>
+    @if (_demoModeSession.IsActive)
+    {
+        <MudAlert Severity="Severity.Warning" Class="ma-0" Dense="true">
+            Demonstration mode is on. Import data is synthetic and Microsoft Graph is not used for import steps.
+        </MudAlert>
+    }
     <MudMainContent Class="pa-4">
         <CascadingValue Value="@ThemeContext">
             @Body
         </CascadingValue>
+        <MudDivider Class="my-4" />
+        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Class="flex-wrap">
+            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center" Class="flex-wrap">
+                <MudLink Href="@_docsHomeUrl" Target="_blank">Documentation</MudLink>
+                <MudLink Href="@_termsUrl" Target="_blank">Terms</MudLink>
+                <MudLink Href="@_privacyUrl" Target="_blank">Privacy</MudLink>
+                <MudLink Href="@_supportUrl" Target="_blank">Support</MudLink>
+            </MudStack>
+            @if (_canShowDemoControls)
+            {
+                <MudSwitch T="bool" Value="_demoModeSession.IsActive" ValueChanged="OnDemoModeToggled" Color="Color.Warning" Label="Demonstration mode" />
+            }
+        </MudStack>
     </MudMainContent>
 </MudLayout>
 

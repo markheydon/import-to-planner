@@ -45,7 +45,7 @@ Generate a comprehensive README.md for this repository by analysing repository-n
 
 ## Project Structure
 - Brief overview of the folder organisation.
-- Source from the repository root layout (`src/`, `tests/`, `docs/`, `docs-internal/`, `specs/`, and AppHost files).
+- Source from the repository root layout (`src/`, `tests/`, `docs/`, `website/`, `specs/`, and AppHost files).
 
 ## Key Features
 - List main functionality and features of the project.

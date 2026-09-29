@@ -1,0 +1,19 @@
+name: Hugo validate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "website/**"
+      - ".github/workflows/hugo-build.yml"
+      - ".github/workflows/hugo-validate.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  hugo-validate:
+    name: Hugo validate
+    uses: ./.github/workflows/hugo-build.yml
+    with:
+      deploy: false

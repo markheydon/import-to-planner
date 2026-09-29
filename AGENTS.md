@@ -62,14 +62,14 @@ Refer to the following discipline-specific instruction files aligned with work t
 
 ## Microsoft Graph
 
-See `docs-internal/microsoft-graph-guidelines.md` for implementation guidance on using
+See `docs/microsoft-graph-guidelines.md` for implementation guidance on using
 Microsoft Graph in this repository.
 
 ## Testing, coverage, and format
 
 See `tests/README.md` for test-running and coverage guidance. Mandatory testing and
 runtime-mode standards that are not architecture-constitutional live in
-`docs-internal/engineering-policies.md`.
+`docs/engineering-policies.md`.
 
 Before proposing or finalising any code change, agents MUST run:
 
@@ -118,7 +118,7 @@ Expected delegation:
   `csharp-docs`, `csharp-xunit`, `dotnet-best-practices-repo`) for .NET/C#
   implementation, refactoring, async/reliability fixes, documentation updates, and
   unit/integration test work; do not use this path for non-.NET stacks unless
-  explicitly requested. Generated tests MUST follow `docs-internal/engineering-policies.md`
+  explicitly requested. Generated tests MUST follow `docs/engineering-policies.md`
   (xUnit v3, NSubstitute, built-in Assert; no AppHost tests; Playwright only for
   explicit end-to-end journeys)
 - Blazor UI work → C# Expert agent using the `mudblazor` skill for all component
@@ -140,7 +140,7 @@ Expected delegation:
   local codebase analysis
 - Public end-user documentation authoring under `docs/` → `end-user-docs` skill for
   structure, tone, UK English, and contract-aligned coverage; do not use it for
-  internal engineering content under `docs-internal/` or for C# implementation work
+  internal engineering content under `docs/` or for C# implementation work
 - Repository (root only) README generation or significant README restructuring →
   `repo-readme-generator` skill for documentation synthesis from repository artefacts;
   do not use it for small targeted content edits where direct manual updates are
@@ -175,7 +175,7 @@ here.
 ## Non-constitutional repository policies
 
 The constitution focuses on architecture governance. Operational and delivery policies
-that still remain mandatory are preserved in `docs-internal/engineering-policies.md`.
+that still remain mandatory are preserved in `docs/engineering-policies.md`.
 
 All agents and contributors MUST continue to follow those policies, including:
 

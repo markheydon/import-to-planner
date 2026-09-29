@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Sockets;
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Domain;
 using ImportToPlanner.E2E.Tests.TestDoubles;
+using ImportToPlanner.Infrastructure.Graph.Import;
 using ImportToPlanner.Web;
+using ImportToPlanner.Web.Features.Demo;
 using ImportToPlanner.Web.Infrastructure;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -29,8 +32,32 @@ internal sealed class ImportToPlannerWebApplicationFactory : IAsyncDisposable
 
     public Uri ServerBaseAddress { get; }
 
-    public static async Task<ImportToPlannerWebApplicationFactory> StartAsync(
+    internal async Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersForDiagnosticsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var gateway = scope.ServiceProvider.GetRequiredService<IPlannerGateway>();
+        return await gateway.GetAvailableContainersAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public static Task<ImportToPlannerWebApplicationFactory> StartAsync(
         bool commercialModeEnabled = false,
+        CancellationToken cancellationToken = default)
+        => StartAsync(
+            commercialModeEnabled,
+            enableDemoDocumentationCapture: false,
+            cancellationToken);
+
+    public static Task<ImportToPlannerWebApplicationFactory> StartForDemoScreenshotCaptureAsync(
+        CancellationToken cancellationToken = default)
+        => StartAsync(
+            commercialModeEnabled: false,
+            enableDemoDocumentationCapture: true,
+            cancellationToken);
+
+    public static async Task<ImportToPlannerWebApplicationFactory> StartAsync(
+        bool commercialModeEnabled,
+        bool enableDemoDocumentationCapture,
         CancellationToken cancellationToken = default)
     {
         Environment.SetEnvironmentVariable(E2ETestingHostEnvironment.AllowEnvironmentVariableName, "true");
@@ -48,14 +75,47 @@ internal sealed class ImportToPlannerWebApplicationFactory : IAsyncDisposable
         builder.WebHost.UseContentRoot(Path.GetDirectoryName(typeof(ImportToPlannerWebHost).Assembly.Location)!);
         builder.WebHost.UseStaticWebAssets();
 
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        var configurationValues = new Dictionary<string, string?>
         {
             ["Features:CommercialMode:Enabled"] = commercialModeEnabled.ToString(),
             ["Features:CommercialMode:RetentionSweepEnabled"] = "false",
-        });
+        };
 
-        builder.Services.RemoveAll<IPlannerGateway>();
-        builder.Services.AddScoped<IPlannerGateway, E2EPlannerGateway>();
+        if (enableDemoDocumentationCapture)
+        {
+            configurationValues["DemoMode:DemoControlsEnabled"] = "true";
+            configurationValues["DemoMode:OperatorAllowlist:0"] = "e2e-test-user@contoso.com";
+        }
+
+        builder.Configuration.AddInMemoryCollection(configurationValues);
+
+        if (enableDemoDocumentationCapture)
+        {
+            builder.Services.RemoveAll<ICurrentTenantContextAccessor>();
+            builder.Services.AddScoped<ICurrentTenantContextAccessor, E2EFixedTenantContextAccessor>();
+            builder.Services.RemoveAll<IDemoModeSession>();
+            builder.Services.AddSingleton<IDemoModeSession, AlwaysActiveDemoModeSession>();
+            builder.Services.RemoveAll<IDemoModeAuthorisationService>();
+            builder.Services.AddScoped<IDemoModeAuthorisationService, E2EDemoDocumentationAuthorisation>();
+
+            builder.Services.RemoveAll<IPlannerGateway>();
+            builder.Services.AddScoped<E2EPlannerGateway>();
+            builder.Services.AddScoped<IPlannerGateway>(serviceProvider =>
+                new DemoAwarePlannerGateway(
+                    serviceProvider.GetRequiredService<E2EPlannerGateway>(),
+                    serviceProvider.GetRequiredService<IDemoModeSession>()));
+
+            builder.Services.RemoveAll<ICsvImportParser>();
+            builder.Services.AddScoped<ICsvImportParser>(serviceProvider =>
+                new DemoAwareCsvImportParser(
+                    serviceProvider.GetRequiredService<CsvImportParser>(),
+                    serviceProvider.GetRequiredService<IDemoModeSession>()));
+        }
+        else
+        {
+            builder.Services.RemoveAll<IPlannerGateway>();
+            builder.Services.AddScoped<IPlannerGateway, E2EPlannerGateway>();
+        }
 
         var app = builder.Build();
         ImportToPlannerWebHost.ConfigureWebApplication(app);

@@ -2,6 +2,7 @@ using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Exceptions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Domain;
+using ImportToPlanner.Infrastructure.Graph.Demo;
 using Microsoft.Graph;
 using Microsoft.Kiota.Abstractions;
 using GraphPlannerAssignment = Microsoft.Graph.Models.PlannerAssignment;
@@ -38,25 +39,30 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     private const int TaskDetailsNotFoundInitialDelayMilliseconds = 200;
     private readonly GraphServiceClient graphClient;
     private readonly ICurrentTenantContextAccessor? currentTenantContextAccessor;
+    private readonly IDemoModeSession? demoModeSession;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GraphPlannerGateway"/> class.
     /// </summary>
     /// <param name="graphServiceClient">The delegated Graph client.</param>
     /// <param name="currentTenantContextAccessor">The optional active tenant context accessor.</param>
+    /// <param name="demoModeSession">The optional demonstration mode session used to block Graph calls.</param>
     public GraphPlannerGateway(
         GraphServiceClient graphServiceClient,
-        ICurrentTenantContextAccessor? currentTenantContextAccessor = null)
+        ICurrentTenantContextAccessor? currentTenantContextAccessor = null,
+        IDemoModeSession? demoModeSession = null)
     {
         ArgumentNullException.ThrowIfNull(graphServiceClient);
         graphClient = graphServiceClient;
         this.currentTenantContextAccessor = currentTenantContextAccessor;
+        this.demoModeSession = demoModeSession;
     }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<PlannerContainer>> GetAvailableContainersAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         var containers = new List<PlannerContainer>();
 
@@ -130,6 +136,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<PlannerPlan?> GetPlanByIdAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
 
@@ -158,6 +165,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<IReadOnlyList<PlannerPlan>> GetPlansAsync(string containerId, ContainerType containerType, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         ValidateRequired(containerId, nameof(containerId));
 
@@ -249,6 +257,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<IReadOnlyList<PlannerBucket>> GetBucketsAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
 
@@ -288,6 +297,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<PlannerBucket> CreateBucketAsync(string planId, string bucketName, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketName, nameof(bucketName));
@@ -315,6 +325,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
     public async Task<IReadOnlyList<PlannerTaskSnapshot>> GetTasksAsync(string planId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
 
@@ -362,6 +373,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         ValidateRequired(containerId, nameof(containerId));
 
@@ -393,6 +405,7 @@ public sealed class GraphPlannerGateway : IPlannerGateway
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureGraphAllowed(demoModeSession);
         EnsureDelegatedTenantSession();
         ValidateRequired(planId, nameof(planId));
         ValidateRequired(bucketId, nameof(bucketId));

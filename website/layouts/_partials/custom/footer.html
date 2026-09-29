@@ -1,0 +1,26 @@
+{{- $version := site.Params.releaseVersion | default "unreleased" -}}
+<div class="hx:mx-auto hx:flex hx:max-w-screen-xl hx:flex-col hx:items-center hx:gap-2 hx:px-6 hx:py-8 hx:text-center hx:text-sm hx:text-gray-600 hx:dark:text-gray-400">
+  {{- if site.Params.footer.displayCopyright }}
+  <div>© {{ now.Year }} Import To Planner</div>
+  {{- end }}
+  <div>
+    <a class="hx:underline" href="{{ "/terms" | relURL }}">Terms of use</a>
+    ·
+    <a class="hx:underline" href="{{ "/privacy-and-security" | relURL }}">Privacy and security</a>
+    ·
+    <a class="hx:underline" href="{{ "/support" | relURL }}">Support</a>
+    ·
+    <a class="hx:underline" href="{{ "/self-hosted" | relURL }}">Self-hosted</a>
+  </div>
+  {{- if eq $version "unreleased" }}
+  <div>Documentation build: unreleased (not a production site tag)</div>
+  {{- else }}
+  <div>Documentation for release {{ $version }}</div>
+  {{- end }}
+  {{- if site.Params.footer.displayPoweredBy }}
+  <div>
+    Powered by <a class="hx:underline" href="https://gohugo.io/" target="_blank" rel="noopener">Hugo</a>
+    and <a class="hx:underline" href="https://imfing.github.io/hextra/" target="_blank" rel="noopener">Hextra</a>
+  </div>
+  {{- end }}
+</div>

@@ -38,7 +38,7 @@ For the current AppHost in this repository, a container runtime is required for 
 
 If you plan to use AI tooling that benefits from Aspire agent setup, run `aspire agent init` locally in your environment. This repository does not commit Aspire agent or MCP configuration by default.
 
-For the full developer quick-start, including when to use Aspire versus plain local execution and how authority configuration affects behaviour, see [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md).
+For the full developer quick-start, including when to use Aspire versus plain local execution and how authority configuration affects behaviour, see [docs/developer-quickstart.md](docs/developer-quickstart.md).
 
 ### Building and running tests
 
@@ -153,7 +153,7 @@ This project follows a strict layered clean architecture. Respect the existing l
 - AppHost modelling and orchestration are not tested. End-to-end coverage uses C#
   Playwright in `tests/ImportToPlanner.E2E.Tests/` (see `tests/README.md`).
 - Aim for tests that cover the behaviour, not the implementation detail.
-- See `docs-internal/engineering-policies.md` for the full testing standard.
+- See `docs/engineering-policies.md` for the full testing standard.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: end-user-docs
-description: "Write and improve end-user documentation for Import To Planner public docs pages. Use when creating or editing docs/ pages such as index, getting-started, csv-format, import-workflow, troubleshooting, faq, privacy-and-security, or self-hosted; when improving wording and structure for non-technical readers; when enforcing UK English; when validating docs against repository contracts/specs and public-content boundaries."
+description: "Write and improve end-user documentation for Import To Planner public docs pages. Use when creating or editing website/content pages such as index, getting-started, csv-format, import-workflow, troubleshooting, faq, privacy-and-security, or self-hosted; when improving wording and structure for non-technical readers; when enforcing UK English; when validating docs against repository contracts/specs and public-content boundaries."
 ---
 
 # End-User Docs Writer
@@ -11,12 +11,12 @@ Author guidance for public-facing, non-technical documentation in this repositor
 
 ## Use This Skill When
 
-- The task is writing or refining public user docs under `docs/`.
+- The task is writing or refining public user docs under `website/content/`.
 - The audience is hosted end users and administrators, not developers.
 - The request is about wording quality, page structure, readability, or clarity.
 - You need to keep docs aligned with verified application behaviour and feature contracts.
 
-Do not use this skill for internal engineering material under `docs-internal/`.
+Do not use this skill for internal engineering material under `docs/`.
 
 ---
 
@@ -27,7 +27,7 @@ Use repository sources in this order:
 1. Verified product behaviour from code and tests for user-visible states, labels, and outcomes (for example report wording, CSV headers, priorities, and consent wording)
 2. Applicable docs contract(s) under `specs/*/contracts/` for the active docs feature
 3. Active docs feature specification artefacts under `specs/*/` (`spec.md`, `research.md`, `data-model.md`, `plan.md`)
-4. Existing published docs content under `docs/` to preserve terminology and navigation consistency
+4. Existing published docs content under `website/content/` to preserve terminology and navigation consistency
 
 If sources conflict, follow the highest item in this list.
 
@@ -60,7 +60,7 @@ For every page, ensure:
 Never include:
 
 - Secrets, credentials, tenant-sensitive values, or internal-only troubleshooting notes.
-- Instructions that belong in `docs-internal/`.
+- Instructions that belong in `docs/`.
 - Statements that imply fixed deployment timing guarantees when only automatic publication is required.
 
 ---

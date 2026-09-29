@@ -1,4 +1,5 @@
 using ImportToPlanner.Application.Abstractions;
+using ImportToPlanner.Application.Demo;
 using ImportToPlanner.Application.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,7 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IImportTaskCreationQuota, NoOpImportTaskCreationQuota>();
         services.AddScoped<ICsvColumnMappingService, CsvColumnMappingService>();
         services.AddScoped<ExecutionReportCsvExporter>();
-
+        services.AddScoped<IDemoModeSession, DemoModeSession>();
         return services;
     }
 }

@@ -161,3 +161,4 @@ page in `website/` is not placeholder text.
 | 404 on legacy paths | Permalink migration incomplete |
 | Demo shows real tenant data | Demo fixtures leaking live session state |
 | Graph calls during demo | Adapter guard missing — contract violation |
+| `invoke-hugo-site.sh` exits immediately with runtime error | Docker or Podman not installed or not on PATH; pass `--runtime` explicitly |
