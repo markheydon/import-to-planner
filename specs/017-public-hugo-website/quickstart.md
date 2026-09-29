@@ -119,7 +119,21 @@ Run the web app against staging or local configuration with default docs base UR
   paths.
 - Support page leads to GitHub Issues.
 
-## 9. Demo mode synthetic journey
+## 9. Demo screenshot privacy review (before publishing workflow images)
+
+Complete this checklist **before** committing or publishing screenshots in
+`website/content/import-workflow.md` (or related public guides). Aligns with **SC-005**.
+
+- [ ] Screenshots captured only while demo mode was active for an allowlisted operator on a
+  non-production deployment with demo controls enabled.
+- [ ] Visual review: no real Microsoft 365 tenant names, user identifiers, or production URLs
+  in any image.
+- [ ] Visual review: no real CSV filenames, cell values, or task titles from live sessions.
+- [ ] Engineering verification: no Microsoft Graph or real upload processing occurred during
+  the capture walkthrough (logs, tests, or diagnostics).
+- [ ] If any item fails, discard images and re-capture under demo mode; do not publish.
+
+## 10. Demo mode synthetic journey
 
 Configure allowlist with your operator account; enable demo controls on non-production.
 
@@ -133,7 +147,7 @@ Configure allowlist with your operator account; enable demo controls on non-prod
 
 With demo controls disabled on production-like config — **Expected**: no toggle for any user.
 
-## 10. Legal gate before first public site tag
+## 11. Legal gate before first public site tag
 
 **Expected**: `docs/` runbook entry documents counsel sign-off date and terms version; terms
 page in `website/` is not placeholder text.

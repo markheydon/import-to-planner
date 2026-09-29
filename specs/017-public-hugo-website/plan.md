@@ -74,7 +74,7 @@ specs/017-public-hugo-website/
 │   ├── public-site-contract.md
 │   ├── app-external-links-contract.md
 │   └── demo-mode-contract.md
-└── tasks.md                    # Phase 2 — /speckit-tasks
+└── tasks.md                    # Phase 2 — implementation tasks (complete)
 ```
 
 ### Source Code (repository root)
@@ -121,6 +121,10 @@ README.md, AGENTS.md, CONTRIBUTING.md, .github/skills/end-user-docs/SKILL.md
 Hugo automation from Solo Dev Board with a slimmer workflow set (no MinVer matrix, no mandatory
 Playwright docs pipeline). Implement demo mode inside the existing solution layers rather than
 a separate demo app.
+
+Until **US6** executes, the pre-implementation repository may still contain `docs-internal/`
+and legacy Jekyll end-user content under `docs/`; that interim layout is expected and is
+retired during cutover tasks **T062**–**T063**.
 
 ## Complexity Tracking
 
@@ -199,13 +203,19 @@ Complete — see [data-model.md](data-model.md), [quickstart.md](quickstart.md),
   optional E2E on staging with allowlisted account.
 - **Error handling**: Unauthorised demo activation ignored; misconfigured allowlist logs
   diagnostics only (no user-facing stack traces).
-- **Security trust boundaries**: Demo allowlist is deployment secret/configuration, not source
-  control; demo must not expose production data paths.
+- **Security trust boundaries**: Demo allowlist **values** are deployment configuration
+  (environment variables, user secrets, or host-specific settings), not committed to source
+  control; repository `appsettings` carry empty templates only. Demo must not expose production
+  data paths.
 - **Self-hosted**: Document configuration keys in `docs/`; same demo and docs URL settings as
   hosted.
+- **Constitution amendment**: Updating `.specify/memory/constitution.md` delivery-path references
+  (`docs-internal/` → `docs/`) is an explicit **US6** deliverable via task **T069** (maintainer
+  approval on that file at implement time; not edited during spec/plan remediation).
 
 ---
 
-## Phase 2
+## Phase 2: Implementation Tasks
 
-Not in scope for `/speckit-plan`. Run `/speckit-tasks` to generate `tasks.md`.
+Complete — see [tasks.md](tasks.md) (**77** tasks: setup, foundational CI/CD, user stories US1–US6,
+and polish including SC-001 contract review before the first public site `v*` tag).

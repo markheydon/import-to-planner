@@ -57,7 +57,7 @@ A hosted user (including future paying or credit-based users) needs clear terms 
 3. **Given** an operator reads self-hosted documentation, **When** they follow guidance about legal or support obligations, **Then** it is clear that hosted commercial terms and MHCG-hosted feedback paths apply to the hosted service only, not as if MHCG operates every self-hosted instance.
 4. **Given** future billing pages are added, **When** they are published, **Then** they can link to the same terms without a second legal stack.
 5. **Given** a hosted user reads the support guidance, **When** they look for service-level or commercial support commitments, **Then** copy states that dedicated end-user support is not part of v1.0 and is expected to be considered for v1.1 (without promising a specific channel or date).
-6. **Given** a maintainer prepares the first SemVer public site release tag, **When** they review the terms page, **Then** the published terms are production-ready and internal engineering documentation contains a checklist or runbook entry recording legal counsel sign-off with approval date and reference to the terms version that will ship (not a draft or “coming soon” stub).
+6. **Given** a maintainer prepares the first SemVer public site release tag, **When** they review the terms page, **Then** the published terms are production-ready (not a draft or “coming soon” stub) and counsel sign-off is recorded in internal engineering documentation per **SC-007**.
 
 ---
 
@@ -139,7 +139,7 @@ A contributor or agent working in the repository needs engineering policies, run
 - How do pull-request preview builds label version? They show an explicit non-release label (for example “unreleased”) rather than implying a shipped SemVer tag.
 - Self-hosted operators reading troubleshooting must not be told to contact hosted-only support as if MHCG runs their instance.
 - Users expecting email or SLA-backed support at v1.0 must see explicit copy that GitHub Issues is the interim path until a possible v1.1 dedicated support feature.
-- The first public site release tag MUST NOT ship until terms copy has counsel sign-off recorded in `docs/`; privacy and guides may iterate later, but terms cannot launch as draft placeholders.
+- The first public site release tag MUST NOT ship until terms meet the counsel sign-off gate in **SC-007**; privacy and guides may iterate later, but terms cannot launch as draft placeholders.
 - How is demo access distinguished from tenant admin consent? Demo mode is gated by a service-operator allowlist and deployment policy, not by Microsoft 365 tenant administrator status; mislabelling either in UI or docs creates a security and support risk.
 - What if demo mode accidentally triggers Graph or file processing? Implementation and tests MUST treat any Graph or real upload during active demo as a defect; screenshot and privacy reviews assume zero live integration calls for import steps while demo is on.
 - What if an operator forgets demo is on? Demo MUST clear on sign-out; operators who stay signed in MUST toggle demo off before real imports or rely on sign-out before switching to live work.
@@ -159,7 +159,7 @@ A contributor or agent working in the repository needs engineering policies, run
 - **FR-009**: Pull requests that change the public site source MUST trigger an automated compile check that blocks merge on failure.
 - **FR-010**: The live public site MUST deploy only on SemVer release tags (with an optional documented manual dispatch for maintainers), not on every merge to main.
 - **FR-011**: Published public site output MUST display the release tag version on tagged deploys; local and non-tag builds MUST display an explicit non-release version label.
-- **FR-012**: The repository MUST include a root change log following Keep a Changelog conventions and internal engineering notes describing how to cut `vX.Y.Z` releases, including where to record legal counsel sign-off for terms before the first public site release tag.
+- **FR-012**: The repository MUST include a root change log following Keep a Changelog conventions and internal engineering notes describing how to cut `vX.Y.Z` releases, including maintainer steps that satisfy **SC-007** before the first public site release tag.
 - **FR-013**: Repository entry points (readme, contributing guide, agent policy, relevant skills, pull request template) MUST reference the correct public product site versus internal docs locations after the move.
 - **FR-014**: Prior specification assumptions that public pages live in Jekyll under `docs/` with automatic publish on main MUST be superseded in agent-facing policy and removed from automation so future work targets `website/` for end users and `docs/` for engineering guidance only.
 - **FR-015**: The product MUST support demo mode on both MHCG-hosted and self-hosted deployments, toggled in-app only by authorised service operators, that presents a fully synthetic import workflow while active and defaults off at sign-in for everyone. Demo mode MUST turn off automatically on sign-out; while the operator remains signed in, it stays active until they toggle it off. While demo is active, the app MUST NOT call Microsoft Graph or process real user uploads for import steps; only in-memory synthetic fixtures drive the journey. Operator authorisation MUST use a deployment-configured allowlist of Entra object IDs and/or verified work-account UPNs matched after sign-in; Microsoft 365 tenant administrator roles MUST NOT grant demo access. The demo toggle UI MUST NOT appear on production deployments (hosted or self-hosted) unless deployment policy explicitly enables operator demo controls.
@@ -178,12 +178,12 @@ A contributor or agent working in the repository needs engineering policies, run
 
 ### Measurable Outcomes
 
-- **SC-001**: In user testing or structured review, at least 90% of checklist items from the prior end-user documentation feature are still satisfied on the migrated public site (same topics, accurate behaviour descriptions, UK English).
+- **SC-001**: Before the first public site release tag (`v*`), a structured content review MUST score each enumerated **mandatory** obligation as pass or fail. **Primary authority**: `specs/017-public-hugo-website/contracts/public-site-contract.md` — including **Public route contract**, **Navigation contract**, **Page content contract (007 carry-forward)**, and **publication/version obligations** in that contract (tag-only live publish, explicit non-release label on local and pre-tag builds). **Secondary reference**: where spec 017 does not explicitly extend an obligation, the corresponding page-content obligations in superseded `specs/007-end-user-docs-site/contracts/docs-site-contract.md` apply for route and page inventory. Reviewers MUST record pass/fail per obligation (for example in the release checklist or runbook). At least **90%** of enumerated mandatory obligations MUST pass before the first public site release tag ships. All reviewed public copy MUST remain UK English with behaviour descriptions aligned to the current app.
 - **SC-002**: A reviewer can locate terms, privacy, and the published GitHub Issues support path from both the public site and the hosted app within two clicks from the app home or footer without encountering a dead or generic support instruction.
-- **SC-003**: A contributor with only a container engine can complete local preview of the public site in under 15 minutes using documented scripts on first attempt.
-- **SC-004**: Within one hour of publishing a new SemVer tag, the live public site shows the new release version label and content from that tag; merges to main without a tag do not change the live public site within that window.
+- **SC-003**: A contributor with only a container engine can complete local preview of the public site in under 15 minutes using documented scripts on first attempt (evidence path: `specs/017-public-hugo-website/quickstart.md` §1 on a clean machine).
+- **SC-004**: Within one hour of **successful completion of the tag deploy workflow** for a new SemVer tag, the live public site shows the new release version label and content from that tag; merges to main without a tag do not change the live public site within that window.
 - **SC-005**: When demo mode is enabled, a privacy review of captured screenshot sets finds zero real tenant identifiers and zero real CSV cell values from production sessions across a full import walkthrough, and verification confirms no Microsoft Graph or real upload processing occurred during the walkthrough.
-- **SC-006**: Automated checks on pull requests touching the public site source fail 100% of the time when the site does not compile, and pass when it does (measured over the first month after launch).
+- **SC-006**: Automated checks on pull requests touching the public site source fail 100% of the time when the site does not compile, and pass when it does (measured over the first month after launch). This is a **post-release operational KPI** for CI reliability, not a blocking implementation deliverable on its own.
 - **SC-007**: Before the first SemVer public site release tag is published, reviewers can locate in internal engineering documentation (`docs/`) a checklist or runbook entry recording legal counsel sign-off with approval date and reference to the terms version that will ship with that tag.
 
 ## Assumptions
@@ -192,7 +192,8 @@ A contributor or agent working in the repository needs engineering policies, run
 - Hugo extended with the Hextra theme (via Hugo modules) is the chosen static site generator for the public product site, matching the reference project; planning will detail scaffolding but the business outcome is a maintainable product site.
 - Staging application deploy on main may continue independently; only the public documentation site follows release-tag publishing.
 - For v1.0, the canonical support path is the repository GitHub Issues entry point, linked consistently from the public site and hosted app; dedicated end-user support is explicitly deferred (expected v1.1 consideration).
-- Terms of use for the first public site release tag require legal counsel sign-off recorded in internal engineering documentation (`docs/`); privacy depth follows issue #134 but is not a substitute for counsel-approved terms.
+- Terms of use for the first public site release tag require legal counsel sign-off recorded in internal engineering documentation (`docs/`) per **SC-007**; privacy depth follows issue #134 but is not a substitute for counsel-approved terms. Obtaining counsel approval is a **maintainer operational gate** (outside implementation task completion); engineering delivers the runbook checklist template and terms page, not the legal review itself.
+- Local public-site preview timing for **SC-003** is evidenced by executing `specs/017-public-hugo-website/quickstart.md` §1 on a clean contributor machine (recorded in polish task **T072**).
 - Credits, Stripe ledger implementation, Excel import, and template library remain out of scope; only information architecture slots and cross-links are in scope.
 - Demo mode uses in-memory synthetic fixtures only for the import journey while active (no Microsoft Graph or real upload processing); it does not bypass authentication for sign-in, defaults off at sign-in, clears on sign-out, and when disabled the app uses normal Graph and upload behaviour.
 - Demo mode operator allowlists and production demo-control policy are per-deployment configuration (hosted and self-hosted); staging and non-production environments are the expected place for screenshot capture.
@@ -203,10 +204,10 @@ A contributor or agent working in the repository needs engineering policies, run
 
 - GitHub issue #123 (feature scope and acceptance criteria).
 - GitHub issue #134 (terms, privacy depth, self-hosted distinction); interim GitHub Issues support path for v1.0 fulfils the “contact path” intent while dedicated support is deferred.
-- Spec `007-end-user-docs-site` content obligations (contract for page coverage and accuracy); publishing mechanics from that spec are replaced by this feature.
+- Spec `007-end-user-docs-site` content obligations (contract for page coverage and accuracy); publishing mechanics from that spec are replaced by this feature. SC-001 verification traces carry-forward coverage primarily through `public-site-contract.md` and secondarily through `docs-site-contract.md` where 017 defers.
 - Importer and CSV documentation features may require concurrent copy updates; format pages must not lag parser behaviour.
 - Future billing issues (#125, #126) will link to terms published here.
-- Legal counsel review and sign-off for terms of use (gate for the first public site release tag).
+- Legal counsel review and sign-off for terms of use (maintainer operational gate for the first public site release tag per **SC-007**; implementation provides checklist template and runbook steps, not counsel engagement).
 
 ## Out of Scope
 

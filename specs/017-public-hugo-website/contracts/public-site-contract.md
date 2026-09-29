@@ -33,7 +33,7 @@ Stable routes MUST remain available (Hugo permalinks or equivalent):
 | `/troubleshooting` | Recovery for common failures | Hosted end users | Yes |
 | `/faq` | Concise common questions | End users and administrators | Yes |
 | `/privacy-and-security` | Expanded privacy and retention statement | End users and administrators | Yes |
-| `/self-hosted` | Secondary self-hosted guidance | Self-hosted operators | Should |
+| `/self-hosted` | Secondary self-hosted guidance | Self-hosted operators | Yes |
 | `/terms` | Production-ready terms of use (counsel-approved before first site tag) | Hosted users | Yes |
 | `/support` | v1.0 support path (GitHub Issues) and v1.1 deferral wording | Hosted users | Yes |
 | `/credits-and-billing` | IA placeholder for future billing copy (no Stripe implementation) | Hosted users | Should (stub) |
@@ -42,6 +42,9 @@ Route rules:
 
 - URLs MUST stay human-readable and stable across the Jekyll → Hugo cutover.
 - The self-hosted route MUST NOT be required for the hosted onboarding path.
+- In the route table, **Mandatory** means the route MUST be published and reachable; for
+  `/self-hosted` this aligns with FR-004 (secondary page) without placing it in primary
+  navigation.
 - Engineering runbooks, agent policy, and Graph implementation notes MUST NOT be published
   under these routes.
 
