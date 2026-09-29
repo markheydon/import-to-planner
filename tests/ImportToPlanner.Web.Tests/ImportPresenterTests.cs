@@ -281,7 +281,7 @@ public sealed class ImportPresenterTests
 
         await presenter.PresentAsync(response, CancellationToken.None);
 
-        var file = presenter.TryBuildExecutionReportCsvDownload();
+        var file = presenter.TryBuildExecutionReportCsvDownload(presenter.ViewModel);
         Assert.NotNull(file);
         var text = System.Text.Encoding.UTF8.GetString(file!.Content);
         Assert.Matches("import-execution-report-\\d{8}-\\d{6}Z\\.csv", file.FileName);
@@ -308,7 +308,8 @@ public sealed class ImportPresenterTests
                     "Task B",
                     "Import stopped because your organisation has no credits remaining for new tasks.",
                     false,
-                    "credits.exhausted"),
+                    "credits.exhausted",
+                    SourceRowNumber: 3),
             ],
             ManualActions = [],
             OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true),
@@ -325,10 +326,53 @@ public sealed class ImportPresenterTests
         await presenter.PresentAsync(response, CancellationToken.None);
 
         var expectedError = Assert.Single(presenter.ViewModel!.Errors);
-        var file = presenter.TryBuildExecutionReportCsvDownload();
+        var file = presenter.TryBuildExecutionReportCsvDownload(presenter.ViewModel);
         Assert.NotNull(file);
         var text = System.Text.Encoding.UTF8.GetString(file!.Content);
         Assert.Contains(expectedError, text, StringComparison.Ordinal);
         Assert.Contains("Credit exhausted", text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ImportExecutionPresenter_CsvExport_UsesSourceRowNumberWhenTaskNamesDuplicate()
+    {
+        var presenter = CreateExecutionPresenter();
+        var viewModel = new ImportExecutionReportViewModel(
+            "plan-1",
+            [],
+            [],
+            [],
+            [],
+            new ImportExecutionOutcomeSummary(0, 0, 2, 0, false, true),
+            SourceRowOutcomes:
+            [
+                new ImportSourceRowOutcome(2, "Shared name", ImportSourceRowOutcomeKind.Failed),
+                new ImportSourceRowOutcome(5, "Shared name", ImportSourceRowOutcomeKind.Failed),
+            ],
+            FailureItems:
+            [
+                new PlannerOperationFailure(
+                    PlannerFailureCategory.Validation,
+                    PlannerFailureTarget.Task,
+                    "Shared name",
+                    "neutral",
+                    false,
+                    "credits.exhausted",
+                    SourceRowNumber: 2),
+                new PlannerOperationFailure(
+                    PlannerFailureCategory.Validation,
+                    PlannerFailureTarget.Task,
+                    "Shared name",
+                    "neutral",
+                    false,
+                    "credits.ledger_unavailable",
+                    SourceRowNumber: 5),
+            ]);
+
+        var file = presenter.TryBuildExecutionReportCsvDownload(viewModel);
+        Assert.NotNull(file);
+        var text = System.Text.Encoding.UTF8.GetString(file!.Content);
+        Assert.Contains("Credit exhausted: task 'Shared name'", text, StringComparison.Ordinal);
+        Assert.Contains("Import could not continue because credit balance is unavailable.", text, StringComparison.Ordinal);
     }
 }

@@ -9,8 +9,6 @@ namespace ImportToPlanner.Web.Features.Import.Presenters;
 /// </summary>
 public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExporter) : IImportExecutionOutputBoundary
 {
-    private ImportExecutionResult? _lastExecutionResult;
-
     /// <summary>
     /// Gets the latest execution report view model.
     /// </summary>
@@ -21,8 +19,6 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(response);
-
-        _lastExecutionResult = response;
 
         var createdItems = response.CreatedItems
             .Select(item => $"{item.Target}: {item.Name}")
@@ -47,33 +43,34 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
             response.OutcomeSummary,
             tasksCreatedCount,
             response.CreditsUsed,
-            response.RemainingCredits);
+            response.RemainingCredits,
+            response.SourceRowOutcomes,
+            response.FailureItems);
 
         return Task.CompletedTask;
     }
 
     /// <summary>
-    /// Builds the execution report CSV download payload from the latest presented result.
+    /// Builds the execution report CSV download payload from the report view model.
     /// </summary>
-    /// <returns>The CSV file when a report is available; otherwise null.</returns>
-    public ExecutionReportCsvFile? TryBuildExecutionReportCsvDownload()
+    /// <param name="viewModel">The execution report shown in the UI.</param>
+    /// <returns>The CSV file when export data is available; otherwise null.</returns>
+    public ExecutionReportCsvFile? TryBuildExecutionReportCsvDownload(ImportExecutionReportViewModel? viewModel)
     {
-        if (_lastExecutionResult is null || ViewModel is null)
+        if (viewModel is null || !viewModel.HasExportableContent)
         {
             return null;
         }
 
-        var rows = BuildExportRows(_lastExecutionResult, ViewModel);
+        var rows = BuildExportRows(viewModel);
         return csvExporter.Export(rows, DateTimeOffset.UtcNow);
     }
 
-    private static List<ExecutionReportCsvRow> BuildExportRows(
-        ImportExecutionResult executionResult,
-        ImportExecutionReportViewModel viewModel)
+    private static List<ExecutionReportCsvRow> BuildExportRows(ImportExecutionReportViewModel viewModel)
     {
-        var rows = executionResult.SourceRowOutcomes
+        var rows = viewModel.ExportSourceRowOutcomes
             .OrderBy(outcome => outcome.RowNumber)
-            .Select(outcome => MapSourceRowOutcome(outcome, executionResult))
+            .Select(outcome => MapSourceRowOutcome(outcome, viewModel))
             .ToList();
 
         foreach (var manualAction in viewModel.ManualActions)
@@ -86,7 +83,7 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
 
     private static ExecutionReportCsvRow MapSourceRowOutcome(
         ImportSourceRowOutcome outcome,
-        ImportExecutionResult executionResult)
+        ImportExecutionReportViewModel viewModel)
     {
         var outcomeLabel = outcome.Outcome switch
         {
@@ -102,24 +99,24 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
             outcome.TaskName,
             outcomeLabel,
             outcome.TaskIdentifier,
-            ResolveSourceRowReasonOrDetails(outcome, executionResult),
+            ResolveSourceRowReasonOrDetails(outcome, viewModel),
             null,
             null);
     }
 
     private static string? ResolveSourceRowReasonOrDetails(
         ImportSourceRowOutcome outcome,
-        ImportExecutionResult executionResult)
+        ImportExecutionReportViewModel viewModel)
     {
         if (outcome.Outcome == ImportSourceRowOutcomeKind.Failed)
         {
-            var failure = FindTaskFailure(outcome.TaskName, executionResult.FailureItems);
+            var failure = FindTaskFailure(outcome, viewModel.ExportFailureItems);
             return failure is not null ? MapFailureMessage(failure) : outcome.Reason;
         }
 
         if (outcome.Outcome == ImportSourceRowOutcomeKind.Created && !string.IsNullOrWhiteSpace(outcome.Reason))
         {
-            var creditRecordFailure = FindTaskFailure(outcome.TaskName, executionResult.FailureItems);
+            var creditRecordFailure = FindTaskFailure(outcome, viewModel.ExportFailureItems);
             if (creditRecordFailure is not null
                 && string.Equals(creditRecordFailure.DiagnosticCode, "credits.usage_record_failed", StringComparison.Ordinal))
             {
@@ -131,12 +128,21 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
     }
 
     private static PlannerOperationFailure? FindTaskFailure(
-        string taskName,
+        ImportSourceRowOutcome outcome,
         IReadOnlyList<PlannerOperationFailure> failures)
     {
+        var byRow = failures.FirstOrDefault(failure =>
+            failure.Target == PlannerFailureTarget.Task
+            && failure.SourceRowNumber == outcome.RowNumber);
+        if (byRow is not null)
+        {
+            return byRow;
+        }
+
         return failures.FirstOrDefault(failure =>
             failure.Target == PlannerFailureTarget.Task
-            && string.Equals(failure.Reference, taskName, StringComparison.Ordinal));
+            && failure.SourceRowNumber is null
+            && string.Equals(failure.Reference, outcome.TaskName, StringComparison.Ordinal));
     }
 
     private static ExecutionReportCsvRow MapManualFollowUpRow(ManualActionViewModel manualAction)
@@ -219,6 +225,8 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
 /// <param name="TasksCreatedCount">Number of tasks created (not buckets).</param>
 /// <param name="CreditsUsed">Credits used during the run when commercial metering is active.</param>
 /// <param name="RemainingCredits">Remaining credits after the run when commercial metering is active.</param>
+/// <param name="SourceRowOutcomes">Structured per-row outcomes for CSV export.</param>
+/// <param name="FailureItems">Neutral failures used to align CSV reasons with the errors tab.</param>
 public sealed record ImportExecutionReportViewModel(
     string? PlanId,
     IReadOnlyList<string> Created,
@@ -228,7 +236,25 @@ public sealed record ImportExecutionReportViewModel(
     ImportExecutionOutcomeSummary OutcomeSummary,
     int TasksCreatedCount = 0,
     int? CreditsUsed = null,
-    int? RemainingCredits = null);
+    int? RemainingCredits = null,
+    IReadOnlyList<ImportSourceRowOutcome>? SourceRowOutcomes = null,
+    IReadOnlyList<PlannerOperationFailure>? FailureItems = null)
+{
+    /// <summary>
+    /// Gets structured per-row outcomes for CSV export.
+    /// </summary>
+    public IReadOnlyList<ImportSourceRowOutcome> ExportSourceRowOutcomes => SourceRowOutcomes ?? [];
+
+    /// <summary>
+    /// Gets neutral failures used to align CSV reasons with the errors tab.
+    /// </summary>
+    public IReadOnlyList<PlannerOperationFailure> ExportFailureItems => FailureItems ?? [];
+
+    /// <summary>
+    /// Gets whether the report contains rows that can be exported to CSV.
+    /// </summary>
+    public bool HasExportableContent => ExportSourceRowOutcomes.Count > 0 || ManualActions.Count > 0;
+}
 
 /// <summary>
 /// Represents one manual action row shaped for web presentation.

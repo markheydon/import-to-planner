@@ -60,6 +60,25 @@ public sealed class HomePageWorkflowTests
     }
 
     [Fact]
+    public async Task HomeExecutionReport_WhenReportHasNoExportableRows_DisablesDownloadReport()
+    {
+        await using var ctx = new HomePageTestContext();
+        var report = new ImportExecutionReportViewModel(
+            "plan-1",
+            [],
+            [],
+            [],
+            ["Planner provider is unavailable."],
+            new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true));
+
+        var cut = ctx.Render<HomeExecutionReport>(
+            parameters => parameters.Add(component => component.ExecutionResult, report));
+
+        var button = cut.Find("button[aria-label='Download execution report as CSV']");
+        Assert.True(button.HasAttribute("disabled"));
+    }
+
+    [Fact]
     public async Task HomeExecutionReport_WithNoCreatedItems_OmitsEmptyCreatedSection()
     {
         await using var ctx = new HomePageTestContext();

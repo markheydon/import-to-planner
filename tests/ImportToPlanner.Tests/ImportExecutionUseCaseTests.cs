@@ -130,6 +130,10 @@ public sealed class ImportExecutionUseCaseTests
         var failure = Assert.Single(output.Response.FailureItems);
         Assert.Equal(PlannerFailureTarget.Workflow, failure.Target);
         Assert.True(output.Response.OutcomeSummary.IsFullFailure);
+        var outcomes = output.Response.SourceRowOutcomes;
+        Assert.Single(outcomes);
+        Assert.Equal(2, outcomes[0].RowNumber);
+        Assert.Equal(ImportSourceRowOutcomeKind.Failed, outcomes[0].Outcome);
     }
 
     [Fact]
@@ -292,6 +296,11 @@ public sealed class ImportExecutionUseCaseTests
 
         Assert.Single(output.Response!.CreatedItems);
         Assert.Contains(output.Response.FailureItems, failure => failure.DiagnosticCode == "credits.usage_record_failed");
+        var createdOutcome = Assert.Single(output.Response.SourceRowOutcomes);
+        Assert.Equal(ImportSourceRowOutcomeKind.Created, createdOutcome.Outcome);
+        Assert.Equal(
+            "Import stopped because a credit usage record could not be saved after a task was created.",
+            createdOutcome.Reason);
     }
 
     [Fact]

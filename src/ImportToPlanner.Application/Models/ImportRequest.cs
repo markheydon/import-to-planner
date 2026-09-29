@@ -69,10 +69,12 @@ public enum PlannerFailureTarget
 /// <param name="Message">A neutral message suitable for presenter translation.</param>
 /// <param name="Retryable">Indicates whether retrying is reasonable.</param>
 /// <param name="DiagnosticCode">A stable diagnostic code.</param>
+/// <param name="SourceRowNumber">The source CSV row number when the failure applies to one row.</param>
 public sealed record PlannerOperationFailure(
     PlannerFailureCategory Category,
     PlannerFailureTarget Target,
     string? Reference,
     string Message,
     bool Retryable = false,
-    string? DiagnosticCode = null);
+    string? DiagnosticCode = null,
+    int? SourceRowNumber = null);
