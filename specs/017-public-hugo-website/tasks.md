@@ -302,8 +302,8 @@ description: "Task list for Public Product Website, Documentation Layout, and Re
 - [X] T080 Update `docs/release-runbook.md` contributor preview section to cite `docs/developer-quickstart.md` § Public Hugo site as the canonical **SC-003** path (remove stale interim-only wording) per **T042** / **US3** (partial)
 - [X] T081 Remove obsolete `docs-internal/` path from `.github/skills/repo-readme-generator/SKILL.md` repository layout guidance per **FR-013** / **T069** (partial)
 - [X] T082 Add a visible link to the [Support](./support) page or GitHub Issues from `website/content/faq.md` per **FR-006** (partial)
-- [X] T083 Add import-workflow screenshots captured under demo mode to `website/content/import-workflow.md` when ready per **FR-016** (partial)
+- [X] T083 Add import-workflow screenshots captured under demo mode to `website/content/import-workflow.md` when ready per **FR-016** (withdrawn: identical step images removed; distinct journey capture deferred to GitHub #164)
 
 ## Phase 11: Convergence
 
-- [X] T084 Add demonstration-mode workflow screenshots under `website/static/` and embed them in `website/content/import-workflow.md` (replace the placeholder in **Workflow illustrations**); capture on a non-production deployment with an allowlisted operator per `docs/demo-mode.md` per **FR-016** (partial)
+- [X] T084 Add demonstration-mode workflow screenshots under `website/static/` and embed them in `website/content/import-workflow.md` (replace the placeholder in **Workflow illustrations**); capture on a non-production deployment with an allowlisted operator per `docs/demo-mode.md` per **FR-016** (withdrawn pending #164; `scripts/verify-import-workflow-screenshots.sh` rejects identical files)

@@ -71,6 +71,17 @@ jobs:
           key: hugo-${{ github.run_id }}
           restore-keys: hugo-
 
+      - name: Verify workflow screenshots are distinct
+        run: ./scripts/verify-import-workflow-screenshots.sh
+
+      - name: Require counsel sign-off before a public site tag
+        if: inputs.deploy
+        run: |
+          if grep -q "counsel-sign-off: pending" docs/release-runbook.md; then
+            echo "::error::Counsel sign-off is still pending in docs/release-runbook.md. Complete SC-007 before publishing a public site tag."
+            exit 1
+          fi
+
       - name: Build
         working-directory: website
         env:
@@ -88,6 +99,13 @@ jobs:
           test -f public/index.html
           test -f public/getting-started/index.html
           test -f public/csv-format/index.html
+          test -f public/import-workflow/index.html
+          test -f public/troubleshooting/index.html
+          test -f public/faq/index.html
+          test -f public/privacy-and-security/index.html
+          test -f public/terms/index.html
+          test -f public/support/index.html
+          test -f public/self-hosted/index.html
 
       - name: Cache save
         uses: actions/cache/save@v4

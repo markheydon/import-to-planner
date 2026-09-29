@@ -44,12 +44,19 @@ application footer. A persistent warning banner appears while demo is active.
 
 ## Public site workflow screenshots
 
-To regenerate demonstration-mode images for `website/content/import-workflow.md`:
+Published step images are deferred until capture follows the same journey as the user
+guide. That follow-on is tracked in GitHub issue 164. Do not commit copies of a single
+screenshot under several step names.
+
+When images are ready:
 
 ```bash
 ./scripts/capture-demo-workflow-screenshots.sh
 ```
 
-The script runs an opt-in Playwright capture test (`CAPTURE_DEMO_WORKFLOW_SCREENSHOTS=1`)
-and writes PNG files to `website/static/import-workflow/`. Requires Chromium for Playwright
-(see `tests/README.md`).
+The script runs an opt-in Playwright capture test (`CAPTURE_DEMO_WORKFLOW_SCREENSHOTS=1`),
+writes PNG files to `website/static/import-workflow/`, then runs
+`scripts/verify-import-workflow-screenshots.sh --require`. That check fails if any two
+files are byte-identical or if one of the five step files is missing. Hugo validation
+runs the same script without `--require`, so an empty folder is allowed and identical
+files are not. Requires Chromium for Playwright (see `tests/README.md`).

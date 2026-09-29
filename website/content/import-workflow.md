@@ -45,31 +45,9 @@ Some goal-related links or post-import housekeeping may still need manual follow
 
 ## Workflow illustrations
 
-The screenshots below were captured with **demonstration mode** enabled on a local
-non-production host. Names, plans, and CSV rows are synthetic and are not from a live
-Microsoft 365 tenant.
-
-### Step 1: Select Planner location
-
-![Select Planner location in demonstration mode](/import-workflow/step-1-select-location.png)
-
-### Step 2: Select plan
-
-![Select plan in demonstration mode](/import-workflow/step-2-select-plan.png)
-
-### Step 3: Upload CSV
-
-![Upload CSV in demonstration mode](/import-workflow/step-3-upload-csv.png)
-
-### Step 4: Preview and confirm
-
-![Preview and confirm in demonstration mode](/import-workflow/step-4-preview-and-confirm.png)
-
-### Step 5: Execution report
-
-![Execution report in demonstration mode](/import-workflow/step-5-execution-report.png)
-
-Maintainers can refresh these images with `./scripts/capture-demo-workflow-screenshots.sh`
-(documented in the repository engineering guide `docs/demo-mode.md`).
+Step-by-step screenshots are not published yet. An earlier capture stored the same image
+for every step, which did not match this guide. Distinct illustrations that follow the
+same journey as the in-app wizard are tracked as follow-on work in
+[GitHub issue 164](https://github.com/markheydon/import-to-planner/issues/164).
 
 Need help with errors? Continue to [Troubleshooting](./troubleshooting).

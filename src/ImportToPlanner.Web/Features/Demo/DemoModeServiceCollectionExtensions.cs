@@ -36,11 +36,20 @@ public static class DemoModeServiceCollectionExtensions
 
         services.AddScoped<IDemoModeAuthorisationService, DemoModeAuthorisationService>();
 
+        services.RemoveAll<IDemoModeSession>();
+        services.AddScoped<DemoModeSession>();
+        services.AddScoped<IDemoModeSession>(serviceProvider =>
+            new AuthorisedDemoModeSession(
+                serviceProvider.GetRequiredService<DemoModeSession>(),
+                serviceProvider.GetRequiredService<IDemoModeAuthorisationService>()));
+
+        services.RemoveAll<IPlannerGateway>();
         services.AddScoped<IPlannerGateway>(serviceProvider =>
             new DemoAwarePlannerGateway(
                 serviceProvider.GetRequiredService<ImportToPlanner.Infrastructure.Graph.Planner.GraphPlannerGateway>(),
                 serviceProvider.GetRequiredService<IDemoModeSession>()));
 
+        services.RemoveAll<ICsvImportParser>();
         services.AddScoped<ICsvImportParser>(serviceProvider =>
             new DemoAwareCsvImportParser(
                 serviceProvider.GetRequiredService<ImportToPlanner.Infrastructure.Graph.Import.CsvImportParser>(),

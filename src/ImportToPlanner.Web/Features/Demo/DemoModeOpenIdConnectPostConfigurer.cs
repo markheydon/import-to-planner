@@ -17,6 +17,8 @@ internal sealed class DemoModeOpenIdConnectPostConfigurer : IPostConfigureOption
             return;
         }
 
+        // OnTokenValidated runs when an OIDC token is accepted (interactive sign-in for this app),
+        // not on later cookie-authenticated requests. Sign-out is handled separately on the cookie handler.
         var existingOnTokenValidated = options.Events.OnTokenValidated;
         options.Events.OnTokenValidated = async context =>
         {

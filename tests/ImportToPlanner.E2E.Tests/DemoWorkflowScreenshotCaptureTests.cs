@@ -6,6 +6,8 @@ namespace ImportToPlanner.E2E.Tests;
 /// <summary>
 /// Opt-in capture of demonstration-mode workflow screenshots for the public Hugo site.
 /// Set <c>CAPTURE_DEMO_WORKFLOW_SCREENSHOTS=1</c> and run via <c>scripts/capture-demo-workflow-screenshots.sh</c>.
+/// Walking the real import journey (so each step image differs) is follow-on work in GitHub issue 164.
+/// The capture script rejects byte-identical outputs.
 /// </summary>
 [Collection(nameof(BrowserE2ETests))]
 public sealed class DemoWorkflowScreenshotCaptureTests

@@ -4,6 +4,9 @@ namespace ImportToPlanner.Application.Demo;
 
 /// <summary>
 /// Scoped session store for demonstration mode.
+/// This type does not enforce the operator allowlist. The web host registers an
+/// <see cref="IDemoModeSession"/> wrapper that checks <see cref="IDemoModeAuthorisationService"/>
+/// before activation.
 /// </summary>
 public sealed class DemoModeSession : IDemoModeSession
 {

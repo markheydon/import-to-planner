@@ -10,11 +10,15 @@ Complete this checklist **after** external counsel approves the terms text in
 
 | Field | Value |
 | --- | --- |
-| Counsel approval date | _Pending — maintainer to complete_ |
-| Terms version reference | _Pending — maintainer to complete_ |
-| Approver name / role | _Pending — maintainer to complete_ |
+| Counsel approval date | Pending — maintainer to complete |
+| Terms version reference | Pending — maintainer to complete |
+| Approver name / role | Pending — maintainer to complete |
 
-Do not publish the first public site `v*` tag until the table above is filled.
+<!-- counsel-sign-off: pending -->
+
+Do not publish the first public site `v*` tag until the table above is filled and the
+HTML comment is changed to `counsel-sign-off: approved`. The Hugo deploy workflow refuses
+a `v*` tag while `counsel-sign-off: pending` is still present.
 
 ## Operational counsel workflow
 

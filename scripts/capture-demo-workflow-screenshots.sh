@@ -23,3 +23,4 @@ dotnet test tests/ImportToPlanner.E2E.Tests/ImportToPlanner.E2E.Tests.csproj \
   --verbosity minimal
 
 echo "Screenshots written to website/static/import-workflow/"
+"${ROOT}/scripts/verify-import-workflow-screenshots.sh" --require

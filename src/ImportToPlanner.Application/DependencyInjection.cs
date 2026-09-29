@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IImportTaskCreationQuota, NoOpImportTaskCreationQuota>();
         services.AddScoped<ICsvColumnMappingService, CsvColumnMappingService>();
         services.AddScoped<ExecutionReportCsvExporter>();
+        services.AddScoped<DemoModeSession>();
         services.AddScoped<IDemoModeSession, DemoModeSession>();
         return services;
     }
