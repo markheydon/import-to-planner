@@ -11,7 +11,8 @@ Quick links:
 
 - Public docs: https://docs.importplanner.app
 - Contributor guide: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Developer quick-start: [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md)
+- Developer quick-start: [docs/developer-quickstart.md](docs/developer-quickstart.md)
+- Public site (Hugo): `./scripts/invoke-hugo-site.sh build` — see [docs/developer-quickstart.md](docs/developer-quickstart.md)
 - Architecture and governance: [.specify/memory/constitution.md](.specify/memory/constitution.md)
 
 ## Project Name and Description
@@ -50,7 +51,7 @@ from your own tenant and infrastructure.
 Documentation split:
 
 - `docs/`: public end-user and operator guidance published via GitHub Pages
-- `docs-internal/`: internal contributor, engineering, and operational guidance
+- `docs/`: internal contributor, engineering, and operational guidance
 
 ## Key Features
 
@@ -131,7 +132,7 @@ Architecture and governance references:
 
 - [.specify/memory/constitution.md](.specify/memory/constitution.md)
 - [AGENTS.md](AGENTS.md)
-- [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md)
+- [docs/engineering-policies.md](docs/engineering-policies.md)
 
 ## Getting Started
 
@@ -161,7 +162,7 @@ Recommended Entra setup:
 - Self-hosted mode: use a tenant-owned single-tenant app registration, set `AzureAd:TenantId` to that registration tenant, and set `AzureAd:HomeTenantId` to that same tenant.
 - Do not treat the Azure deployment tenant ID as the hosted runtime authority toggle. Runtime authority is controlled by `AzureAd:HomeTenantId`.
 
-For the full internal setup guide, including the recommended separate-registration strategy and troubleshooting for the "Selected user account does not exist in tenant" error, see `docs-internal/entra-app-registration-setup.md`.
+For the full internal setup guide, including the recommended separate-registration strategy and troubleshooting for the "Selected user account does not exist in tenant" error, see `docs/entra-app-registration-setup.md`.
 
 ### Prerequisites
 
@@ -235,7 +236,7 @@ Expected behaviour:
 - Container and plan data are loaded from Microsoft Graph.
 - Sign-in remains single-tenant.
 
-See [src/ImportToPlanner.Web/appsettings.json](src/ImportToPlanner.Web/appsettings.json) for the full configuration shape, including `AzureAd`, certificate, and Graph scope placeholders, and see [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md) for implementation guidance.
+See [src/ImportToPlanner.Web/appsettings.json](src/ImportToPlanner.Web/appsettings.json) for the full configuration shape, including `AzureAd`, certificate, and Graph scope placeholders, and see [docs/microsoft-graph-guidelines.md](docs/microsoft-graph-guidelines.md) for implementation guidance.
 
 ### Use Aspire for development workflows
 
@@ -252,7 +253,7 @@ Notes:
 
 - The AppHost always starts `storage`, `blobs`, `tables`, and `web`.
 - A container runtime is needed for local Azurite emulation.
-- For deeper developer guidance, see [docs-internal/developer-quickstart.md](docs-internal/developer-quickstart.md).
+- For deeper developer guidance, see [docs/developer-quickstart.md](docs/developer-quickstart.md).
 
 ## Project Structure
 
@@ -267,7 +268,7 @@ tests/
   ImportToPlanner.Tests/
   ImportToPlanner.Web.Tests/
 docs/
-docs-internal/
+docs/
 specs/
 src/ImportToPlanner.AppHost/
 ImportToPlanner.slnx
@@ -278,7 +279,7 @@ Repository areas:
 - `src/`: production projects.
 - `tests/`: unit, integration-style, and Blazor UI tests.
 - `docs/`: public-facing documentation.
-- `docs-internal/`: internal engineering guidance.
+- `docs/`: internal engineering guidance.
 - `specs/`: Spec Kit artefacts (specs, plans, tasks, quickstarts, contracts).
 
 ## Development Workflow
@@ -288,7 +289,7 @@ This repository uses specification-led delivery and explicit governance:
 - Feature requirements, plans, and tasks live in `specs/`.
 - Repository-wide agent policy and skill delegation are in [AGENTS.md](AGENTS.md).
 - Architecture governance is in [.specify/memory/constitution.md](.specify/memory/constitution.md).
-- Operational policies are in [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md).
+- Operational policies are in [docs/engineering-policies.md](docs/engineering-policies.md).
 
 Contribution flow summary:
 
@@ -316,7 +317,7 @@ Standards references:
 - [AGENTS.md](AGENTS.md)
 - [.github/instructions/blazor-csharp.instructions.md](.github/instructions/blazor-csharp.instructions.md)
 - [.github/instructions/csharp-clean-architecture.instructions.md](.github/instructions/csharp-clean-architecture.instructions.md)
-- [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md)
+- [docs/microsoft-graph-guidelines.md](docs/microsoft-graph-guidelines.md)
 
 ## Testing
 
@@ -338,7 +339,7 @@ dotnet tool install -g dotnet-coverage
 dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test ImportToPlanner.slnx
 ```
 
-Testing expectations include regression coverage for changed behaviour, startup validation, and authority-specific auth handling. See [tests/README.md](tests/README.md) and [docs-internal/engineering-policies.md](docs-internal/engineering-policies.md). Architecture rules that tests must satisfy live in [.specify/memory/constitution.md](.specify/memory/constitution.md).
+Testing expectations include regression coverage for changed behaviour, startup validation, and authority-specific auth handling. See [tests/README.md](tests/README.md) and [docs/engineering-policies.md](docs/engineering-policies.md). Architecture rules that tests must satisfy live in [.specify/memory/constitution.md](.specify/memory/constitution.md).
 
 ## Contributing
 
@@ -362,12 +363,12 @@ Recommended contributor flow:
 ## Further Reading
 
 - [specs/004-add-multitenant-hosting/quickstart.md](specs/004-add-multitenant-hosting/quickstart.md)
-- [docs-internal/microsoft-graph-guidelines.md](docs-internal/microsoft-graph-guidelines.md)
-- [docs-internal/aspire-production-readiness.md](docs-internal/aspire-production-readiness.md)
+- [docs/microsoft-graph-guidelines.md](docs/microsoft-graph-guidelines.md)
+- [docs/aspire-production-readiness.md](docs/aspire-production-readiness.md)
 - [tests/README.md](tests/README.md)
 - [docs/README.md](docs/README.md)
-- [docs-internal/README.md](docs-internal/README.md)
-- [docs-internal/roadmap-and-limitations.md](docs-internal/roadmap-and-limitations.md)
+- [docs/README.md](docs/README.md)
+- [docs/roadmap-and-limitations.md](docs/roadmap-and-limitations.md)
 - [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
 - [specs/002-ui-ux-redesign/quickstart.md](specs/002-ui-ux-redesign/quickstart.md)
 - [specs/003-align-clean-architecture/quickstart.md](specs/003-align-clean-architecture/quickstart.md)

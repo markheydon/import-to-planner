@@ -67,7 +67,7 @@ Operational or performance notes:
 - [ ] Not applicable
 - [ ] I updated `README.md`
 - [ ] I updated `CONTRIBUTING.md`
-- [ ] I updated relevant docs under `docs/` or `docs-internal/`
+- [ ] I updated relevant docs under `docs/` or `docs/`
 - [ ] No documentation update was needed because the change does not affect behaviour, setup, or contributor workflow
 
 ## Review Readiness

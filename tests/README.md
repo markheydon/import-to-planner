@@ -54,7 +54,7 @@ Repository testing notes
   in-memory stores, planner gateway graphs, or adapter subclasses).
 - NSubstitute-backed helpers in `TestInfrastructure/` and `TestDoubles/` wrap
   `Substitute.For<T>()` with test-friendly configuration where needed.
-- See `docs-internal/engineering-policies.md` for mandatory testing standards and
+- See `docs/engineering-policies.md` for mandatory testing standards and
   architecture evidence gates. The constitution states the stack-independent
   testability and quality rules; this repository's named checks and packages
   live in engineering policies.

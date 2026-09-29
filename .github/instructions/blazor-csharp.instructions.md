@@ -77,7 +77,7 @@ Use this file as baseline guidance for Blazor projects that include Razor UI and
 - Follow existing naming conventions in the repository instead of imposing a global pattern.
 - Prefer handwritten stateful doubles when they model real behaviour; use NSubstitute for thin interface doubles.
 - Test projects inherit `TreatWarningsAsErrors`; compile without warning suppressions.
-- See `docs-internal/engineering-policies.md` for the full testing standard.
+- See `docs/engineering-policies.md` for the full testing standard.
 
 ## Security and Observability
 

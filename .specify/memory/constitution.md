@@ -174,7 +174,7 @@ intended to remain self-hostable.
   layers.
 - Repository process, agent policy, and operational policies that are
   not architecture-constitutional are defined in AGENTS.md and
-  docs-internal/engineering-policies.md and MUST still be followed.
+  docs/engineering-policies.md and MUST still be followed.
   Stack, library, and convention choices MUST live in those documents,
   tech-stack notes, guidelines, or decision logs — not in this
   constitution.

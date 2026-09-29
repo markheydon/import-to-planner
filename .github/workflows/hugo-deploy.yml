@@ -1,0 +1,24 @@
+name: Hugo Deploy
+
+# Publishes the public product site to GitHub Pages on release tags only.
+# Pull requests validate Hugo builds via hugo-validate.yml without publishing.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/hugo-build.yml
+    with:
+      deploy: true

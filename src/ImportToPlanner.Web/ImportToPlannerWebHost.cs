@@ -5,6 +5,7 @@ using ImportToPlanner.Infrastructure.Graph;
 using ImportToPlanner.Web.Components;
 using ImportToPlanner.Web.Features.Authentication;
 using ImportToPlanner.Web.Features.CommercialAccounts;
+using ImportToPlanner.Web.Features.Demo;
 using ImportToPlanner.Web.Infrastructure;
 using Microsoft.Extensions.Options;
 
@@ -60,7 +61,8 @@ internal static class ImportToPlannerWebHost
             .AddWebHostServices(builder.Configuration, builder.Environment)
             .AddApplication()
             .AddImportWorkflow()
-            .AddInfrastructure(builder.Configuration);
+            .AddInfrastructure(builder.Configuration)
+            .AddDemoMode(builder.Configuration);
 
         if (commercialModeEnabled && !isE2ETesting)
         {

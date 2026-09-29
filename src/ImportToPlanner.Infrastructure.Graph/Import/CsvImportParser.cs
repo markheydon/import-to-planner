@@ -5,6 +5,7 @@ using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Import;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Application.Services;
+using ImportToPlanner.Infrastructure.Graph.Demo;
 
 namespace ImportToPlanner.Infrastructure.Graph.Import;
 
@@ -17,6 +18,7 @@ public sealed class CsvImportParser : ICsvImportParser
     private const char Utf8Bom = '\uFEFF';
 
     private readonly ICsvColumnMappingService columnMappingService;
+    private readonly IDemoModeSession? demoModeSession;
 
     /// <summary>
     /// Creates a parser using the default in-process mapping service for legacy parse calls.
@@ -29,16 +31,18 @@ public sealed class CsvImportParser : ICsvImportParser
     /// <summary>
     /// Creates a parser with the supplied mapping service.
     /// </summary>
-    public CsvImportParser(ICsvColumnMappingService columnMappingService)
+    public CsvImportParser(ICsvColumnMappingService columnMappingService, IDemoModeSession? demoModeSession = null)
     {
         ArgumentNullException.ThrowIfNull(columnMappingService);
         this.columnMappingService = columnMappingService;
+        this.demoModeSession = demoModeSession;
     }
 
     /// <inheritdoc />
     public Task<CsvParseResult> ParseAsync(string csvContent, CancellationToken cancellationToken, bool ignoreExtraColumns = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureRealCsvUploadAllowed(demoModeSession);
 
         var peek = PeekHeadersInternal(csvContent);
         if (peek.HasErrors)
@@ -78,6 +82,7 @@ public sealed class CsvImportParser : ICsvImportParser
     public Task<CsvHeaderPeekResult> PeekHeadersAsync(string csvContent, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureRealCsvUploadAllowed(demoModeSession);
         return Task.FromResult(PeekHeadersInternal(csvContent));
     }
 
@@ -89,6 +94,7 @@ public sealed class CsvImportParser : ICsvImportParser
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        DemoModeGraphBoundary.EnsureRealCsvUploadAllowed(demoModeSession);
         ArgumentNullException.ThrowIfNull(columnMapping);
 
         var normalisedContent = StripLeadingBom(csvContent);
