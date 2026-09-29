@@ -48,6 +48,15 @@ public sealed class HomePageWorkflowTests
         Assert.Contains("Alpha Task", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Created: 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("Manual: 1", cut.Markup, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Download report", cut.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HomeExecutionReport_WithNullExecutionResult_DoesNotRenderDownloadReport()
+    {
+        await using var ctx = new HomePageTestContext();
+        var cut = ctx.Render<HomeExecutionReport>();
+        Assert.DoesNotContain("Download report", cut.Markup, StringComparison.Ordinal);
     }
 
     [Fact]

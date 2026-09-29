@@ -1,13 +1,16 @@
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Services;
 
 namespace ImportToPlanner.Web.Tests;
 
 public sealed class ImportPresenterTests
 {
+    private static ImportExecutionPresenter CreateExecutionPresenter()
+        => new(new ExecutionReportCsvExporter());
     [Fact]
     public async Task ImportExecutionPresenter_PresentsUserFacingErrorsFromNeutralFailures()
     {
-        var presenter = new ImportExecutionPresenter();
+        var presenter = CreateExecutionPresenter();
         var response = new ImportExecutionResult
         {
             PlanId = "plan-1",
@@ -23,6 +26,7 @@ public sealed class ImportPresenterTests
             ],
             ManualActions = [],
             OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 1, 0, true, false),
+            SourceRowOutcomes = [],
         };
 
         await presenter.PresentAsync(response, CancellationToken.None);
@@ -36,7 +40,7 @@ public sealed class ImportPresenterTests
     [Fact]
     public async Task ImportExecutionPresenter_PresentsCreditExhaustionCopy()
     {
-        var presenter = new ImportExecutionPresenter();
+        var presenter = CreateExecutionPresenter();
         var response = new ImportExecutionResult
         {
             PlanId = "plan-1",
@@ -56,6 +60,7 @@ public sealed class ImportPresenterTests
             OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true),
             CreditsUsed = 0,
             RemainingCredits = 0,
+            SourceRowOutcomes = [],
         };
 
         await presenter.PresentAsync(response, CancellationToken.None);
@@ -68,7 +73,7 @@ public sealed class ImportPresenterTests
     [Fact]
     public async Task ImportExecutionPresenter_PresentsCreditBalanceReportUnavailableCopy()
     {
-        var presenter = new ImportExecutionPresenter();
+        var presenter = CreateExecutionPresenter();
         var response = new ImportExecutionResult
         {
             PlanId = "plan-1",
@@ -88,6 +93,7 @@ public sealed class ImportPresenterTests
             OutcomeSummary = new ImportExecutionOutcomeSummary(0, 1, 1, 0, true, false),
             CreditsUsed = 0,
             RemainingCredits = null,
+            SourceRowOutcomes = [],
         };
 
         await presenter.PresentAsync(response, CancellationToken.None);
@@ -209,7 +215,7 @@ public sealed class ImportPresenterTests
         string reasonCode,
         string expectedFragment)
     {
-        var presenter = new ImportExecutionPresenter();
+        var presenter = CreateExecutionPresenter();
         var response = new ImportExecutionResult
         {
             PlanId = "plan-1",
@@ -226,6 +232,7 @@ public sealed class ImportPresenterTests
                     "person@contoso.com"),
             ],
             OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 0, 1, false, false),
+            SourceRowOutcomes = [],
         };
 
         await presenter.PresentAsync(response, CancellationToken.None);
@@ -249,5 +256,79 @@ public sealed class ImportPresenterTests
                 "TenantMismatch"));
 
         Assert.Contains("fresh preview", message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ImportExecutionPresenter_BuildExecutionReportCsvDownload_MapsMixedOutcomesAndManualRows()
+    {
+        var presenter = CreateExecutionPresenter();
+        var response = new ImportExecutionResult
+        {
+            PlanId = "plan-1",
+            CreatedItems = [new ImportExecutionItem(PlannerFailureTarget.Task, "Alpha, task", "task-001")],
+            ReusedOrSkippedItems = [],
+            FailureItems = [],
+            ManualActions =
+            [
+                new ManualAction("LinkTaskToGoal", "Sprint 1", "Alpha, task", null),
+            ],
+            OutcomeSummary = new ImportExecutionOutcomeSummary(1, 0, 0, 1, false, false),
+            SourceRowOutcomes =
+            [
+                new ImportSourceRowOutcome(2, "Alpha, task", ImportSourceRowOutcomeKind.Created, "task-001"),
+            ],
+        };
+
+        await presenter.PresentAsync(response, CancellationToken.None);
+
+        var file = presenter.TryBuildExecutionReportCsvDownload();
+        Assert.NotNull(file);
+        var text = System.Text.Encoding.UTF8.GetString(file!.Content);
+        Assert.Matches("import-execution-report-\\d{8}-\\d{6}Z\\.csv", file.FileName);
+        Assert.Contains("Record type,Source row number,Task name,Outcome,Task identifier,Reason or details,Action type,Goal name", text, StringComparison.Ordinal);
+        Assert.Contains("\"Alpha, task\"", text, StringComparison.Ordinal);
+        Assert.Contains("Manual follow-up", text, StringComparison.Ordinal);
+        Assert.Contains("Link Task To Goal", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ImportExecutionPresenter_CsvExport_UsesSameFailureCopyAsErrorsTab()
+    {
+        var presenter = CreateExecutionPresenter();
+        var response = new ImportExecutionResult
+        {
+            PlanId = "plan-1",
+            CreatedItems = [],
+            ReusedOrSkippedItems = [],
+            FailureItems =
+            [
+                new PlannerOperationFailure(
+                    PlannerFailureCategory.Validation,
+                    PlannerFailureTarget.Task,
+                    "Task B",
+                    "Import stopped because your organisation has no credits remaining for new tasks.",
+                    false,
+                    "credits.exhausted"),
+            ],
+            ManualActions = [],
+            OutcomeSummary = new ImportExecutionOutcomeSummary(0, 0, 1, 0, false, true),
+            SourceRowOutcomes =
+            [
+                new ImportSourceRowOutcome(
+                    3,
+                    "Task B",
+                    ImportSourceRowOutcomeKind.Failed,
+                    Reason: "Import stopped because your organisation has no credits remaining for new tasks."),
+            ],
+        };
+
+        await presenter.PresentAsync(response, CancellationToken.None);
+
+        var expectedError = Assert.Single(presenter.ViewModel!.Errors);
+        var file = presenter.TryBuildExecutionReportCsvDownload();
+        Assert.NotNull(file);
+        var text = System.Text.Encoding.UTF8.GetString(file!.Content);
+        Assert.Contains(expectedError, text, StringComparison.Ordinal);
+        Assert.Contains("Credit exhausted", text, StringComparison.OrdinalIgnoreCase);
     }
 }

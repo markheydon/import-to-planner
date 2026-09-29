@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IImportExecutionUseCase, ImportExecutionUseCase>();
         services.AddScoped<IImportTaskCreationQuota, NoOpImportTaskCreationQuota>();
         services.AddScoped<ICsvColumnMappingService, CsvColumnMappingService>();
+        services.AddScoped<ExecutionReportCsvExporter>();
 
         return services;
     }

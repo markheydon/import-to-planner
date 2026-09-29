@@ -44,6 +44,11 @@ public sealed record ImportExecutionResult
     /// Gets or sets remaining credits after this run when commercial metering is active.
     /// </summary>
     public int? RemainingCredits { get; init; }
+
+    /// <summary>
+    /// Gets or sets structured per-source-row outcomes ordered by row number ascending.
+    /// </summary>
+    public required IReadOnlyList<ImportSourceRowOutcome> SourceRowOutcomes { get; init; }
 }
 
 /// <summary>

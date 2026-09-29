@@ -1,13 +1,16 @@
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Application.Services;
 
 namespace ImportToPlanner.Web.Features.Import.Presenters;
 
 /// <summary>
 /// Presents execution results for the web workflow.
 /// </summary>
-public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
+public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExporter) : IImportExecutionOutputBoundary
 {
+    private ImportExecutionResult? _lastExecutionResult;
+
     /// <summary>
     /// Gets the latest execution report view model.
     /// </summary>
@@ -18,6 +21,8 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(response);
+
+        _lastExecutionResult = response;
 
         var createdItems = response.CreatedItems
             .Select(item => $"{item.Target}: {item.Name}")
@@ -45,6 +50,106 @@ public sealed class ImportExecutionPresenter : IImportExecutionOutputBoundary
             response.RemainingCredits);
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Builds the execution report CSV download payload from the latest presented result.
+    /// </summary>
+    /// <returns>The CSV file when a report is available; otherwise null.</returns>
+    public ExecutionReportCsvFile? TryBuildExecutionReportCsvDownload()
+    {
+        if (_lastExecutionResult is null || ViewModel is null)
+        {
+            return null;
+        }
+
+        var rows = BuildExportRows(_lastExecutionResult, ViewModel);
+        return csvExporter.Export(rows, DateTimeOffset.UtcNow);
+    }
+
+    private static List<ExecutionReportCsvRow> BuildExportRows(
+        ImportExecutionResult executionResult,
+        ImportExecutionReportViewModel viewModel)
+    {
+        var rows = executionResult.SourceRowOutcomes
+            .OrderBy(outcome => outcome.RowNumber)
+            .Select(outcome => MapSourceRowOutcome(outcome, executionResult))
+            .ToList();
+
+        foreach (var manualAction in viewModel.ManualActions)
+        {
+            rows.Add(MapManualFollowUpRow(manualAction));
+        }
+
+        return rows;
+    }
+
+    private static ExecutionReportCsvRow MapSourceRowOutcome(
+        ImportSourceRowOutcome outcome,
+        ImportExecutionResult executionResult)
+    {
+        var outcomeLabel = outcome.Outcome switch
+        {
+            ImportSourceRowOutcomeKind.Created => "Created",
+            ImportSourceRowOutcomeKind.ReusedOrSkipped => "Reused or skipped",
+            ImportSourceRowOutcomeKind.Failed => "Failed",
+            _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome.Outcome, "Unknown source row outcome."),
+        };
+
+        return new ExecutionReportCsvRow(
+            ExecutionReportCsvRecordType.SourceRow,
+            outcome.RowNumber,
+            outcome.TaskName,
+            outcomeLabel,
+            outcome.TaskIdentifier,
+            ResolveSourceRowReasonOrDetails(outcome, executionResult),
+            null,
+            null);
+    }
+
+    private static string? ResolveSourceRowReasonOrDetails(
+        ImportSourceRowOutcome outcome,
+        ImportExecutionResult executionResult)
+    {
+        if (outcome.Outcome == ImportSourceRowOutcomeKind.Failed)
+        {
+            var failure = FindTaskFailure(outcome.TaskName, executionResult.FailureItems);
+            return failure is not null ? MapFailureMessage(failure) : outcome.Reason;
+        }
+
+        if (outcome.Outcome == ImportSourceRowOutcomeKind.Created && !string.IsNullOrWhiteSpace(outcome.Reason))
+        {
+            var creditRecordFailure = FindTaskFailure(outcome.TaskName, executionResult.FailureItems);
+            if (creditRecordFailure is not null
+                && string.Equals(creditRecordFailure.DiagnosticCode, "credits.usage_record_failed", StringComparison.Ordinal))
+            {
+                return MapFailureMessage(creditRecordFailure);
+            }
+        }
+
+        return outcome.Reason;
+    }
+
+    private static PlannerOperationFailure? FindTaskFailure(
+        string taskName,
+        IReadOnlyList<PlannerOperationFailure> failures)
+    {
+        return failures.FirstOrDefault(failure =>
+            failure.Target == PlannerFailureTarget.Task
+            && string.Equals(failure.Reference, taskName, StringComparison.Ordinal));
+    }
+
+    private static ExecutionReportCsvRow MapManualFollowUpRow(ManualActionViewModel manualAction)
+    {
+        return new ExecutionReportCsvRow(
+            ExecutionReportCsvRecordType.ManualFollowUp,
+            null,
+            manualAction.TaskName,
+            "Manual follow-up",
+            null,
+            manualAction.Details,
+            manualAction.ActionType,
+            manualAction.GoalName);
     }
 
     private static string MapFailureMessage(PlannerOperationFailure failure)

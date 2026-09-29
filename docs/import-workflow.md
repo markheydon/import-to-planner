@@ -30,6 +30,8 @@ Use this step to correct issues before execution.
 
 When you confirm, the app starts the import and then shows an execution report.
 
+You can download that execution report as a CSV to keep a record, share outcomes with colleagues, or fix your source file before you upload again.
+
 ## Understanding report outcomes
 
 - Created: a new task was created in Planner.

@@ -1,10 +1,20 @@
 @namespace ImportToPlanner.Web.Features.Import.Pages
 @using ImportToPlanner.Web.Features.Import.Presenters
+@using Microsoft.JSInterop
+@inject ImportExecutionPresenter ExecutionPresenter
+@inject IJSRuntime JSRuntime
 
 @if (ExecutionResult is not null)
 {
     <MudStack Spacing="2">
-        <MudText Typo="Typo.h6">Execution Report</MudText>
+        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween" Wrap="Wrap.Wrap">
+            <MudText Typo="Typo.h6">Execution Report</MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       OnClick="DownloadReportAsync">
+                Download report
+            </MudButton>
+        </MudStack>
 
         @if (ExecutionResult.PlanId is not null)
         {
@@ -151,6 +161,20 @@
 @code {
     [Parameter]
     public ImportExecutionReportViewModel? ExecutionResult { get; set; }
+
+    private async Task DownloadReportAsync()
+    {
+        var file = ExecutionPresenter.TryBuildExecutionReportCsvDownload();
+        if (file is null)
+        {
+            return;
+        }
+
+        await JSRuntime.InvokeVoidAsync(
+            "importToPlannerExecutionReportDownload.downloadCsv",
+            file.FileName,
+            Convert.ToBase64String(file.Content));
+    }
 
     private static Color GetManualActionColour(string actionType)
         => actionType switch
