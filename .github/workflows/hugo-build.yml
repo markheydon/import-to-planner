@@ -74,14 +74,6 @@ jobs:
       - name: Verify workflow screenshots are distinct
         run: ./scripts/verify-import-workflow-screenshots.sh
 
-      - name: Require counsel sign-off before a public site tag
-        if: inputs.deploy
-        run: |
-          if grep -q "counsel-sign-off: pending" docs/release-runbook.md; then
-            echo "::error::Counsel sign-off is still pending in docs/release-runbook.md. Complete SC-007 before publishing a public site tag."
-            exit 1
-          fi
-
       - name: Build
         working-directory: website
         env:

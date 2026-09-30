@@ -4,12 +4,13 @@ title: Support
 
 ## How to get help in v1.0
 
-Import To Planner v1.0 does not include SLA-backed email or in-app ticketing support.
-Instead, use this repository's GitHub Issues to:
+Import To Planner v1.0 does not include SLA-backed email or in-app ticketing support at this time.
 
-- Report bugs in the hosted or self-hosted application
-- Suggest documentation corrections for these guides
-- Share product feedback
+Until dedicated support is available directly in the app, use this repository's GitHub Issues to:
+
+- Report bugs in the hosted or self-hosted application.
+- Suggest documentation corrections for these guides.
+- Share product feedback.
 
 [Open a GitHub Issue](https://github.com/markheydon/import-to-planner/issues/new/choose)
 
@@ -18,7 +19,7 @@ post secrets, tenant identifiers, or production CSV files in public issues.
 
 ## Hosted vs self-hosted
 
-If you use the MHCG-hosted service at `https://app.importplanner.app`, we maintain the
+If you use the MHCG LTD-hosted service at `https://app.importplanner.app`, we maintain the
 application and these public guides.
 
 If you operate a **self-hosted** deployment, your organisation is responsible for

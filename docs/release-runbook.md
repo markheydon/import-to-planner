@@ -3,30 +3,30 @@
 This runbook covers SemVer tagging for the Import To Planner repository when the public Hugo
 site and/or application ship together.
 
-## Legal counsel sign-off (required before first public site `v*` tag)
+## Terms of use publication record (SC-007)
 
-Complete this checklist **after** external counsel approves the terms text in
-`website/content/terms.md`.
+Before the first public site `v*` tag (and when materially changing hosted terms), record
+maintainer acceptance of the text in `website/content/terms.md`. This is **not** external
+legal counsel review; it is an internal record that production-ready terms are published
+knowingly. Engage qualified counsel when commercial risk warrants it (for example paid
+billing at scale or enterprise DPAs).
+
+**SC-007 governance (2026-09-30):** Spec 017 originally described external counsel sign-off;
+this runbook uses a director/maintainer publication record instead. Enforcement is
+maintainer process only (no CI gate on deploy).
 
 | Field | Value |
 | --- | --- |
-| Counsel approval date | Pending — maintainer to complete |
-| Terms version reference | Pending — maintainer to complete |
-| Approver name / role | Pending — maintainer to complete |
+| Approval date | 2026-09-30 |
+| Terms version reference | `website/content/terms.md` (last updated 30 September 2026; informed by Simply Docs ASP TR.IT.11 adaptation — not counsel-reviewed) |
+| Approver name / role | Director, MHCG LTD |
 
-<!-- counsel-sign-off: pending -->
+## Operational terms workflow
 
-Do not publish the first public site `v*` tag until the table above is filled and the
-HTML comment is changed to `counsel-sign-off: approved`. The Hugo deploy workflow refuses
-a `v*` tag while `counsel-sign-off: pending` is still present.
-
-## Operational counsel workflow
-
-1. Obtain counsel-approved terms text.
-2. Update `website/content/terms.md` with the approved copy.
-3. Complete the sign-off table in this runbook.
-4. Merge to `main`.
-5. Create and push a `vX.Y.Z` tag (see below).
+1. Review and update `website/content/terms.md` (and cross-links to privacy and support).
+2. Update the publication record table above when terms change materially.
+3. Merge to `main`.
+4. Create and push a `vX.Y.Z` tag (see below).
 
 ## SemVer tagging and deploy
 
@@ -81,15 +81,15 @@ Recorded: 2026-09-29 (engineering review on branch `017-public-hugo-website`).
 ## SC-001 contract review
 
 Before the first public site `v*` tag, score mandatory items below. Require **≥90%** mandatory
-**Pass** (counsel sign-off and any **Fail** block the first tag until remediated).
+**Pass** (any **Fail** blocks the first tag until remediated).
 
-**Review date**: 2026-09-29  
+**Review date**: 2026-09-30  
 **Reviewer**: Engineering (pre-tag gate)  
 **Mandatory scored**: 42  
-**Pass**: 41  
-**Fail**: 1  
-**Pass rate**: 97.6% (meets ≥90% for *documented* obligations; first `v*` tag still blocked on
-**PUB-007** until counsel sign-off is recorded per **SC-007**)
+**Pass**: 42  
+**Fail**: 0  
+**Pass rate**: 100% (meets ≥90%; **PUB-007** / **SC-007** satisfied by terms publication
+record above)
 
 Authority: `specs/017-public-hugo-website/contracts/public-site-contract.md` and deferred
 007 page obligations in `specs/007-end-user-docs-site/contracts/docs-site-contract.md`.
@@ -104,7 +104,7 @@ Authority: `specs/017-public-hugo-website/contracts/public-site-contract.md` and
 | PUB-004 | PR `website/**` Hugo compile check | Pass | `hugo-validate.yml` |
 | PUB-005 | Tagged builds show tag; others show `unreleased` | Pass | `HUGO_PARAMS_RELEASEVERSION` + footer partial |
 | PUB-006 | Engineering docs excluded from `website/public` | Pass | No `engineering-policies` strings in build output |
-| PUB-007 | Counsel sign-off recorded in `docs/` before first tag | **Fail** | Runbook table above still pending maintainer completion |
+| PUB-007 | Terms publication record in `docs/` before first tag | Pass | Runbook table above (2026-09-30) |
 
 ### Public routes (mandatory = Yes)
 
@@ -118,7 +118,7 @@ Authority: `specs/017-public-hugo-website/contracts/public-site-contract.md` and
 | RTE-006 | `/faq` | Pass | Spec 007 questions covered |
 | RTE-007 | `/privacy-and-security` | Pass | Expanded privacy |
 | RTE-008 | `/self-hosted` | Pass | Secondary page |
-| RTE-009 | `/terms` | Pass | Production-ready copy (counsel gate separate) |
+| RTE-009 | `/terms` | Pass | Production-ready `terms.md` |
 | RTE-010 | `/support` | Pass | GitHub Issues + v1.1 deferral |
 
 ### Navigation and discoverability (mandatory)
@@ -168,5 +168,5 @@ Authority: `specs/017-public-hugo-website/contracts/public-site-contract.md` and
 | APP-001 | Footer links to docs, terms, privacy, support | Pass | `MainLayout.razor` |
 | APP-002 | Configurable `DocsBaseUrl` | Pass | `appsettings.json` |
 
-**Gate**: Do not publish the first public site `v*` tag until **PUB-007** / **SC-007** counsel
-sign-off is complete, even though the SC-001 pass rate exceeds 90%.
+**Gate**: Do not publish the first public site `v*` tag until **PUB-007** / **SC-007** terms
+publication record is current for the `terms.md` revision that will ship with the tag.

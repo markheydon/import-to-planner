@@ -2,7 +2,9 @@
 title: Privacy and security
 ---
 
-This page explains, in plain language, how Import To Planner handles data and permissions.
+This page explains, in plain language, how Import To Planner handles data and permissions
+for the **hosted service** operated by MHCG LTD. For contractual terms, see
+[Terms of use](./terms).
 
 ## What the app reads
 
