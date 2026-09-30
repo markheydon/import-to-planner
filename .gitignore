@@ -110,6 +110,8 @@ StyleCopReport.xml
 *.rsp
 # but not Directory.Build.rsp, as it configures directory-level build defaults
 !Directory.Build.rsp
+# Ephemeral CI metadata for in-app About (deploy-staging.yml); not committed
+Directory.Build.metadata.props
 *.sbr
 *.tlb
 *.tli

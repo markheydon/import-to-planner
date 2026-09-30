@@ -55,6 +55,23 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore ImportToPlanner.slnx
 
+      - name: Set deployment build metadata
+        shell: bash
+        run: echo "BUILD_TIMESTAMP_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$GITHUB_ENV"
+
+      - name: Write MSBuild metadata for aspire deploy
+        shell: bash
+        run: |
+          cat > Directory.Build.metadata.props <<EOF
+          <Project>
+            <PropertyGroup>
+              <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+              <SourceRevisionId>${{ github.sha }}</SourceRevisionId>
+              <BuildTimestampUtc>${{ env.BUILD_TIMESTAMP_UTC }}</BuildTimestampUtc>
+            </PropertyGroup>
+          </Project>
+          EOF
+
       - name: Install Aspire CLI
         shell: bash
         run: |

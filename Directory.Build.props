@@ -24,6 +24,31 @@
       full API documentation is added.
     -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!-- SemVer from annotated vX.Y.Z tags (see specs/018-in-app-about-version/research.md) -->
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerDefaultPreReleaseIdentifiers>preview</MinVerDefaultPreReleaseIdentifiers>
   </PropertyGroup>
+
+  <!-- Optional CI-generated build metadata (see deploy-staging.yml); explicit /p: properties still win when set earlier. -->
+  <Import Project="$(MSBuildThisFileDirectory)Directory.Build.metadata.props" Condition="Exists('$(MSBuildThisFileDirectory)Directory.Build.metadata.props')" />
+
+  <ItemGroup>
+    <PackageReference Include="MinVer">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(SourceRevisionId)' != ''">
+      <_Parameter1>SourceRevisionId</_Parameter1>
+      <_Parameter2>$(SourceRevisionId)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(BuildTimestampUtc)' != ''">
+      <_Parameter1>BuildTimestampUtc</_Parameter1>
+      <_Parameter2>$(BuildTimestampUtc)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
 
 </Project>
