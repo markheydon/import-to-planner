@@ -4,6 +4,8 @@ title: Import To Planner
 
 Import To Planner helps you move tasks from a CSV file into Microsoft Planner with a guided, step-by-step flow.
 
+{{< guide-release-applicability >}}
+
 ## Who this is for
 
 This guide is for people who use Microsoft 365 at work or school and need a quick way to import task lists into Planner.
