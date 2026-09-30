@@ -77,7 +77,7 @@ jobs:
       - name: Build
         working-directory: website
         env:
-          HUGO_PARAMS_RELEASEVERSION: ${{ inputs.deploy && github.ref_name || 'unreleased' }}
+          HUGO_PARAMS_RELEASEVERSION: ${{ inputs.deploy && github.ref_type == 'tag' && github.ref_name || 'unreleased' }}
         run: |
           if [ "${{ inputs.deploy }}" = "true" ]; then
             hugo build --gc --minify --baseURL "https://docs.importplanner.app/" --cacheDir "${{ runner.temp }}/.cache/hugo"

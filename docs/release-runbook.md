@@ -46,6 +46,11 @@ Ordinary merges to `main` do **not** update the live public site. PR builds labe
 
 - Custom domain: `docs.importplanner.app` (must match `website/static/CNAME`).
 - Source: GitHub Actions (not legacy `docs/` folder publishing).
+- **Manual `workflow_dispatch` from a feature branch**: the `github-pages` environment must
+  list that branch under **Deployment branches** (Settings → Environments → github-pages).
+  Remove feature branches after testing so only `main` and `v*` tag deploys remain routine.
+  Non-tag deploys label the site `unreleased` in the footer (branch name is not shown as a
+  release version).
 
 ## Cutover notes
 
