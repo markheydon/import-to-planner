@@ -71,7 +71,8 @@ label parity is achievable at cut time.
      [ACA Staging Runbook](aca-staging-runbook.md) as the operational template with Production
      secrets and environment names substituted.
    - **Self-hosted** — Operators build or pull an image (or publish binaries) from the **same**
-     git tag so MinVer embeds the official release label. Tag the published container image with
+     git tag so MinVer embeds the official release label. Pass `/p:OfficialReleaseBuild=true`
+     when publishing from the tag so About shows the shipping SemVer. Tag the published container image with
      `vX.Y.Z` (or your registry convention that maps 1:1 to the git tag). End-user orientation:
      [Self-hosted](https://docs.importplanner.app/self-hosted/) on the public site.
 7. **Three-way verification** — Complete the [Release verification checklist](#release-verification-checklist)

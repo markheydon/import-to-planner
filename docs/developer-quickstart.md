@@ -128,12 +128,23 @@ property is non-empty:
 | `SourceRevisionId` | Git commit SHA (short or full) built into the app |
 | `BuildTimestampUtc` | UTC build timestamp (ISO-8601 string, for example `2026-09-30T12:00:00Z`) |
 | `ContinuousIntegrationBuild` | Set to `true` in CI or publish pipelines so tooling treats the build as deterministic CI output (recommended alongside the properties above) |
+| `OfficialReleaseBuild` | Set to `true` only when building from an annotated `vX.Y.Z` tag so About may show the shipping label (for example `v1.0.0`); leave unset on local, PR, CI, and staging builds |
 
 Example local build with metadata (for validating About diagnostics):
 
 ```bash
 dotnet build ImportToPlanner.slnx \
   /p:SourceRevisionId="$(git rev-parse --short HEAD)" \
+  /p:BuildTimestampUtc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+  /p:ContinuousIntegrationBuild=true
+```
+
+Example tagged production build (after checking out `vX.Y.Z`):
+
+```bash
+dotnet build ImportToPlanner.slnx \
+  /p:OfficialReleaseBuild=true \
+  /p:SourceRevisionId="$(git rev-parse HEAD)" \
   /p:BuildTimestampUtc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
   /p:ContinuousIntegrationBuild=true
 ```

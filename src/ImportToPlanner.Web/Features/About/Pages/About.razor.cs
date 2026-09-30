@@ -27,6 +27,7 @@ public partial class About
     private ReleaseInformation? releaseInformation;
     private bool isBusy;
     private bool showSignInPrompt;
+    private string? loadErrorMessage;
 
     private string docsBaseUrl => DocsLinks.Value.DocsBaseUrl.TrimEnd('/');
 
@@ -51,6 +52,10 @@ public partial class About
         try
         {
             releaseInformation = await ReleaseInformationQuery.GetAsync();
+        }
+        catch (Exception)
+        {
+            loadErrorMessage = "Release information is temporarily unavailable. Try again later.";
         }
         finally
         {

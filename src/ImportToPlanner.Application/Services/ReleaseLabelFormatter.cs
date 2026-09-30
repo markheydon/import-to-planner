@@ -15,9 +15,16 @@ public sealed class ReleaseLabelFormatter
     /// </summary>
     /// <param name="informationalVersion">The assembly informational version (may include build metadata after <c>+</c>).</param>
     /// <param name="policy">Release label policy for the deployment.</param>
+    /// <param name="builtFromOfficialReleaseTag">
+    /// When <see langword="true"/>, the build was produced from an annotated <c>vX.Y.Z</c> tag
+    /// (embedded at build time via assembly metadata).
+    /// </param>
     /// <returns>A normalised deployment release label.</returns>
     [SuppressMessage("Performance", "CA1822:MarkMembersAsStatic", Justification = "Instance service resolved from DI for consistent application composition.")]
-    public DeploymentReleaseLabel Format(string? informationalVersion, ReleaseLabelPolicy policy)
+    public DeploymentReleaseLabel Format(
+        string? informationalVersion,
+        ReleaseLabelPolicy policy,
+        bool builtFromOfficialReleaseTag = false)
     {
         ArgumentNullException.ThrowIfNull(policy);
 
@@ -40,13 +47,20 @@ public sealed class ReleaseLabelFormatter
         }
 
         var hasPreRelease = !string.IsNullOrEmpty(preRelease);
-        var isOfficialReleaseTag = !hasPreRelease && IsStableRelease(coreVersion);
+        var looksLikeStableShipping = !hasPreRelease && IsStableRelease(coreVersion);
+        var isOfficialReleaseTag = false;
 
-        if (!hasPreRelease && !isOfficialReleaseTag && !policy.AllowUnqualifiedShippingLabel)
+        if (looksLikeStableShipping)
         {
-            preRelease = LocalPreReleaseSuffix;
-            hasPreRelease = true;
-            isOfficialReleaseTag = false;
+            if (policy.AllowUnqualifiedShippingLabel || builtFromOfficialReleaseTag)
+            {
+                isOfficialReleaseTag = true;
+            }
+            else
+            {
+                preRelease = LocalPreReleaseSuffix;
+                hasPreRelease = true;
+            }
         }
 
         var normalisedSemVer = hasPreRelease

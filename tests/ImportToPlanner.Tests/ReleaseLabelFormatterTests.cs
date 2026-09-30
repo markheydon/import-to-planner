@@ -11,7 +11,7 @@ public sealed class ReleaseLabelFormatterTests
     [Fact]
     public void Format_OfficialStableVersion_ReturnsVPrefixedDisplayAndOfficialFlag()
     {
-        var label = formatter.Format("1.0.0", DefaultPolicy);
+        var label = formatter.Format("1.0.0", DefaultPolicy, builtFromOfficialReleaseTag: true);
 
         Assert.Equal("v1.0.0", label.DisplayValue);
         Assert.True(label.IsOfficialReleaseTag);
@@ -21,7 +21,7 @@ public sealed class ReleaseLabelFormatterTests
     [Fact]
     public void Format_VPrefixedOfficialTag_StripsPrefixForNormalisedSemVer()
     {
-        var label = formatter.Format("v1.2.3", DefaultPolicy);
+        var label = formatter.Format("v1.2.3", DefaultPolicy, builtFromOfficialReleaseTag: true);
 
         Assert.Equal("v1.2.3", label.DisplayValue);
         Assert.True(label.IsOfficialReleaseTag);
@@ -31,7 +31,7 @@ public sealed class ReleaseLabelFormatterTests
     [Fact]
     public void Format_OfficialTagWithBuildMetadata_KeepsMetadataOnNormalisedSemVer()
     {
-        var label = formatter.Format("1.0.0+abc1234", DefaultPolicy);
+        var label = formatter.Format("1.0.0+abc1234", DefaultPolicy, builtFromOfficialReleaseTag: true);
 
         Assert.Equal("v1.0.0", label.DisplayValue);
         Assert.True(label.IsOfficialReleaseTag);
@@ -110,6 +110,16 @@ public sealed class ReleaseLabelFormatterTests
 
         Assert.Equal("1.0.0-ci.42", label.DisplayValue);
         Assert.False(label.IsOfficialReleaseTag);
+    }
+
+    [Fact]
+    public void Format_StableWithoutPreRelease_DefaultPolicy_AppendsLocalPreRelease()
+    {
+        var label = formatter.Format("1.0.0", DefaultPolicy);
+
+        Assert.Equal("1.0.0-local", label.DisplayValue);
+        Assert.False(label.IsOfficialReleaseTag);
+        Assert.Equal("1.0.0-local", label.NormalisedSemVer);
     }
 
     [Fact]

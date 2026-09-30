@@ -18,4 +18,9 @@ public sealed class ReleaseLabelPolicy
     /// Gets or sets an optional diagnostic environment name (for example Staging or Production).
     /// </summary>
     public string? EnvironmentName { get; init; }
+
+    /// <summary>
+    /// Gets or sets an optional URL template for source revision links on About; use <c>{0}</c> for the commit SHA.
+    /// </summary>
+    public string? SourceRevisionUrlTemplate { get; init; }
 }

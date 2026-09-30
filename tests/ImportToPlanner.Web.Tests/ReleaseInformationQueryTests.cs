@@ -28,7 +28,8 @@ public sealed class ReleaseInformationQueryTests
         var informationalVersion = typeof(ReleaseInformationQuery).Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion;
-        var expectedLabel = formatter.Format(informationalVersion, policy);
+        var builtFromOfficialReleaseTag = ReadBuiltFromOfficialReleaseTag(typeof(ReleaseInformationQuery).Assembly);
+        var expectedLabel = formatter.Format(informationalVersion, policy, builtFromOfficialReleaseTag);
 
         var result = await query.GetAsync(TestContext.Current.CancellationToken);
 
@@ -39,7 +40,7 @@ public sealed class ReleaseInformationQueryTests
     public async Task GetAsync_BuildMetadataMatchesAssemblyMetadataAttributes()
     {
         var query = CreateQuery();
-        var expectedMetadata = ReadBuildMetadataFromAssembly(typeof(ReleaseInformationQuery).Assembly);
+        var expectedMetadata = ReadBuildMetadataFromAssembly(typeof(ReleaseInformationQuery).Assembly, new ReleaseLabelPolicy());
 
         var result = await query.GetAsync(TestContext.Current.CancellationToken);
 
@@ -58,11 +59,22 @@ public sealed class ReleaseInformationQueryTests
     }
 
     [Fact]
+    public async Task GetAsync_WhenEnvironmentNameConfigured_ReturnsDeploymentEnvironmentName()
+    {
+        var policy = new ReleaseLabelPolicy { EnvironmentName = " Staging " };
+        var query = CreateQuery(policy);
+
+        var result = await query.GetAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("Staging", result.DeploymentEnvironmentName);
+    }
+
+    [Fact]
     public void ReadBuildMetadata_WhenNoMetadataAttributes_ReturnsNull()
     {
         var assembly = CreateAssemblyWithMetadata();
 
-        var metadata = ReadBuildMetadataFromAssembly(assembly);
+        var metadata = ReadBuildMetadataFromAssembly(assembly, new ReleaseLabelPolicy());
 
         Assert.Null(metadata);
     }
@@ -72,7 +84,7 @@ public sealed class ReleaseInformationQueryTests
     {
         var assembly = CreateAssemblyWithMetadata(("SourceRevisionId", "abc1234"));
 
-        var metadata = ReadBuildMetadataFromAssembly(assembly);
+        var metadata = ReadBuildMetadataFromAssembly(assembly, new ReleaseLabelPolicy());
 
         Assert.NotNull(metadata);
         Assert.Equal("abc1234", metadata.SourceRevisionId);
@@ -85,7 +97,7 @@ public sealed class ReleaseInformationQueryTests
     {
         var assembly = CreateAssemblyWithMetadata(("SourceRevisionId", "0123456789abcdef"));
 
-        var metadata = ReadBuildMetadataFromAssembly(assembly);
+        var metadata = ReadBuildMetadataFromAssembly(assembly, new ReleaseLabelPolicy());
 
         Assert.NotNull(metadata);
         Assert.Equal("0123456789ab", metadata.SourceRevisionId);
@@ -96,7 +108,7 @@ public sealed class ReleaseInformationQueryTests
     {
         var assembly = CreateAssemblyWithMetadata(("BuildTimestampUtc", "2026-09-30T12:00:00Z"));
 
-        var metadata = ReadBuildMetadataFromAssembly(assembly);
+        var metadata = ReadBuildMetadataFromAssembly(assembly, new ReleaseLabelPolicy());
 
         Assert.NotNull(metadata);
         Assert.Equal(new DateTimeOffset(2026, 9, 30, 12, 0, 0, TimeSpan.Zero), metadata.BuiltAtUtc);
@@ -110,7 +122,7 @@ public sealed class ReleaseInformationQueryTests
             ("SourceRevisionId", "deadbeef"),
             ("BuildTimestampUtc", "2026-09-30T08:15:30Z"));
 
-        var metadata = ReadBuildMetadataFromAssembly(assembly);
+        var metadata = ReadBuildMetadataFromAssembly(assembly, new ReleaseLabelPolicy());
 
         Assert.NotNull(metadata);
         Assert.Equal("deadbeef", metadata.SourceRevisionId);
@@ -125,11 +137,27 @@ public sealed class ReleaseInformationQueryTests
             ("SourceRevisionId", "cafebabe"),
             ("BuildTimestampUtc", "not-a-timestamp"));
 
-        var metadata = ReadBuildMetadataFromAssembly(assembly);
+        var metadata = ReadBuildMetadataFromAssembly(assembly, new ReleaseLabelPolicy());
 
         Assert.NotNull(metadata);
         Assert.Equal("cafebabe", metadata.SourceRevisionId);
         Assert.Null(metadata.BuiltAtUtc);
+    }
+
+    [Fact]
+    public void ReadBuildMetadata_WhenSourceRevisionUrlTemplateConfigured_BuildsCommitLink()
+    {
+        var assembly = CreateAssemblyWithMetadata(("SourceRevisionId", "0123456789abcdef"));
+        var policy = new ReleaseLabelPolicy
+        {
+            SourceRevisionUrlTemplate = "https://example.test/repo/commit/{0}",
+        };
+
+        var metadata = ReadBuildMetadataFromAssembly(assembly, policy);
+
+        Assert.NotNull(metadata);
+        Assert.Equal("0123456789ab", metadata.SourceRevisionId);
+        Assert.Equal("https://example.test/repo/commit/0123456789abcdef", metadata.SourceRevisionUrl);
     }
 
     private static ReleaseInformationQuery CreateQuery(ReleaseLabelPolicy? policy = null)
@@ -139,14 +167,24 @@ public sealed class ReleaseInformationQueryTests
         return new ReleaseInformationQuery(formatter, Options.Create(policy));
     }
 
-    private static BuildMetadata? ReadBuildMetadataFromAssembly(Assembly assembly)
+    private static BuildMetadata? ReadBuildMetadataFromAssembly(Assembly assembly, ReleaseLabelPolicy policy)
     {
         var method = typeof(ReleaseInformationQuery).GetMethod(
             "ReadBuildMetadata",
             BindingFlags.NonPublic | BindingFlags.Static);
         Assert.NotNull(method);
 
-        return (BuildMetadata?)method.Invoke(null, [assembly]);
+        return (BuildMetadata?)method.Invoke(null, [assembly, policy]);
+    }
+
+    private static bool ReadBuiltFromOfficialReleaseTag(Assembly assembly)
+    {
+        var method = typeof(ReleaseInformationQuery).GetMethod(
+            "ReadBuiltFromOfficialReleaseTag",
+            BindingFlags.NonPublic | BindingFlags.Static);
+        Assert.NotNull(method);
+
+        return (bool)method.Invoke(null, [assembly])!;
     }
 
     private static AssemblyBuilder CreateAssemblyWithMetadata(params (string Key, string Value)[] metadata)

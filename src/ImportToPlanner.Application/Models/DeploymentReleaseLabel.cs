@@ -10,7 +10,7 @@ namespace ImportToPlanner.Application.Models;
 /// an unqualified shipping label.
 /// </param>
 /// <param name="IsOfficialReleaseTag">
-/// Whether the deployment was built from an annotated <c>vX.Y.Z</c> tag.
+/// Whether the deployment presents an official annotated <c>vX.Y.Z</c> shipping label (tag build or explicit policy).
 /// </param>
 /// <param name="NormalisedSemVer">
 /// Parsed SemVer without a leading <c>v</c> where applicable, for comparisons.

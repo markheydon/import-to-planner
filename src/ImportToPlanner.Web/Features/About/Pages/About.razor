@@ -26,6 +26,10 @@
         {
             <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
         }
+        else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error">@loadErrorMessage</MudAlert>
+        }
         else if (releaseInformation is not null)
         {
             <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
@@ -37,6 +41,13 @@
                                 <th>Release</th>
                                 <td>@releaseInformation.ReleaseLabel.DisplayValue</td>
                             </tr>
+                            @if (!string.IsNullOrWhiteSpace(releaseInformation.DeploymentEnvironmentName))
+                            {
+                                <tr>
+                                    <th>Environment</th>
+                                    <td>@releaseInformation.DeploymentEnvironmentName</td>
+                                </tr>
+                            }
                             @if (releaseInformation.BuildMetadata?.BuiltAtUtc is not null)
                             {
                                 <tr>
