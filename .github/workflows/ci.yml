@@ -54,22 +54,42 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
+      - name: Set CI build metadata
+        shell: bash
+        run: echo "BUILD_TIMESTAMP_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$GITHUB_ENV"
+
       - name: Restore dependencies
-        run: dotnet restore ImportToPlanner.slnx
+        run: >
+          dotnet restore ImportToPlanner.slnx
+          /p:ContinuousIntegrationBuild=true
+          /p:SourceRevisionId=${{ github.sha }}
+          /p:BuildTimestampUtc=${{ env.BUILD_TIMESTAMP_UTC }}
 
       - name: Verify formatting
         run: dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 
       - name: Build solution
-        run: dotnet build ImportToPlanner.slnx --no-restore
+        run: >
+          dotnet build ImportToPlanner.slnx --no-restore
+          /p:ContinuousIntegrationBuild=true
+          /p:SourceRevisionId=${{ github.sha }}
+          /p:BuildTimestampUtc=${{ env.BUILD_TIMESTAMP_UTC }}
 
       - name: Run tests
         run: |
-          dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --no-build --verbosity normal
-          dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj --no-build --verbosity normal
+          dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --no-build --verbosity normal \
+            /p:ContinuousIntegrationBuild=true \
+            /p:SourceRevisionId=${{ github.sha }} \
+            /p:BuildTimestampUtc=${{ env.BUILD_TIMESTAMP_UTC }}
+          dotnet test tests/ImportToPlanner.Web.Tests/ImportToPlanner.Web.Tests.csproj --no-build --verbosity normal \
+            /p:ContinuousIntegrationBuild=true \
+            /p:SourceRevisionId=${{ github.sha }} \
+            /p:BuildTimestampUtc=${{ env.BUILD_TIMESTAMP_UTC }}

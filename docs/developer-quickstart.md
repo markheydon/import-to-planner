@@ -114,6 +114,50 @@ Production publishes only on `v*` tags via GitHub Actions — see `docs/release-
 
 Native Hugo installs are optional; container scripts are the supported contributor path.
 
+## Build metadata (in-app About, FR-004)
+
+The signed-in **About** page can show optional support context (UTC build time and source
+revision) in addition to the MinVer release label. These fields are **optional**: when a
+property is not set at build time, About omits that row rather than showing placeholders.
+
+`Directory.Build.props` embeds values into assembly metadata when the corresponding MSBuild
+property is non-empty:
+
+| MSBuild property | Purpose |
+| --- | --- |
+| `SourceRevisionId` | Git commit SHA (short or full) built into the app |
+| `BuildTimestampUtc` | UTC build timestamp (ISO-8601 string, for example `2026-09-30T12:00:00Z`) |
+| `ContinuousIntegrationBuild` | Set to `true` in CI or publish pipelines so tooling treats the build as deterministic CI output (recommended alongside the properties above) |
+| `OfficialReleaseBuild` | Set to `true` only when building from an annotated `vX.Y.Z` tag so About may show the shipping label (for example `v1.0.0`); leave unset on local, PR, CI, and staging builds |
+
+Example local build with metadata (for validating About diagnostics):
+
+```bash
+dotnet build ImportToPlanner.slnx \
+  /p:SourceRevisionId="$(git rev-parse --short HEAD)" \
+  /p:BuildTimestampUtc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+  /p:ContinuousIntegrationBuild=true
+```
+
+Example tagged production build (after checking out `vX.Y.Z`):
+
+```bash
+dotnet build ImportToPlanner.slnx \
+  /p:OfficialReleaseBuild=true \
+  /p:SourceRevisionId="$(git rev-parse HEAD)" \
+  /p:BuildTimestampUtc="$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+  /p:ContinuousIntegrationBuild=true
+```
+
+Ordinary contributor builds without these properties still produce an honest pre-release
+release label from MinVer; only the optional About rows stay hidden.
+
+**Release label vs staging:** Application builds on `main`, pull requests, and staging use
+MinVer pre-release identifiers (not an unqualified shipping tag). The live public Hugo site
+continues to show the last **`v*`** tag until the next tagged release cut. For tagging,
+deploy order, and verification, see [Public site and application release runbook](release-runbook.md)
+(especially [SemVer tagging and deploy](release-runbook.md#semver-tagging-and-deploy)).
+
 ## Public vs internal documentation split
 
 - `website/` and `https://docs.importplanner.app` are public end-user guides (Hugo).

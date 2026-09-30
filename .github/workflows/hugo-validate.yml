@@ -6,6 +6,7 @@ on:
     paths:
       - "website/**"
       - "scripts/verify-import-workflow-screenshots.sh"
+      - "scripts/verify-guide-release-applicability.sh"
       - "docs/release-runbook.md"
       - ".github/workflows/hugo-build.yml"
       - ".github/workflows/hugo-validate.yml"

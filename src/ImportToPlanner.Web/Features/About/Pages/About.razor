@@ -1,0 +1,92 @@
+@page "/about"
+
+<PageTitle>About Import To Planner</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+    <MudStack Spacing="3">
+        <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h3" HtmlTag="h1">About Import To Planner</MudText>
+                <MudText Typo="Typo.body2">
+                    Product information and links to documentation, legal pages, and support.
+                </MudText>
+            </MudStack>
+        </MudPaper>
+
+        @if (showSignInPrompt)
+        {
+            <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body1">Sign in to view release information for this deployment.</MudText>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="OnSignInClicked">Sign in</MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+        else if (isBusy)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+        }
+        else if (!string.IsNullOrWhiteSpace(loadErrorMessage))
+        {
+            <MudAlert Severity="Severity.Error">@loadErrorMessage</MudAlert>
+        }
+        else if (releaseInformation is not null)
+        {
+            <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">@releaseInformation.ProductName</MudText>
+                    <MudSimpleTable Dense="true" Elevation="0">
+                        <tbody>
+                            <tr>
+                                <th>Release</th>
+                                <td>@releaseInformation.ReleaseLabel.DisplayValue</td>
+                            </tr>
+                            @if (!string.IsNullOrWhiteSpace(releaseInformation.DeploymentEnvironmentName))
+                            {
+                                <tr>
+                                    <th>Environment</th>
+                                    <td>@releaseInformation.DeploymentEnvironmentName</td>
+                                </tr>
+                            }
+                            @if (releaseInformation.BuildMetadata?.BuiltAtUtc is not null)
+                            {
+                                <tr>
+                                    <th>Built (UTC)</th>
+                                    <td>@releaseInformation.BuildMetadata.BuiltAtUtc.Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", System.Globalization.CultureInfo.InvariantCulture)</td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(releaseInformation.BuildMetadata?.SourceRevisionId))
+                            {
+                                <tr>
+                                    <th>Source revision</th>
+                                    <td>
+                                        @if (!string.IsNullOrWhiteSpace(releaseInformation.BuildMetadata.SourceRevisionUrl))
+                                        {
+                                            <MudLink Href="@releaseInformation.BuildMetadata.SourceRevisionUrl" Target="_blank">@releaseInformation.BuildMetadata.SourceRevisionId</MudLink>
+                                        }
+                                        else
+                                        {
+                                            @releaseInformation.BuildMetadata.SourceRevisionId
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudStack>
+            </MudPaper>
+
+            <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">Documentation and support</MudText>
+                    <MudStack Spacing="1">
+                        <MudLink Href="@docsHomeUrl" Target="_blank">Documentation</MudLink>
+                        <MudLink Href="@termsUrl" Target="_blank">Terms of use</MudLink>
+                        <MudLink Href="@privacyUrl" Target="_blank">Privacy and security</MudLink>
+                        <MudLink Href="@supportUrl" Target="_blank">Support</MudLink>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        }
+    </MudStack>
+</MudContainer>

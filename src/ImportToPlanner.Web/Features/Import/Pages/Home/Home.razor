@@ -4,6 +4,7 @@
 @using ImportToPlanner.Commercial.Abstractions
 @using ImportToPlanner.Web.Features.Import.Presenters
 @using ImportToPlanner.Web.Features.Import.Workflows
+@using ImportToPlanner.Web.Components.Layout
 @using ImportToPlanner.Web.Features.Authentication
 @using Microsoft.AspNetCore.WebUtilities
 @inject ImportWorkflowCoordinator WorkflowCoordinator
@@ -68,6 +69,7 @@
                                         }
                                     </MudStack>
                                     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="0">
+                                        <ImportWorkflowHelpMenu />
                                         @RenderThemeMenu()
                                         @if (CommercialModeOptions.Enabled)
                                         {
@@ -84,6 +86,7 @@
                             </Authorized>
                             <NotAuthorized>
                                 <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                    <ImportWorkflowHelpMenu />
                                     @RenderThemeMenu()
                                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" OnClick="OnSignInClicked">Sign in</MudButton>
                                 </MudStack>

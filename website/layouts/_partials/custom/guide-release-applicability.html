@@ -1,0 +1,16 @@
+{{- $version := site.Params.releaseVersion | default "unreleased" -}}
+<aside
+  class="guide-release-applicability hx:my-4 hx:rounded-lg hx:border hx:border-gray-200 hx:bg-gray-50 hx:px-4 hx:py-3 hx:text-sm hx:text-gray-700 hx:dark:border-neutral-700 hx:dark:bg-neutral-900/50 hx:dark:text-gray-300"
+  aria-label="Guide release applicability"
+  data-release-version="{{ $version }}"
+>
+  {{- if eq $version "unreleased" }}
+  <p class="hx:m-0">
+    This user guide build is unreleased (not a production site tag).
+  </p>
+  {{- else }}
+  <p class="hx:m-0">
+    This user guide applies to product release {{ $version }}.
+  </p>
+  {{- end }}
+</aside>

@@ -85,6 +85,9 @@ jobs:
             hugo build --gc --minify --cacheDir "${{ runner.temp }}/.cache/hugo"
           fi
 
+      - name: Verify guide release applicability
+        run: ./scripts/verify-guide-release-applicability.sh --skip-build
+
       - name: Verify published routes
         working-directory: website
         run: |

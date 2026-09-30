@@ -30,6 +30,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
+          fetch-depth: 0
           ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.ref }}
 
       - name: Verify deploy commit is current main tip
@@ -52,14 +53,35 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Set deployment build metadata
+        shell: bash
+        run: echo "BUILD_TIMESTAMP_UTC=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> "$GITHUB_ENV"
+
+      - name: Write MSBuild metadata for aspire deploy
+        shell: bash
+        run: |
+          cat > Directory.Build.metadata.props <<EOF
+          <Project>
+            <PropertyGroup>
+              <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+              <SourceRevisionId>${{ github.sha }}</SourceRevisionId>
+              <BuildTimestampUtc>${{ env.BUILD_TIMESTAMP_UTC }}</BuildTimestampUtc>
+            </PropertyGroup>
+          </Project>
+          EOF
+
       - name: Restore dependencies
-        run: dotnet restore ImportToPlanner.slnx
+        run: >
+          dotnet restore ImportToPlanner.slnx
+          /p:ContinuousIntegrationBuild=true
+          /p:SourceRevisionId=${{ github.sha }}
+          /p:BuildTimestampUtc=${{ env.BUILD_TIMESTAMP_UTC }}
 
       - name: Install Aspire CLI
         shell: bash
         run: |
-          dotnet tool install --global aspire.cli --version 13.5.3 \
-            || dotnet tool update --global aspire.cli --version 13.5.3
+          dotnet tool install --global aspire.cli --version 13.6.0 \
+            || dotnet tool update --global aspire.cli --version 13.6.0
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
           aspire --version
 

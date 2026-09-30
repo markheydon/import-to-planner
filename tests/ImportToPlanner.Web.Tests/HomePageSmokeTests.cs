@@ -18,7 +18,8 @@ public sealed class HomePageSmokeTests
         var cut = ctx.Render<Home>();
 
         // Assert
-        var themeMenu = cut.FindComponent<MudMenu>();
+        var themeMenu = cut.FindComponents<MudMenu>()
+            .Single(menu => string.Equals(menu.Instance.AriaLabel, "Theme mode", StringComparison.Ordinal));
         Assert.True(themeMenu.Instance.Disabled);
     }
 

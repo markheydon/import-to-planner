@@ -4,6 +4,8 @@ title: Import workflow
 
 This guide explains the five-step import journey from selection to final report.
 
+{{< guide-release-applicability >}}
+
 ## Step 1: Select group
 
 Choose the Microsoft 365 group where the destination plan lives.
