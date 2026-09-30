@@ -17,5 +17,6 @@ replacing it. Adds internal About navigation requirements from FR-002.
 
 - External URLs on About MUST remain identical to footer external links for the same
   `DocsBaseUrl`.
-- Two-click reachability for terms, privacy, and support (SC-002 from spec 017) MUST remain
-  satisfied after adding About links.
+- Two-click reachability for terms, privacy, and support (spec **017** success criterion for
+  external link reachability — not spec 018 SC-002 three-way release match) MUST remain satisfied
+  after adding About links.

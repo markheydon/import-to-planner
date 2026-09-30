@@ -19,6 +19,7 @@
 - Q: For non-tag builds, what release label should About show? → A: Full SemVer string including pre-release identifiers derived from git/build metadata (not a bare shipping tag).
 - Q: For public user guide “applies to release X” (FR-007), what is in scope for this feature versus spec 017? → A: Close any remaining public-site gaps so users can see which release the guide applies to, in addition to in-app About and the release runbook.
 - Q: Where must signed-in users open About from—footer, help, or both? → A: Both footer and help MUST link to the About page wherever those shell regions exist.
+- Q: Where does the Help menu live when only the import home route exists? → A: Shared Help component under layout chrome, hosted on `Home.razor` (`/`) today; any future import workflow routes MUST reuse it. Footer About stays on `MainLayout` and may be visible unsigned (sign-in gate on `/about`).
 
 ## User Scenarios & Testing *(mandatory)*
 

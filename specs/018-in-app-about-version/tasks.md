@@ -32,8 +32,8 @@ description: "Task list for in-app About page and release version alignment"
 
 **Purpose**: Wire MinVer (or equivalent) at repo root so assembly versions align with `vX.Y.Z` tags (FR-001).
 
-- [ ] T001 Add MinVer package reference and `MinVerTagPrefix` (`v`) in `Directory.Build.props` per `research.md` Decision 1
-- [ ] T002 [P] Document optional MSBuild properties `SourceRevisionId`, `ContinuousIntegrationBuild`, and UTC build timestamp injection in `docs/developer-quickstart.md` (build metadata section for FR-004)
+- [x] T001 Add MinVer package reference and `MinVerTagPrefix` (`v`) in `Directory.Build.props` per `research.md` Decision 1
+- [x] T002 [P] Document optional MSBuild properties `SourceRevisionId`, `ContinuousIntegrationBuild`, and UTC build timestamp injection in `docs/developer-quickstart.md` (build metadata section for FR-004); cross-link to the release/staging narrative in T020 (`docs/release-runbook.md` or same quickstart)
 
 ---
 
@@ -43,13 +43,14 @@ description: "Task list for in-app About page and release version alignment"
 
 **⚠️ CRITICAL**: No user story implementation should merge until this phase is complete.
 
-- [ ] T003 [P] Add `DeploymentReleaseLabel`, `BuildMetadata`, and `ReleaseInformation` types in `src/ImportToPlanner.Application/Models/` per `data-model.md` field and validation rules (official tag `DisplayValue` matches tag; non-tag `DisplayValue` MUST include pre-release identifiers; `AllowUnqualifiedShippingLabel` default `false`)
-- [ ] T004 [P] Add `ReleaseLabelPolicy` options type (default `AllowUnqualifiedShippingLabel: false`) and configuration section binding in `src/ImportToPlanner.Application/` (new options class + `appsettings` schema comment in `src/ImportToPlanner.Web/appsettings.json`)
-- [ ] T005 Add `IReleaseInformationQuery` in `src/ImportToPlanner.Application/Abstractions/IReleaseInformationQuery.cs` returning `ReleaseInformation` per `contracts/release-version-contract.md`
-- [ ] T006 Implement `ReleaseLabelFormatter` (or equivalent normaliser) in `src/ImportToPlanner.Application/Services/ReleaseLabelFormatter.cs` enforcing FR-005: tagged builds match tag; non-tag builds full SemVer with pre-release identifiers; no unqualified shipping label unless `ReleaseLabelPolicy.AllowUnqualifiedShippingLabel` is true
-- [ ] T007 [P] Add unit tests in `tests/ImportToPlanner.Tests/ReleaseLabelFormatterTests.cs` for official tag input, pre-release/non-tag input, missing-tag/shallow behaviour, and policy flag edge cases per FR-010 and `contracts/release-version-contract.md`
-- [ ] T008 Implement `ReleaseInformationQuery` adapter in `src/ImportToPlanner.Web/Infrastructure/ReleaseInformationQuery.cs` reading `AssemblyInformationalVersion` / custom assembly metadata and optional build properties; map through `ReleaseLabelFormatter`
-- [ ] T009 Register `IReleaseInformationQuery`, `ReleaseLabelFormatter`, and `ReleaseLabelPolicy` options in `src/ImportToPlanner.Application/DependencyInjection.cs` and Web host composition (`src/ImportToPlanner.Web/ImportToPlannerWebHost.cs` or existing DI extension)
+- [x] T003 [P] Add `DeploymentReleaseLabel`, `BuildMetadata`, and `ReleaseInformation` types in `src/ImportToPlanner.Application/Models/` per `data-model.md` field and validation rules (official tag `DisplayValue` matches tag; non-tag `DisplayValue` MUST include pre-release identifiers; `AllowUnqualifiedShippingLabel` default `false`)
+- [x] T004 [P] Add `ReleaseLabelPolicy` options type (default `AllowUnqualifiedShippingLabel: false`) and configuration section binding in `src/ImportToPlanner.Application/` (new options class + `appsettings` schema comment in `src/ImportToPlanner.Web/appsettings.json`)
+- [x] T005 Add `IReleaseInformationQuery` in `src/ImportToPlanner.Application/Abstractions/IReleaseInformationQuery.cs` returning `ReleaseInformation` per `contracts/release-version-contract.md`
+- [x] T006 Implement `ReleaseLabelFormatter` (or equivalent normaliser) in `src/ImportToPlanner.Application/Services/ReleaseLabelFormatter.cs` enforcing FR-005: tagged builds match tag; non-tag builds full SemVer with pre-release identifiers; no unqualified shipping label unless `ReleaseLabelPolicy.AllowUnqualifiedShippingLabel` is true
+- [x] T007 [P] Add unit tests in `tests/ImportToPlanner.Tests/ReleaseLabelFormatterTests.cs` for official tag input, pre-release/non-tag input, missing-tag/shallow behaviour, and policy flag edge cases per FR-010 and `contracts/release-version-contract.md`
+- [x] T008 Implement `ReleaseInformationQuery` adapter in `src/ImportToPlanner.Web/Infrastructure/ReleaseInformationQuery.cs` reading `AssemblyInformationalVersion` / custom assembly metadata and optional build properties; map through `ReleaseLabelFormatter`
+- [x] T008b [P] Add unit tests in `tests/ImportToPlanner.Web.Tests/ReleaseInformationQueryTests.cs` for assembly informational version and optional build metadata mapping into `ReleaseInformation` (FR-010; complements formatter tests in T007)
+- [x] T009 Register `ReleaseLabelFormatter` and `ReleaseLabelPolicy` options in `src/ImportToPlanner.Application/DependencyInjection.cs` only (no Web project references). Register `IReleaseInformationQuery` → `ReleaseInformationQuery` in Web host composition (`src/ImportToPlanner.Web/ImportToPlannerWebHost.cs` or existing Web DI extension) per dependency rule I
 
 **Checkpoint**: `dotnet test tests/ImportToPlanner.Tests/ImportToPlanner.Tests.csproj --filter "FullyQualifiedName~Release"` passes; query resolves labels on local build.
 
@@ -63,11 +64,11 @@ description: "Task list for in-app About page and release version alignment"
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Create `src/ImportToPlanner.Web/Features/About/Pages/About.razor` at route `/about` with `h1` product title, release label row, and sign-in prompt pattern aligned with `Profile.razor` / `Profile.razor.cs` (unsigned users MUST NOT see release content; no modal dialog)
-- [ ] T011 [US1] Add `About.razor.cs` injecting `IReleaseInformationQuery`, `IOptions<DocsExternalLinksOptions>`, and auth services; assemble UK English copy in the presenter/code-behind per `contracts/about-page-ui-contract.md`
-- [ ] T012 [P] [US1] Add internal About `MudLink` with `Href="/about"` in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor` footer row alongside Documentation, Terms, Privacy, and Support
-- [ ] T013 [US1] Add Help `MudMenu` (or equivalent) on `src/ImportToPlanner.Web/Features/Import/Pages/Home/Home.razor` listing Documentation (external), Support (external), and About (`/about`); unsigned About selection routes through sign-in per `contracts/app-external-links-amendment.md`
-- [ ] T014 [P] [US1] Add bUnit tests in `tests/ImportToPlanner.Web.Tests/AboutPageTests.cs` for unsigned sign-in prompt, signed-in release label visibility, and external link hrefs matching `DocsExternalLinksOptions` paths (`/`, `/terms`, `/privacy-and-security`, `/support`)
+- [x] T010 [US1] Create `src/ImportToPlanner.Web/Features/About/Pages/About.razor` at route `/about` with `h1` product title, release label row, and sign-in prompt pattern aligned with `Profile.razor` / `Profile.razor.cs` (unsigned users MUST NOT see release content; no modal dialog)
+- [x] T011 [US1] Add `About.razor.cs` injecting `IReleaseInformationQuery`, `IOptions<DocsExternalLinksOptions>`, and auth services; assemble UK English copy in the presenter/code-behind per `contracts/about-page-ui-contract.md`
+- [x] T012 [P] [US1] Add internal About `MudLink` with `Href="/about"` in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor` footer row alongside Documentation, Terms, Privacy, and Support (MAY remain visible unsigned; `/about` gates content via sign-in prompt per `contracts/about-page-ui-contract.md`)
+- [x] T013 [US1] Add shared `ImportWorkflowHelpMenu.razor` under `src/ImportToPlanner.Web/Components/Layout/` (`MudMenu` with Documentation, Support, About) and render it from `src/ImportToPlanner.Web/Features/Import/Pages/Home/Home.razor` (`/` — sole import workflow route today); unsigned About selection MUST route through sign-in before content (Help path), not bypass auth
+- [x] T014 [P] [US1] Add bUnit tests in `tests/ImportToPlanner.Web.Tests/AboutPageTests.cs` for unsigned sign-in prompt, signed-in release label visibility, external link hrefs matching `DocsExternalLinksOptions` paths (`/`, `/terms`, `/privacy-and-security`, `/support`), and accessibility structure (`h1` product title; primary links are focusable anchors)
 
 **Checkpoint**: Signed-in user reaches About from footer and Help within three actions from `/` (SC-001); non-tag local build shows pre-release SemVer, not bare `v1.0.0` (SC-003).
 
@@ -81,11 +82,13 @@ description: "Task list for in-app About page and release version alignment"
 
 ### Implementation for User Story 2
 
-- [ ] T015 [P] [US2] Create `website/layouts/_partials/custom/guide-release-applicability.html` with UK English applicability copy for tagged (`ReleaseVersionLabel`) and `unreleased` builds per `data-model.md` `PublicGuideReleaseContext`
-- [ ] T016 [P] [US2] Include the partial above the fold in `website/content/_index.md` (landing hero region)
-- [ ] T017 [US2] Include the same partial above the fold in `website/content/import-workflow.md` intro section
+- [x] T015 [P] [US2] Create `website/layouts/_partials/custom/guide-release-applicability.html` with UK English applicability copy for tagged (`ReleaseVersionLabel`) and `unreleased` builds per `data-model.md` `PublicGuideReleaseContext`
+- [x] T016 [P] [US2] Include the partial above the fold in `website/content/_index.md` (landing hero region)
+- [x] T017 [US2] Include the same partial above the fold in `website/content/import-workflow.md` intro section
 
-**Checkpoint**: `./scripts/invoke-hugo-site.sh build` output shows consistent version on footer partial and both guide entry surfaces.
+- [x] T029 [P] [US2] Add `scripts/verify-guide-release-applicability.sh` (build via `invoke-hugo-site.sh`, assert landing and `import-workflow` HTML expose the same `releaseVersion` value as the footer partial) and register it in `.github/workflows/hugo-validate.yml` paths/job steps (FR-007, constitution VI)
+
+**Checkpoint**: `./scripts/invoke-hugo-site.sh build` output shows consistent version on footer partial and both guide entry surfaces; `verify-guide-release-applicability.sh` passes locally and in Hugo validate CI.
 
 ---
 
@@ -97,9 +100,9 @@ description: "Task list for in-app About page and release version alignment"
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Extend `docs/release-runbook.md` with ordered steps: changelog → annotated `vX.Y.Z` tag → Hugo deploy verification → **application** deploy from the same tag (hosted ACA + self-hosted image/tag notes) per `research.md` Decision 7
-- [ ] T019 [US3] Add `ReleaseVerificationChecklist` template table in `docs/release-runbook.md` with fields `TagName`, `PublicSiteLabel`, `InAppAboutLabel`, `VerifiedAtUtc`, `Verifier`, `Result` (Pass | Fail); document normalisation of `v` prefix for comparisons per `data-model.md`
-- [ ] T020 [P] [US3] Add contributor subsection in `docs/release-runbook.md` or `docs/developer-quickstart.md` explaining how local, CI, staging, and tagged production builds derive version strings (MinVer pre-release vs official tag)
+- [x] T018 [US3] Extend `docs/release-runbook.md` with ordered steps: changelog → annotated `vX.Y.Z` tag → Hugo deploy verification → **application** deploy from the **same** tag (hosted ACA production release path + documented self-hosted image/tag publish) so FR-006 three-way label parity is achievable at cut time; staging on `main` remains pre-release until the next tag per `research.md` Decision 7
+- [x] T019 [US3] Add `ReleaseVerificationChecklist` template table in `docs/release-runbook.md` with fields `TagName`, `PublicSiteLabel`, `InAppAboutLabel`, `VerifiedAtUtc`, `Verifier`, `Result` (Pass | Fail); document normalisation of `v` prefix for comparisons per `data-model.md`
+- [x] T020 [P] [US3] Add contributor subsection in `docs/release-runbook.md` (or `docs/developer-quickstart.md` if runbook is already long) explaining how local, CI, staging, and tagged production builds derive version strings (MinVer pre-release vs official tag); cross-link MSBuild metadata properties documented in T002
 
 **Checkpoint**: New contributor can read runbook and explain staging pre-release labels vs tagged production.
 
@@ -113,10 +116,10 @@ description: "Task list for in-app About page and release version alignment"
 
 ### Implementation for User Story 4
 
-- [ ] T021 [US4] Extend `ReleaseInformationQuery` in `src/ImportToPlanner.Web/Infrastructure/ReleaseInformationQuery.cs` to populate `BuildMetadata` (`BuiltAtUtc`, `SourceRevisionId`, optional `SourceRevisionUrl`) only when build/CI provides values; MUST NOT include tenant ids or secrets
-- [ ] T022 [US4] Render optional build metadata rows in `src/ImportToPlanner.Web/Features/About/Pages/About.razor` (UTC labelled, short SHA; optional commit link when URL template configured); omit entire rows when fields are null per `contracts/about-page-ui-contract.md`
-- [ ] T023 [P] [US4] Pass `SourceRevisionId` and CI build timestamp MSBuild properties in `.github/workflows/ci.yml` (and staging deploy workflow if applicable) per `research.md` Decision 5
-- [ ] T024 [P] [US4] Extend `tests/ImportToPlanner.Web.Tests/AboutPageTests.cs` to assert metadata rows appear only when query returns populated `BuildMetadata`
+- [x] T021 [US4] Extend `ReleaseInformationQuery` in `src/ImportToPlanner.Web/Infrastructure/ReleaseInformationQuery.cs` to populate `BuildMetadata` (`BuiltAtUtc`, `SourceRevisionId`, optional `SourceRevisionUrl`) only when build/CI provides values; MUST NOT include tenant ids or secrets
+- [x] T022 [US4] Render optional build metadata rows in `src/ImportToPlanner.Web/Features/About/Pages/About.razor` (UTC labelled, short SHA; optional commit link when URL template configured); omit entire rows when fields are null per `contracts/about-page-ui-contract.md`
+- [x] T023 [P] [US4] Pass `SourceRevisionId` and CI build timestamp MSBuild properties in `.github/workflows/ci.yml` (and staging deploy workflow if applicable) per `research.md` Decision 5
+- [x] T024 [P] [US4] Extend `tests/ImportToPlanner.Web.Tests/AboutPageTests.cs` to assert metadata rows appear only when query returns populated `BuildMetadata`
 
 **Checkpoint**: About always shows release label; metadata is additive and honest.
 
@@ -126,10 +129,10 @@ description: "Task list for in-app About page and release version alignment"
 
 **Purpose**: FR-008 link parity, accessibility, format gate, quickstart validation.
 
-- [ ] T025 [P] Verify About external links reuse the same URL composition as `MainLayout.razor.cs` / `DocsExternalLinksOptions` in `src/ImportToPlanner.Web/Features/About/Pages/About.razor.cs` (no `{DocsBaseUrl}/about`)
-- [ ] T026 [P] Keyboard/heading accessibility pass on About page (`h1` title, MudBlazor patterns) per `contracts/about-page-ui-contract.md`
-- [ ] T027 Run `specs/018-in-app-about-version/quickstart.md` manual checklist and record any gaps in PR notes
-- [ ] T028 Run `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal` per `AGENTS.md`
+- [x] T025 [P] Verify About external links reuse the same URL composition as `MainLayout.razor.cs` / `DocsExternalLinksOptions` in `src/ImportToPlanner.Web/Features/About/Pages/About.razor.cs` (no `{DocsBaseUrl}/about`)
+- [x] T026 [P] Manual keyboard pass on About page (tab order, MudBlazor patterns) per `contracts/about-page-ui-contract.md`; confirm automated `h1`/link coverage from T014 remains green
+- [x] T027 Run `specs/018-in-app-about-version/quickstart.md` manual checklist (including SC-004 support triage timing in §8) and record any gaps in PR notes
+- [x] T028 Run `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal` per `AGENTS.md`
 
 ---
 
@@ -155,9 +158,9 @@ description: "Task list for in-app About page and release version alignment"
 ### Parallel Opportunities
 
 - T001 and T002 (Setup)
-- T003, T004, T007 after T005–T006 sequencing (T007 parallel once T006 exists)
+- T003, T004, T007, T008b after T005–T006 sequencing (T007 and T008b parallel once T006/T008 exist)
 - T012 and T014 parallel after T011
-- T015, T016 parallel; T017 after partial exists
+- T015, T016 parallel; T017 after partial exists; T029 after T015–T017
 - T020 parallel with T018–T019
 - T023 and T024 parallel after T021–T022
 - US2 Hugo work can proceed in parallel with US1 once Phase 2 is done
@@ -170,7 +173,7 @@ description: "Task list for in-app About page and release version alignment"
 # After T011 completes:
 # Developer A: T012 MainLayout footer link
 # Developer B: T014 AboutPageTests.cs (with test doubles for query)
-# Developer C: T013 Help menu on Home.razor
+# Developer C: T013 ImportWorkflowHelpMenu + Home.razor host
 ```
 
 ---
@@ -218,3 +221,10 @@ description: "Task list for in-app About page and release version alignment"
 - Do not duplicate version strings in source; rely on MinVer + Hugo `HUGO_PARAMS_RELEASEVERSION`
 - Staging app on `main` keeps pre-release About labels while public site shows last tag until next release cut
 - `[P]` tasks touch different files — coordinate before merging conflicting layout changes
+- Help menu: shared `ImportWorkflowHelpMenu` on `/` only until additional import routes exist; reuse component on new routes
+
+---
+
+## Phase 8: Convergence
+
+- [x] T030 Pass `SourceRevisionId` and `BuildTimestampUtc` (and recommended `ContinuousIntegrationBuild`) into the staging application build invoked by `.github/workflows/deploy-staging.yml` / `aspire deploy --environment Staging` so hosted staging About embeds the same optional build metadata as `ci.yml` per T023 and FR-004 (partial)

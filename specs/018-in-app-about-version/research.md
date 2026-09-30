@@ -44,10 +44,11 @@
 ## Decision 4: Shell entry points — footer link plus new Help menu
 
 - Decision: Add an internal `About` link to `MainLayout.razor` footer alongside existing
-  external doc/legal links. Introduce a persistent **Help** affordance in application chrome
-  (for example MudMenu in `MainLayout` or shared header partial used on import workflow pages)
-  listing Documentation (external), Support (external), and About (internal route). Hide or
-  route unsigned users through sign-in when selecting About (FR-002 edge case).
+  external doc/legal links. Introduce a **Help** `MudMenu` as a shared component under
+  `Components/Layout/` (for example `ImportWorkflowHelpMenu.razor`) and host it on import workflow
+  pages — today only `Home.razor` at `/`. The menu lists Documentation (external), Support
+  (external), and About (internal route). Footer About may stay visible unsigned and gates on
+  `/about`; Help About routes unsigned users through sign-in (FR-002 edge case).
 - Rationale: Clarification requires **both** footer and help; repository currently has footer
   external links only and no help menu — planning must add help as part of implementation.
 - Alternatives considered: Footer only (rejected — fails clarification); help only (rejected).
@@ -89,8 +90,11 @@
 ## Decision 8: Testing strategy
 
 - Decision: Unit tests in `ImportToPlanner.Tests` for release label normalisation (tagged,
-  pre-release, missing tag, policy edge). bUnit tests in `ImportToPlanner.Web.Tests` for About
-  page auth prompt, signed-in content, and link hrefs. Optional Playwright journey for About
-  path (SC-001) only if added explicitly in tasks — not mandatory in plan.
+  pre-release, missing tag, policy edge). Web.Tests unit tests for `ReleaseInformationQuery`
+  assembly/metadata mapping when parsing is non-trivial. bUnit tests in `ImportToPlanner.Web.Tests`
+  for About page auth prompt, signed-in content, link hrefs, and basic accessibility structure
+  (`h1`, focusable links). Optional `scripts/verify-guide-release-applicability.sh` in Hugo
+  validate CI for FR-007. Optional Playwright journey for About path (SC-001) only if added
+  explicitly in tasks — not mandatory in plan.
 - Rationale: FR-010, constitution VI, engineering policies (xUnit v3, NSubstitute, bUnit).
 - Alternatives considered: Manual-only verification (rejected — FR-010).

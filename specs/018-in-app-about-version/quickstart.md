@@ -84,15 +84,42 @@ Follow extended steps in `docs/release-runbook.md`:
 
 1. Create test annotated tag (non-production environment acceptable).
 2. Run Hugo deploy workflow / local equivalent with tag name injected.
-3. Deploy app from the **same** tag (documented hosted/self-hosted path).
-4. Complete three-way checklist: GitHub Release name, public site label, About label.
+3. Deploy app from the **same** tag (documented hosted ACA production path and self-hosted image/tag publish).
+4. Complete three-way checklist: GitHub Release name, public site label, About label (FR-006 / SC-002).
 
 **Expected**: Checklist Pass with matching strings; Fail documented if any mismatch.
 
-## 7. Format gate
+## 7. Hugo applicability script (automated)
+
+After T029:
+
+```bash
+./scripts/verify-guide-release-applicability.sh
+```
+
+**Expected**: Exit 0; landing and import-workflow HTML reference the same release parameter as the site footer.
+
+## 8. Support triage — quotable version (SC-004)
+
+Scripted exercise (under one minute):
+
+1. Ask a volunteer to sign in on a known deployment.
+2. From `/`, reach About via footer or Help within three actions.
+3. Read aloud the release label for a mock support ticket.
+
+**Expected**: Volunteer quotes the same label shown on About without developer tools.
+
+## 9. Format gate
 
 ```bash
 dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 ```
 
 **Expected**: Exit 0 (AGENTS.md policy).
+
+## 10. Unsigned navigation (footer vs Help)
+
+1. Signed out, follow footer **About** → `/about`.
+2. **Expected**: Sign-in prompt; no release label.
+3. Signed out, use **Help** → About (when implemented).
+4. **Expected**: Sign-in challenge before About content (may differ from footer UX per contract).

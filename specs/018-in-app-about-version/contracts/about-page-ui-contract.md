@@ -40,7 +40,7 @@ About MUST include links to the same destinations as footer/help for:
 | --- | --- |
 | Footer | Where `MainLayout` (or equivalent) footer links exist, add an **About** link to the internal route. |
 | Help | A **Help** affordance MUST exist in application chrome on authenticated import workflow pages and MUST include a link to About alongside documentation/support paths. |
-| Unsigned | About links MUST NOT bypass sign-in (hide, disable, or challenge — implementation choice recorded in tasks). |
+| Unsigned | About links MUST NOT bypass sign-in. **Footer** About MAY remain visible and routes to `/about`, where the page shows the sign-in prompt (same pattern as Profile). **Help** About MUST route through sign-in when the user is unsigned (for example menu item triggers sign-in or navigates to gated `/about`). |
 
 ## Accessibility
 
