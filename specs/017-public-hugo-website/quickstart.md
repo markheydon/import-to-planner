@@ -11,8 +11,8 @@ This guide validates the feature end-to-end after implementation. It references
 - Optional: .NET 10 SDK for app and test validation.
 - For demo mode: a non-production deployment (or local dev host) with demo controls enabled
   and an allowlisted operator account.
-- For first production site tag: legal counsel sign-off recorded in `docs/` per
-  `public-site-contract.md`.
+- For first production site tag: director/maintainer terms publication record in `docs/`
+  per `public-site-contract.md` and `docs/release-runbook.md`.
 
 ## 1. Local public site build and preview
 
@@ -98,8 +98,8 @@ inputs).
 **Expected**:
 
 - `CHANGELOG.md` exists at repository root (Keep a Changelog sections).
-- `docs/` contains release runbook steps for tagging and legal sign-off checklist before
-  first public site release.
+- `docs/` contains release runbook steps for tagging and director terms publication record
+  before first public site release.
 
 ## 7. Repository entry points
 
@@ -147,10 +147,10 @@ Configure allowlist with your operator account; enable demo controls on non-prod
 
 With demo controls disabled on production-like config — **Expected**: no toggle for any user.
 
-## 11. Legal gate before first public site tag
+## 11. Terms publication gate before first public site tag
 
-**Expected**: `docs/` runbook entry documents counsel sign-off date and terms version; terms
-page in `website/` is not placeholder text.
+**Expected**: `docs/release-runbook.md` records director/maintainer approval date, approver
+role, and terms version reference; terms page in `website/` is not placeholder text.
 
 ## Failure triage
 

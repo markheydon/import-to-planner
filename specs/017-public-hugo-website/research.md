@@ -75,8 +75,8 @@
 
 - Decision: Add Hugo pages for terms of use, expanded privacy (migrate/enhance existing
   privacy copy), and support (GitHub Issues interim path with v1.1 deferral wording).
-  Record counsel sign-off in an engineering runbook under `docs/` before first `v*` site
-  tag (FR-005, SC-007).
+  Record director/maintainer terms publication approval in an engineering runbook under
+  `docs/` before first `v*` site tag (FR-005, SC-007).
 - Rationale: Issue #134 and clarifications require production-ready terms and a concrete
   support path distinct from generic “contact support” copy.
 - Alternatives considered: Host terms only in GitHub wiki (rejected — breaks unified public
@@ -120,7 +120,7 @@
 
 - Decision: Add `CHANGELOG.md` at repository root (Keep a Changelog format) and extend
   internal release runbook in `docs/` with tag cutting, Pages deploy verification, and
-  legal sign-off checklist steps.
+  director terms publication record steps.
 - Rationale: FR-012 and user story 4 require maintainer-facing release discipline tied to
   public site versioning.
 - Alternatives considered: Releases notes only on GitHub (insufficient — spec requires root

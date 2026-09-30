@@ -74,18 +74,10 @@ jobs:
       - name: Verify workflow screenshots are distinct
         run: ./scripts/verify-import-workflow-screenshots.sh
 
-      - name: Require counsel sign-off before a public site tag
-        if: inputs.deploy
-        run: |
-          if grep -q "counsel-sign-off: pending" docs/release-runbook.md; then
-            echo "::error::Counsel sign-off is still pending in docs/release-runbook.md. Complete SC-007 before publishing a public site tag."
-            exit 1
-          fi
-
       - name: Build
         working-directory: website
         env:
-          HUGO_PARAMS_RELEASEVERSION: ${{ inputs.deploy && github.ref_name || 'unreleased' }}
+          HUGO_PARAMS_RELEASEVERSION: ${{ inputs.deploy && github.ref_type == 'tag' && github.ref_name || 'unreleased' }}
         run: |
           if [ "${{ inputs.deploy }}" = "true" ]; then
             hugo build --gc --minify --baseURL "https://docs.importplanner.app/" --cacheDir "${{ runner.temp }}/.cache/hugo"

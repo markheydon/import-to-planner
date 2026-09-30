@@ -12,4 +12,4 @@ End-user guides live in `website/content/` and deploy via Hugo on SemVer tags. S
 - [Engineering policies](engineering-policies.md) — testing, formatting, and delivery standards
 - [Microsoft Graph guidelines](microsoft-graph-guidelines.md) — Graph adapter conventions
 - [Demonstration mode](demo-mode.md) — operator allowlist and synthetic import journeys
-- [Release runbook](release-runbook.md) — public site tags, legal sign-off, and SC-001 review
+- [Release runbook](release-runbook.md) — public site tags, terms publication record, and SC-001 review

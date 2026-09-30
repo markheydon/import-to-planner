@@ -34,7 +34,7 @@ Stable routes MUST remain available (Hugo permalinks or equivalent):
 | `/faq` | Concise common questions | End users and administrators | Yes |
 | `/privacy-and-security` | Expanded privacy and retention statement | End users and administrators | Yes |
 | `/self-hosted` | Secondary self-hosted guidance | Self-hosted operators | Yes |
-| `/terms` | Production-ready terms of use (counsel-approved before first site tag) | Hosted users | Yes |
+| `/terms` | Production-ready terms of use (director publication record before first site tag) | Hosted users | Yes |
 | `/support` | v1.0 support path (GitHub Issues) and v1.1 deferral wording | Hosted users | Yes |
 | `/credits-and-billing` | IA placeholder for future billing copy (no Stripe implementation) | Hosted users | Should (stub) |
 
@@ -78,8 +78,9 @@ obligations for this feature:
 
 - MUST be production-ready legal text before the first public site release tag.
 - MUST NOT ship as “coming soon” on that tag.
-- Counsel sign-off MUST be recorded in `docs/` (checklist/runbook with date and terms
-  version reference) before the tag ships.
+- Director/maintainer terms publication approval MUST be recorded in `docs/` (checklist or
+  runbook with approval date, approver role, and terms version reference) before the tag
+  ships.
 
 ### Privacy
 

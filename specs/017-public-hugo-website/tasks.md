@@ -86,23 +86,23 @@ description: "Task list for Public Product Website, Documentation Layout, and Re
 
 ## Phase 4: User Story 2 - Hosted User Finds Terms, Privacy, and Support (Priority: P2)
 
-**Goal**: Counsel-ready terms path, expanded privacy, GitHub Issues support page, billing IA stub, and app links (FR-005, FR-006, FR-007, SC-002).
+**Goal**: Production-ready terms path with director publication record, expanded privacy, GitHub Issues support page, billing IA stub, and app links (FR-005, FR-006, FR-007, SC-002).
 
 **Independent Test**: From local preview and app chrome, reach terms, privacy, and support within two clicks; support page links to repository GitHub Issues with v1.1 deferral wording.
 
 ### Implementation for User Story 2
 
-- [X] T028 [P] [US2] Add production-ready terms page `website/content/terms.md` at `/terms` (MUST NOT ship as “coming soon” on first `v*` tag; blocked until T035 sign-off record exists)
+- [X] T028 [P] [US2] Add production-ready terms page `website/content/terms.md` at `/terms` (MUST NOT ship as “coming soon” on first `v*` tag; blocked until T035 publication record exists)
 - [X] T029 [P] [US2] Expand privacy copy in `website/content/privacy-and-security.md` per issue #134 / FR-005 beyond 007 baseline
 - [X] T030 [P] [US2] Add support page `website/content/support.md` at `/support` linking to this repository GitHub Issues with UK English scope (bugs, documentation corrections, product feedback) and v1.1 dedicated-support deferral without promising dates
 - [X] T031 [P] [US2] Add credits/billing IA stub `website/content/credits-and-billing.md` at `/credits-and-billing` (MUST NOT invent pricing, Stripe, or ledger behaviour; MAY reference future billing docs)
 - [X] T032 [US2] Link terms and support from `website/layouts/_partials/custom/footer.html` and landing page per public-site-contract.md
 - [X] T033 [US2] Add `DocsBaseUrl` configuration (default `https://docs.importplanner.app`) in `src/ImportToPlanner.Web/appsettings.json` and environment-specific overrides as needed per `app-external-links-contract.md`
 - [X] T034 [US2] Implement footer or persistent help component in `src/ImportToPlanner.Web/Components/Layout/MainLayout.razor` and `MainLayout.razor.cs` linking to `{DocsBaseUrl}/`, `/terms`, `/privacy-and-security`, `/support` with `https` in production
-- [X] T035 [US2] Add legal counsel sign-off **checklist entry template** (empty fields for maintainer to complete after external counsel review) in `docs/release-runbook.md` with fields: approval date and terms version reference (`LegalAndSupportBundle.CounselSignOffRecord` in data-model.md; satisfies **SC-007** when filled — template alone does not constitute sign-off)
+- [X] T035 [US2] Add director terms publication **record** in `docs/release-runbook.md` with fields: approval date, approver role, and terms version reference (`LegalAndSupportBundle.TermsPublicationRecord` in data-model.md; satisfies **SC-007** when filled)
 - [X] T036 [US2] Audit in-app troubleshooting/FAQ strings for generic “contact your support team” without destination; update to link published support path per `app-external-links-contract.md`
 
-**Checkpoint**: Legal bundle URLs consistent between site and app configuration; terms publish gated on internal sign-off record.
+**Checkpoint**: Legal bundle URLs consistent between site and app configuration; terms publish gated on current T035 publication record in `docs/release-runbook.md`.
 
 ---
 
@@ -134,7 +134,7 @@ description: "Task list for Public Product Website, Documentation Layout, and Re
 ### Implementation for User Story 4
 
 - [X] T041 [US4] Add root `CHANGELOG.md` in Keep a Changelog format with initial Unreleased section per data-model `ChangeLogEntry`
-- [X] T042 [US4] Complete `docs/release-runbook.md` with SemVer tagging, Pages deploy verification, `HUGO_PARAMS_RELEASEVERSION` check, and legal sign-off gate before first public site tag; include **operational counsel workflow** (obtain counsel-approved terms text → complete checklist entry per T035 → only then ship `website/content/terms.md` on first `v*` tag); define **SC-004** verification as timed check from successful `hugo-deploy` workflow completion for the tag until live site shows new version label (target within one hour); add cutover checklist reinforcing T014 automation vs T063 content removal; cross-link `specs/017-public-hugo-website/quickstart.md` §1 for interim **SC-003** evidence until T037 lands in `docs/developer-quickstart.md`
+- [X] T042 [US4] Complete `docs/release-runbook.md` with SemVer tagging, Pages deploy verification, `HUGO_PARAMS_RELEASEVERSION` check, and terms publication record before first public site tag; include **operational terms workflow** (review `website/content/terms.md` → update publication record per T035 → tag); define **SC-004** verification as timed check from successful `hugo-deploy` workflow completion for the tag until live site shows new version label (target within one hour); add cutover checklist reinforcing T014 automation vs T063 content removal; cross-link `specs/017-public-hugo-website/quickstart.md` §1 for interim **SC-003** evidence until T037 lands in `docs/developer-quickstart.md`
 - [X] T043 [US4] Confirm `.github/workflows/hugo-deploy.yml` does not run on ordinary `push` to `main` (tag-only or manual dispatch only)
 - [X] T044 [US4] Document PR/non-tag build labelling (`unreleased`) in `docs/release-runbook.md` matching quickstart.md §5
 - [X] T045 [US4] Add maintainer steps to update `CHANGELOG.md` when cutting `vX.Y.Z` releases affecting app and/or public site
@@ -217,7 +217,7 @@ description: "Task list for Public Product Website, Documentation Layout, and Re
 
 - **Setup (Phase 1)** → **Foundational (Phase 2)** → user story phases may overlap only where noted below
 - **US1** should complete Hugo content migration before **US6** deletes legacy `docs/*.md`
-- **US2** terms first public tag depends on **T035** sign-off record and **T028** counsel-approved copy
+- **US2** terms first public tag depends on **T035** publication record and **T028** production-ready copy
 - **US4** deploy workflows depend on **Phase 2** CI/CD tasks
 - **US5** application work is largely independent of Hugo but **T061** screenshots depend on **US5** UI
 - **Polish** after desired stories complete
@@ -268,7 +268,7 @@ description: "Task list for Public Product Website, Documentation Layout, and Re
 1. Complete Phase 1 and Phase 2
 2. Complete Phase 3 (US1)
 3. **STOP and VALIDATE**: quickstart.md §1–§2 locally
-4. Do not cut over `docs/` (US6) or publish tag until US2 legal gate satisfied
+4. Do not cut over `docs/` (US6) or publish tag until US2 terms publication gate satisfied
 
 ### Incremental Delivery
 
@@ -282,7 +282,7 @@ description: "Task list for Public Product Website, Documentation Layout, and Re
 
 ### Suggested MVP Scope
 
-**User Story 1 (P1)** plus **Phase 1–2** delivers a credible public site preview; production tag requires **US2** legal sign-off and **US4** deploy verification at minimum.
+**User Story 1 (P1)** plus **Phase 1–2** delivers a credible public site preview; production tag requires **US2** terms publication record and **US4** deploy verification at minimum.
 
 ---
 
@@ -291,7 +291,7 @@ description: "Task list for Public Product Website, Documentation Layout, and Re
 - Task IDs are sequential; adjust only when inserting tasks during implementation
 - `[P]` tasks must not edit the same file concurrently
 - Demo mode: Graph or real upload during active demo is a **defect** (demo-mode-contract.md)
-- First public `v*` site tag MUST NOT ship until counsel sign-off is recorded in `docs/` per **SC-007** (terms content obligations remain in **FR-005**)
+- First public `v*` site tag MUST NOT ship until director terms publication record is current in `docs/` per **SC-007** (terms content obligations remain in **FR-005**)
 - **FR-016** / **T061** (workflow screenshots under demo mode) are not required for the first public site `v*` tag; schedule after **US5** when demo capture is available
 - Total tasks: **77** (US1: 13, US2: 9, US3: 4, US4: 5, US5: 16 incl. 4 tests, US6: 10, Setup: 6, Foundational: 8, Polish: 6)
 

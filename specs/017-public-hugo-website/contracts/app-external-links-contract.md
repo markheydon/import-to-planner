@@ -12,7 +12,7 @@ The hosted application MUST expose links that resolve to:
 | User need | Target | Notes |
 | --- | --- | --- |
 | User documentation home | `{DocsBaseUrl}/` | Default `https://docs.importplanner.app/` |
-| Terms of use | `{DocsBaseUrl}/terms` | Same counsel-approved page as public site |
+| Terms of use | `{DocsBaseUrl}/terms` | Same director-approved terms page as public site |
 | Privacy and security | `{DocsBaseUrl}/privacy-and-security` | Expanded privacy page |
 | Support / feedback | `{DocsBaseUrl}/support` | Page MUST forward users to GitHub Issues |
 

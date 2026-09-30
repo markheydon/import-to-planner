@@ -12,8 +12,8 @@ tag-only GitHub Pages deploy, release version labelling). Relocate internal engi
 documentation from `docs-internal/` to `docs/` without publishing it. Add terms, expanded
 privacy, and GitHub Issues support pages; link them from the hosted app. Introduce
 operator-gated demo mode with a fully synthetic import journey for safe screenshots. Add
-root `CHANGELOG.md`, PR Hugo validation, and release runbook steps including legal sign-off
-before the first public site tag.
+root `CHANGELOG.md`, PR Hugo validation, and release runbook steps including director terms
+publication record before the first public site tag.
 
 ## Technical Context
 
@@ -33,8 +33,9 @@ Blazor Server/WASM host for app behaviour
 feature (demo mode) inside existing Clean Architecture solution  
 **Performance Goals**: Static pages load without Blazor boot; mobile-readable layouts (375 px+);
 local preview setup under 15 minutes (SC-003)  
-**Constraints**: UK English; tag-only live publish; counsel-approved terms before first site
-tag; demo mode off at sign-in, off on sign-out, no Graph/upload during demo; self-hosted
+**Constraints**: UK English; tag-only live publish; director-approved terms publication
+record before first site tag; demo mode off at sign-in, off on sign-out, no Graph/upload
+during demo; self-hosted
 parity for demo policy; retire Jekyll publish-on-main  
 **Scale/Scope**: ~10 public routes + billing stub; migrate 9 legacy user pages; move
 `docs-internal/` tree; 3 new contracts; app footer/help links; demo mode across import workflow
@@ -101,7 +102,7 @@ docs/                                 # Engineering docs ONLY after cutover
 ├── README.md
 ├── engineering-policies.md           # migrated from docs-internal/
 ├── microsoft-graph-guidelines.md
-├── release-runbook.md                # NEW — tags, Pages, legal sign-off checklist
+├── release-runbook.md                # NEW — tags, Pages, terms publication record
 └── …                                 # other former docs-internal content
 
 CHANGELOG.md                          # NEW — Keep a Changelog at repo root
@@ -167,7 +168,7 @@ Complete — see [data-model.md](data-model.md), [quickstart.md](quickstart.md),
 
 - Move `docs-internal/**` → `docs/**`; update all references in AGENTS.md, skills, specs, and
   templates.
-- Add root `CHANGELOG.md` and `docs/release-runbook.md` with legal sign-off gate.
+- Add root `CHANGELOG.md` and `docs/release-runbook.md` with terms publication record gate.
 
 **CI/CD**
 

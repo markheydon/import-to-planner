@@ -23,8 +23,8 @@ entities.
   - `InSecondaryNav`: optional (for example self-hosted, billing stub).
 - Validation rules:
   - Each mandatory route in the public site contract maps to exactly one page.
-  - Legal pages must not ship as placeholders on first `v*` tag (terms require counsel
-    sign-off record in engineering docs).
+  - Legal pages must not ship as placeholders on first `v*` tag (terms require director
+    publication record in engineering docs per SC-007).
   - UK English throughout.
 
 ### PublicSiteSection
@@ -81,7 +81,7 @@ entities.
   - Must not be copied into `website/content/` except where public pages intentionally
     summarise end-user-safe subsets (privacy/terms are authored for the public site, not
     pasted from runbooks).
-  - Release runbook must include counsel sign-off checklist entry (SC-007).
+  - Release runbook must include director terms publication record (SC-007).
 
 ### LegalAndSupportBundle
 
@@ -90,11 +90,12 @@ entities.
   - `TermsURL`: public terms page on custom domain.
   - `PrivacyURL`: public privacy page.
   - `SupportURL`: GitHub Issues entry for this repository.
-  - `CounselSignOffRecord`: pointer to internal checklist entry (date + terms version id).
+  - `TermsPublicationRecord`: pointer to internal runbook entry (approval date, approver
+    role, terms version id). (Former planning name: `CounselSignOffRecord`.)
 - Validation rules:
   - App footer/help links must match bundle URLs (modulo configurable docs base for
     self-hosted).
-  - Terms page blocked from first public release tag until sign-off record exists.
+  - Terms page blocked from first public release tag until publication record exists.
 
 ### ReleaseVersionLabel
 
@@ -166,8 +167,8 @@ entities.
   external link configuration.
 - `DemoModeSession` consumes `DemoModeDeploymentPolicy` for authorisation and selects
   `DemoDataset` instead of live adapters when active.
-- `InternalEngineeringDoc` entries may reference `LegalAndSupportBundle` sign-off but are
-  not published to the Hugo artefact.
+- `InternalEngineeringDoc` entries may reference `LegalAndSupportBundle` publication record
+  but are not published to the Hugo artefact.
 
 ## Migration notes (007 → 017)
 
