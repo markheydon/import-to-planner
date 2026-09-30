@@ -30,17 +30,106 @@ maintainer process only (no CI gate on deploy).
 
 ## SemVer tagging and deploy
 
-1. Update `CHANGELOG.md` under a new `## [vX.Y.Z] — YYYY-MM-DD` section.
-2. Commit changelog and any final content changes on `main`.
-3. Create an annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"`.
-4. Push the tag: `git push origin vX.Y.Z`.
-5. Monitor the **Hugo Deploy** workflow (`.github/workflows/hugo-deploy.yml`).
-6. Verify `HUGO_PARAMS_RELEASEVERSION` matches the tag in the workflow log.
-7. **SC-004**: Within one hour of a successful deploy, confirm the live site footer shows
-   the new version label at `https://docs.importplanner.app`.
+Follow the steps below in order for a coherent public release (FR-006, FR-009). The public Hugo
+site and the application MUST be built from the **same** annotated `vX.Y.Z` tag so three-way
+label parity is achievable at cut time.
 
-Ordinary merges to `main` do **not** update the live public site. PR builds label the site
-`unreleased`.
+### Staging versus tagged production
+
+- **Staging (hosted ACA)** tracks successful CI on `main` via
+  `.github/workflows/deploy-staging.yml` — see [ACA Staging Runbook](aca-staging-runbook.md).
+  Staging About labels use MinVer **pre-release** identifiers until the next official tag; they
+  do **not** represent the live public documentation release.
+- **Tagged production** is the only routine path that updates the live public site (`v*` tag →
+  Hugo deploy) and the production application cut documented below.
+- Ordinary merges to `main` do **not** update the live public site. Pull request and branch
+  Hugo builds label the site `unreleased`.
+
+### Release cut (ordered)
+
+1. **Changelog** — Update `CHANGELOG.md` under a new `## [vX.Y.Z] — YYYY-MM-DD` section.
+2. **Commit on `main`** — Merge changelog and any final content or application changes.
+3. **Annotated tag** — Create and push an annotated tag (not lightweight):
+   `git tag -a vX.Y.Z -m "Release vX.Y.Z"` then `git push origin vX.Y.Z`.
+4. **GitHub Release (recommended)** — Create a GitHub Release for `vX.Y.Z` whose **title/name**
+   matches the tag string exactly (including the `v` prefix).
+5. **Hugo deploy verification**
+   - Monitor the **Hugo Deploy** workflow (`.github/workflows/hugo-deploy.yml`), triggered by
+     the `v*` tag push.
+   - In the workflow log, confirm `HUGO_PARAMS_RELEASEVERSION` equals the tag (for example
+     `v1.2.3`).
+   - **SC-004**: Within one hour of a successful deploy, confirm the live site footer and
+     above-fold guide applicability callouts show the new label at
+     `https://docs.importplanner.app`.
+6. **Application deploy from the same tag** — Check out `vX.Y.Z` locally or in CI; do **not**
+   deploy production from a floating `main` commit when cutting a release.
+   - **Hosted production (ACA)** — Promote using the Aspire **Production** environment from
+     that tag (manual approval, isolated configuration). Pattern:
+     `aspire deploy --environment Production --non-interactive` after checking out the tag.
+     Guardrails and handoff notes: [Aspire production readiness](aspire-production-readiness.md).
+     Staging deploy mechanics (OIDC, parameters, certificates) mirror production; use
+     [ACA Staging Runbook](aca-staging-runbook.md) as the operational template with Production
+     secrets and environment names substituted.
+   - **Self-hosted** — Operators build or pull an image (or publish binaries) from the **same**
+     git tag so MinVer embeds the official release label. Tag the published container image with
+     `vX.Y.Z` (or your registry convention that maps 1:1 to the git tag). End-user orientation:
+     [Self-hosted](https://docs.importplanner.app/self-hosted/) on the public site.
+7. **Three-way verification** — Complete the [Release verification checklist](#release-verification-checklist)
+   before marking the release complete (SC-002). Any mismatch is **Fail** until remediated.
+
+Optional: pass CI build metadata (`SourceRevisionId`, `BuildTimestampUtc`,
+`ContinuousIntegrationBuild`) when publishing production images so About can show support
+context — see [Build metadata (in-app About)](developer-quickstart.md#build-metadata-in-app-about-fr-004).
+
+## Release verification checklist
+
+Maintainers record one row per tagged production release. A tagged release cannot be marked
+complete with any label mismatch (FR-006, SC-002).
+
+### Comparing labels (`v` prefix)
+
+Per `specs/018-in-app-about-version/data-model.md`, three-way checks compare:
+
+- **TagName** — git / GitHub Release tag (repository convention: leading `v`, for example `v1.0.0`).
+- **PublicSiteLabel** — value from `site.Params.releaseVersion` on the live docs site (footer and
+  guide applicability partials).
+- **InAppAboutLabel** — `DeploymentReleaseLabel.DisplayValue` on the signed-in About page for the
+  deployment built from that tag.
+
+For **Pass**, all three MUST represent the same SemVer after **normalisation**: strip a single
+leading `v` (case-sensitive) from each value and compare the remainder (for example `v1.0.0`,
+`1.0.0` on a misconfigured surface, and `v1.0.0` again normalise to `1.0.0`). Display on About
+and the public site SHOULD still show the tag form including `v` when that is the tag convention.
+Do not treat staging pre-release strings or `unreleased` as matching a production tag.
+
+### Template
+
+| TagName | PublicSiteLabel | InAppAboutLabel | VerifiedAtUtc | Verifier | Result |
+| --- | --- | --- | --- | --- | --- |
+| `vX.Y.Z` | | | | | Pass \| Fail |
+| | | | | | |
+
+Copy the table into the GitHub Release notes, an internal change record, or the PR that tracks the
+release cut. Example dry run: `specs/018-in-app-about-version/quickstart.md` §6.
+
+## How build contexts derive version strings (contributors)
+
+Release labels are computed at **build time** from git state via [MinVer](https://github.com/adamralph/minver)
+(`MinVerTagPrefix` = `v` in `Directory.Build.props`). Do not duplicate version numbers in source
+for normal releases.
+
+| Context | Git state | Typical user-facing label |
+| --- | --- | --- |
+| Local dev | No matching tag on `HEAD`; commits after last tag | Full SemVer with pre-release identifiers (for example `1.0.0-preview.5+abc1234`) |
+| Pull request / CI | Same as the commit under test | Pre-release SemVer; not an unqualified shipping tag |
+| Staging ACA (`main`) | Tracks `main` after CI | Pre-release SemVer on About; public site still shows last `v*` tag until next cut |
+| Tagged production | Annotated `vX.Y.Z` on `HEAD` at build | About and assembly metadata match the tag (including `v` prefix) |
+| Self-hosted without tag | Operator build from arbitrary commit | Honest pre-release/local identifier; never invent `v1.0.0` |
+| Public Hugo site | Tag deploy sets `HUGO_PARAMS_RELEASEVERSION` | Tag string on tagged publish; `unreleased` otherwise |
+
+Optional About diagnostics (UTC build time, source revision) come from separate MSBuild properties
+and do not change the release label. See [Build metadata (in-app About, FR-004)](developer-quickstart.md#build-metadata-in-app-about-fr-004)
+in `docs/developer-quickstart.md`.
 
 ## GitHub Pages settings
 
