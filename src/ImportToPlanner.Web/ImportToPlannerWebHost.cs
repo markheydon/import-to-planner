@@ -1,4 +1,5 @@
 using ImportToPlanner.Application;
+using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial;
 using ImportToPlanner.Infrastructure.Graph;
@@ -59,7 +60,8 @@ internal static class ImportToPlannerWebHost
 
         builder.Services
             .AddWebHostServices(builder.Configuration, builder.Environment)
-            .AddApplication()
+            .AddApplication(builder.Configuration)
+            .AddScoped<IReleaseInformationQuery, ReleaseInformationQuery>()
             .AddImportWorkflow()
             .AddInfrastructure(builder.Configuration)
             .AddDemoMode(builder.Configuration);

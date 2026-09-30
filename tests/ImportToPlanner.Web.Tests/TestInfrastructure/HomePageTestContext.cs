@@ -4,6 +4,7 @@ using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial.Services;
+using ImportToPlanner.Web.Features.Demo;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -24,7 +25,9 @@ internal sealed class HomePageTestContext : BunitContext
         CommercialAccountStoreStub? commercialAccountStoreStub = null,
         CommercialAuditStoreStub? commercialAuditStoreStub = null,
         CreditEnsureUseCaseSubstitute? creditEnsureUseCaseSubstitute = null,
-        IImportColumnMappingLayoutStore? layoutStore = null)
+        IImportColumnMappingLayoutStore? layoutStore = null,
+        ReleaseInformationQueryStub? releaseInformationQueryStub = null,
+        string docsBaseUrl = "https://docs.test.importplanner.app")
     {
         Services.AddMudServices(configuration =>
         {
@@ -59,6 +62,7 @@ internal sealed class HomePageTestContext : BunitContext
                 ["Storage:DataProtectionBlob"] = "keys.xml",
                 ["Features:CommercialMode:Enabled"] = commercialModeEnabled.ToString(),
                 ["Features:CommercialMode:RetentionSweepEnabled"] = "false",
+                ["DocsExternalLinks:DocsBaseUrl"] = docsBaseUrl,
             })
             .Build();
 
@@ -68,6 +72,12 @@ internal sealed class HomePageTestContext : BunitContext
         Services.AddOptions<CommercialModeOptions>()
             .Bind(config.GetSection(CommercialModeOptions.ConfigurationSectionName));
         Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<CommercialModeOptions>>().Value);
+        Services.AddOptions<DocsExternalLinksOptions>()
+            .Bind(config.GetSection(DocsExternalLinksOptions.ConfigurationSectionName));
+        Services.AddSingleton(static serviceProvider => serviceProvider.GetRequiredService<IOptions<DocsExternalLinksOptions>>().Value);
+
+        ReleaseInformationQuery = releaseInformationQueryStub ?? new ReleaseInformationQueryStub();
+        Services.AddScoped<IReleaseInformationQuery>(_ => ReleaseInformationQuery);
 
         var tenantAuthorityConfiguration = TenantAuthorityConfiguration.FromConfiguration(config);
         Services.AddSingleton(new ConsentResolutionDefaults(
@@ -147,6 +157,8 @@ internal sealed class HomePageTestContext : BunitContext
     public CommercialAuditStoreStub CommercialAuditStore { get; }
 
     public CreditEnsureUseCaseSubstitute CreditEnsureUseCase { get; }
+
+    public ReleaseInformationQueryStub ReleaseInformationQuery { get; }
 
     private sealed class TestWebHostEnvironment : IWebHostEnvironment
     {
