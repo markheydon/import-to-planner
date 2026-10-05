@@ -33,7 +33,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
 
         await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
 
-        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+        var clock = ExecutionClockUtc();
         var useCase = new ImportExecutionUseCase(gateway, quota);
         var output = new CaptureExecutionOutputBoundary();
 
@@ -49,7 +49,7 @@ public sealed class CreditLedgerExecutionIntegrationTests
         Assert.Equal(24, output.Response.RemainingCredits);
 
         var balanceOutcome = await ensureUseCase.EnsureAsync(
-            new EnsureCurrentCreditBalanceRequest("tenant-001", "user-001", occurredUtc, EnsureBalanceReason.Preview),
+            new EnsureCurrentCreditBalanceRequest("tenant-001", "user-001", clock, EnsureBalanceReason.Preview),
             CancellationToken.None);
 
         var balance = Assert.IsType<EnsureCurrentCreditBalanceOutcome.Succeeded>(balanceOutcome).Result;
@@ -85,7 +85,6 @@ public sealed class CreditLedgerExecutionIntegrationTests
 
         await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
 
-        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
         var useCase = new ImportExecutionUseCase(gateway, quota);
         var output = new CaptureExecutionOutputBoundary();
 
@@ -127,12 +126,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
 
         await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
 
-        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+        var clock = ExecutionClockUtc();
         await store.TryGrantFreeMonthlyAsync(
             "tenant-001",
-            "202609",
+            UtcYearMonth(clock),
             1,
-            occurredUtc,
+            clock,
             "user-001",
             CancellationToken.None);
 
@@ -205,8 +204,9 @@ public sealed class CreditLedgerExecutionIntegrationTests
         Assert.Equal(0, output.Response!.CreditsUsed);
         Assert.Equal(25, output.Response.RemainingCredits);
 
+        var clock = ExecutionClockUtc();
         var balanceOutcome = await ensureUseCase.EnsureAsync(
-            new EnsureCurrentCreditBalanceRequest("tenant-001", "user-001", DateTimeOffset.UtcNow, EnsureBalanceReason.Preview),
+            new EnsureCurrentCreditBalanceRequest("tenant-001", "user-001", clock, EnsureBalanceReason.Preview),
             CancellationToken.None);
 
         var balance = Assert.IsType<EnsureCurrentCreditBalanceOutcome.Succeeded>(balanceOutcome).Result;
@@ -268,10 +268,10 @@ public sealed class CreditLedgerExecutionIntegrationTests
         var store = new InMemoryCreditLedgerStore();
         var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
         var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
-        var grantedAtUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
-        await store.TryGrantFreeMonthlyAsync("tenant-001", "202609", 1, grantedAtUtc, "user-001", CancellationToken.None);
+        var clock = ExecutionClockUtc();
+        await store.TryGrantFreeMonthlyAsync("tenant-001", UtcYearMonth(clock), 1, clock, "user-001", CancellationToken.None);
         await store.RecordUsageAsync(
-            new RecordCreditUsageRequest("tenant-001", "user-001", grantedAtUtc, "run-001", "task-001"),
+            new RecordCreditUsageRequest("tenant-001", "user-001", clock, "run-001", "task-001"),
             CancellationToken.None);
 
         var gateway = new ExecutionPlannerGateway();
@@ -362,6 +362,19 @@ public sealed class CreditLedgerExecutionIntegrationTests
             => Task.FromResult<RecordCreditUsageOutcome>(
                 new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed));
     }
+
+    /// <summary>
+    /// UTC instant aligned with <see cref="ImportExecutionUseCase"/>, which meters credits using <see cref="DateTimeOffset.UtcNow"/>.
+    /// Any test that calls <c>HandleAsync</c> must use this and <see cref="UtcYearMonth"/> for ledger setup and <c>EnsureAsync</c>.
+    /// </summary>
+    private static DateTimeOffset ExecutionClockUtc()
+    {
+        var utc = DateTimeOffset.UtcNow;
+        return new DateTimeOffset(utc.Year, utc.Month, utc.Day, 12, 0, 0, TimeSpan.Zero);
+    }
+
+    private static string UtcYearMonth(DateTimeOffset instant)
+        => CommercialCreditPolicy.GetUtcYearMonth(instant);
 
     private static ImportPlanningUseCase CreatePlanningUseCase(IPlannerGateway plannerGateway)
         => new(
