@@ -1,5 +1,6 @@
 name: CI
 
+# Scheduled weekly run catches stale main and UTC calendar regressions when no PRs land.
 on:
   push:
     branches:
@@ -7,6 +8,8 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 3 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -17,8 +20,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Scheduled runs focus on .NET build/test (UTC calendar regressions); they omit this job.
   javascript-syntax-check:
     name: JavaScript Syntax Check
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
