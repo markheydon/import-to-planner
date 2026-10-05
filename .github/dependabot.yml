@@ -37,8 +37,8 @@ updates:
       azure:
         patterns:
           - "Azure.*"
-          - "Aspire.Azure.*"
-          - "Aspire.Hosting.Azure.*"
+          - "Microsoft.Azure.*"
+          - "Aspire.*"
         update-types:
           - "minor"
           - "patch"
@@ -52,6 +52,12 @@ updates:
         patterns:
           - "*Analyzers*"
           - "Microsoft.CodeAnalysis.*"
+        update-types:
+          - "minor"
+          - "patch"
+      other:
+        patterns:
+          - "*"
         update-types:
           - "minor"
           - "patch"
@@ -73,6 +79,7 @@ updates:
         patterns:
           - "*"
         update-types:
+          - "major"
           - "minor"
           - "patch"
 
