@@ -20,6 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Scheduled runs focus on .NET build/test (UTC calendar regressions); they omit this job.
   javascript-syntax-check:
     name: JavaScript Syntax Check
     if: github.event_name != 'schedule'
