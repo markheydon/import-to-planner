@@ -314,6 +314,54 @@ public sealed class CreditLedgerTableStoreTests
     }
 
     [Fact]
+    public async Task RecordComplimentaryUsageAsync_CreatesComplimentaryLotAndPairedTransactions()
+    {
+        var tableClient = new FakeTableClient();
+        var store = new TableCreditLedgerStore(tableClient);
+        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+
+        var usageOutcome = await store.RecordComplimentaryUsageAsync(
+            new RecordCreditUsageRequest("tenant-001", "user-001", occurredUtc, "run-1", "task-1"),
+            CancellationToken.None);
+
+        Assert.IsType<RecordCreditUsageOutcome.Success>(usageOutcome);
+        var lots = await store.GetLotsAsync("tenant-001", CancellationToken.None);
+        var complimentaryLot = Assert.Single(lots);
+        Assert.Equal(LotType.Complimentary, complimentaryLot.LotType);
+        Assert.Equal(ComplimentaryCreditConstants.ComplimentaryLotId, complimentaryLot.LotId);
+        Assert.Equal(0, complimentaryLot.RemainingQuantity);
+        Assert.Single(
+            tableClient.StoredEntities.Values,
+            entity => entity.RowKey.StartsWith("tx|", StringComparison.Ordinal)
+                && entity.GetInt32("EntryType") == (int)CreditEntryType.Usage);
+        Assert.Single(
+            tableClient.StoredEntities.Values,
+            entity => entity.RowKey.StartsWith("tx|", StringComparison.Ordinal)
+                && entity.GetInt32("EntryType") == (int)CreditEntryType.ComplimentaryGrant);
+    }
+
+    [Fact]
+    public async Task RecordComplimentaryUsageAsync_WhenCalledTwiceForSameTask_IsIdempotent()
+    {
+        var tableClient = new FakeTableClient();
+        var store = new TableCreditLedgerStore(tableClient);
+        var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
+        var request = new RecordCreditUsageRequest("tenant-001", "user-001", occurredUtc, "run-1", "task-1");
+
+        var firstUsage = await store.RecordComplimentaryUsageAsync(request, CancellationToken.None);
+        var secondUsage = await store.RecordComplimentaryUsageAsync(request, CancellationToken.None);
+
+        Assert.IsType<RecordCreditUsageOutcome.Success>(firstUsage);
+        Assert.IsType<RecordCreditUsageOutcome.Success>(secondUsage);
+        Assert.Single(
+            tableClient.StoredEntities.Values,
+            entity => entity.RowKey.StartsWith("usage|", StringComparison.Ordinal));
+        Assert.Equal(
+            2,
+            tableClient.StoredEntities.Values.Count(entity => entity.RowKey.StartsWith("tx|", StringComparison.Ordinal)));
+    }
+
+    [Fact]
     public async Task RecordUsageAsync_SkipsExpiredFreeLotAndUsesPaidLot()
     {
         var tableClient = new FakeTableClient();

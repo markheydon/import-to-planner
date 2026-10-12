@@ -46,6 +46,13 @@ public interface ICreditLedgerStore
     Task<RecordCreditUsageOutcome> RecordUsageAsync(
         RecordCreditUsageRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Records paired usage and complimentary grant without consuming free or paid lots.
+    /// </summary>
+    Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+        RecordCreditUsageRequest request,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>

@@ -143,6 +143,7 @@ public sealed class InfrastructureRegistrationTests
     public void AddCommercial_ReplacesNoOpImportTaskCreationQuota()
     {
         var services = new ServiceCollection();
+        services.AddLogging();
         services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
         services.AddApplication();
 

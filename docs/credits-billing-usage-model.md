@@ -168,6 +168,30 @@ Usage accounting, credit balances, and expiry are owned entirely by the applicat
 
 ---
 
+## Complimentary allowlisted tenants (hosted commercial)
+
+Some operator and tester organisations need unlimited imports without buying credits. Hosted commercial deployments can allowlist Entra **tenant** GUIDs at deploy time.
+
+### Configuration
+
+- **Configuration key**: `Features:CommercialMode:ComplimentaryTenantIds`
+- **Aspire AppHost parameter**: `complimentaryTenantIds` (mapped to the key above on the web resource)
+- **Default**: empty string (no complimentary tenants)
+- **Format**: comma-separated tenant GUIDs; trim whitespace; invalid tokens are logged and ignored
+- **Security**: do not commit production tenant GUIDs in source control; use deployment parameters or user secrets for manual testing
+- **Commercial off**: when `Features:CommercialMode:Enabled` is false, the allowlist is not read and behaviour is unchanged (self-hosted included)
+
+### Behaviour
+
+- Allowlisted tenants skip monthly free grant and free-credit expiry during balance ensure.
+- Preview and confirm never block solely for insufficient credits; remaining credits are shown as **Unlimited** in the UI.
+- Buy-credits entry points must not appear as required to continue importing for allowlisted tenants.
+- Import execution still records **one credit used per task created** on the ledger.
+- Each successful create writes paired **Usage** and **ComplimentaryGrant** transactions without consuming free monthly or paid lots.
+- Non-allowlisted commercial tenants keep the standard 25-credit monthly model and exhaustion rules.
+
+---
+
 ## Non-Goals (V1)
 
 - No free-account SKU (monthly free credits on every commercial tenant instead).

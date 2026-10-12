@@ -12,8 +12,12 @@ public sealed class ImportTaskCreationCreditQuotaTests
     public async Task RecordSuccessfulCreateAsync_WritesOneUsagePerCreatedTask()
     {
         var store = new InMemoryCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         await ensureUseCase.EnsureAsync(
@@ -39,8 +43,12 @@ public sealed class ImportTaskCreationCreditQuotaTests
     public async Task BeforeCreateAsync_WhenRemainingIsZero_ReturnsExhaustedWithoutNegativeBalance()
     {
         var store = new InMemoryCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         await ensureUseCase.EnsureAsync(
@@ -75,8 +83,12 @@ public sealed class ImportTaskCreationCreditQuotaTests
     {
         var inner = new InMemoryCreditLedgerStore();
         var store = new FailOnceRecordUsageCreditLedgerStore(inner);
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         await ensureUseCase.EnsureAsync(
@@ -103,8 +115,12 @@ public sealed class ImportTaskCreationCreditQuotaTests
     public async Task RecordSuccessfulCreateAsync_WhenCalledTwiceForSameTask_RecordsSingleUsage()
     {
         var store = new InMemoryCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         await ensureUseCase.EnsureAsync(
@@ -134,9 +150,13 @@ public sealed class ImportTaskCreationCreditQuotaTests
         var store = new InMemoryCreditLedgerStore();
         var ensureCallCount = 0;
         var ensureUseCase = new CountingEnsureCurrentCreditBalanceUseCase(
-            new EnsureCurrentCreditBalanceUseCase(store),
+            new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance),
             () => ensureCallCount++);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
         var context = new ImportTaskCreationQuotaContext("tenant-001", "user-001", occurredUtc, "run-1", "Task A");
 
@@ -197,5 +217,10 @@ public sealed class ImportTaskCreationCreditQuotaTests
 
             return inner.RecordUsageAsync(request, cancellationToken);
         }
+
+        public Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+            RecordCreditUsageRequest request,
+            CancellationToken cancellationToken)
+            => inner.RecordComplimentaryUsageAsync(request, cancellationToken);
     }
 }

@@ -21,6 +21,7 @@ var azureAdTenantId = builder.AddParameter("azureAdTenantId");
 var azureAdClientId = builder.AddParameter("azureAdClientId");
 var azureAdHomeTenantId = builder.AddParameter("azureAdHomeTenantId");
 var enableCommercialMode = builder.AddParameter("enableCommercialMode", secret: false);
+var complimentaryTenantIds = builder.AddParameter("complimentaryTenantIds", secret: true);
 var graphClientCertificatePassword = builder.AddParameter("graphClientCertificatePassword", secret: true);
 var graphClientCertificateBase64 = builder.AddParameter("graphClientCertificateBase64", secret: true);
 
@@ -63,6 +64,7 @@ var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WithEnvironment("AzureAd__ClientId", azureAdClientId)
     .WithEnvironment("AzureAd__HomeTenantId", azureAdHomeTenantId)
     .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
+    .WithEnvironment("Features__CommercialMode__ComplimentaryTenantIds", complimentaryTenantIds)
     // The app currently expects a certificate path; the base64 value is provided
     // so deployment/runtime can materialize the certificate at that location.
     .WithEnvironment("AzureAd__ClientCertificates__0__SourceType", "Path")

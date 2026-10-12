@@ -765,6 +765,15 @@
                         @ImportCreditPreviewPresenter.BuildLedgerUnavailableMessage()
                     </MudAlert>
                 }
+                else if (creditBalanceSnapshot?.ComplimentaryUnlimitedAccess == true)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                        @ImportCreditPreviewPresenter.BuildComplimentaryRemainingMessage()
+                        Remaining credits: @ImportCreditPreviewPresenter.FormatRemainingCredits(
+                            creditBalanceSnapshot.RemainingCredits,
+                            creditBalanceSnapshot.ComplimentaryUnlimitedAccess)
+                    </MudAlert>
+                }
                 else if (creditBalanceSnapshot?.InsufficientCredits == true
                          && creditBalanceSnapshot.RemainingCredits is not null)
                 {

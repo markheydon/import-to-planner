@@ -1,3 +1,4 @@
+using System.Globalization;
 using ImportToPlanner.Application.Models;
 
 namespace ImportToPlanner.Web.Features.Import.Presenters;
@@ -27,4 +28,16 @@ public static class ImportCreditPreviewPresenter
     /// </summary>
     public static int CountWouldCreateTasks(ImportPlanPreview preview)
         => preview.TaskActions.Count(task => task.Action == PlannedEntityAction.Create);
+
+    /// <summary>
+    /// Builds remaining-credits copy for preview when complimentary access applies.
+    /// </summary>
+    public static string BuildComplimentaryRemainingMessage()
+        => "Your organisation has unlimited complimentary credits for this import.";
+
+    /// <summary>
+    /// Formats remaining credits for preview and confirm surfaces.
+    /// </summary>
+    public static string FormatRemainingCredits(int? remainingCredits, bool complimentaryUnlimitedAccess)
+        => complimentaryUnlimitedAccess ? "Unlimited" : remainingCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
 }

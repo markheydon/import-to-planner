@@ -15,6 +15,8 @@ internal sealed class CreditEnsureUseCaseSubstitute
 
     public bool FailClosed { get; set; }
 
+    public bool ComplimentaryUnlimitedAccess { get; set; }
+
     public string FailureCode { get; set; } = CommercialCreditFailureCodes.LedgerUnavailable;
 
     public int EnsureCallCount { get; private set; }
@@ -34,6 +36,12 @@ internal sealed class CreditEnsureUseCaseSubstitute
 
         return Task.FromResult<EnsureCurrentCreditBalanceOutcome>(
             new EnsureCurrentCreditBalanceOutcome.Succeeded(
-                CommercialCreditBalanceResult.Success(RemainingCredits, RemainingCredits, 0, false, false)));
+                CommercialCreditBalanceResult.Success(
+                    RemainingCredits,
+                    RemainingCredits,
+                    0,
+                    false,
+                    false,
+                    ComplimentaryUnlimitedAccess)));
     }
 }

@@ -10,6 +10,7 @@ namespace ImportToPlanner.Commercial.Credits;
 public sealed class ImportTaskCreationCreditQuota(
     IEnsureCurrentCreditBalanceUseCase ensureCurrentCreditBalanceUseCase,
     ICreditLedgerStore ledgerStore,
+    IComplimentaryTenantPolicy complimentaryTenantPolicy,
     ImportExecutionCreditBalanceCache executionCreditBalanceCache) : IImportTaskCreationQuota
 {
     /// <inheritdoc/>
@@ -26,6 +27,11 @@ public sealed class ImportTaskCreationCreditQuota(
             return new TaskCreationQuotaResult(
                 TaskCreationQuotaStatus.Unavailable,
                 remaining.DiagnosticCode);
+        }
+
+        if (remaining.ComplimentaryUnlimitedAccess)
+        {
+            return new TaskCreationQuotaResult(TaskCreationQuotaStatus.Allow, RemainingCredits: remaining.RemainingCredits);
         }
 
         if ((remaining.RemainingCredits ?? 0) <= 0)
@@ -82,7 +88,8 @@ public sealed class ImportTaskCreationCreditQuota(
     {
         if (executionCreditBalanceCache.TryGetRemaining(context.TenantId, context.OccurredUtc, out var cachedRemaining))
         {
-            return new RemainingCreditsLookup(cachedRemaining, null);
+            var complimentary = complimentaryTenantPolicy.IsComplimentary(context.TenantId);
+            return new RemainingCreditsLookup(cachedRemaining, null, complimentary);
         }
 
         var ensureOutcome = await ensureCurrentCreditBalanceUseCase.EnsureAsync(
@@ -95,15 +102,18 @@ public sealed class ImportTaskCreationCreditQuota(
 
         if (ensureOutcome is EnsureCurrentCreditBalanceOutcome.Failed failure)
         {
-            return new RemainingCreditsLookup(null, failure.Failure.FailureCode);
+            return new RemainingCreditsLookup(null, failure.Failure.FailureCode, false);
         }
 
-        var remaining = ((EnsureCurrentCreditBalanceOutcome.Succeeded)ensureOutcome).Result.RemainingCredits;
-        executionCreditBalanceCache.SetRemaining(context.TenantId, context.OccurredUtc, remaining);
-        return new RemainingCreditsLookup(remaining, null);
+        var result = ((EnsureCurrentCreditBalanceOutcome.Succeeded)ensureOutcome).Result;
+        executionCreditBalanceCache.SetRemaining(context.TenantId, context.OccurredUtc, result.RemainingCredits);
+        return new RemainingCreditsLookup(
+            result.RemainingCredits,
+            null,
+            result.ComplimentaryUnlimitedAccess);
     }
 
-    private readonly record struct RemainingCreditsLookup(int? RemainingCredits, string? DiagnosticCode)
+    private readonly record struct RemainingCreditsLookup(int? RemainingCredits, string? DiagnosticCode, bool ComplimentaryUnlimitedAccess)
     {
         public TaskCreationQuotaStatus Status => DiagnosticCode is null
             ? TaskCreationQuotaStatus.Allow
@@ -113,12 +123,19 @@ public sealed class ImportTaskCreationCreditQuota(
     private Task<RecordCreditUsageOutcome> RecordUsageOnceAsync(
         ImportTaskCreationQuotaContext context,
         CancellationToken cancellationToken)
-        => ledgerStore.RecordUsageAsync(
-            new RecordCreditUsageRequest(
-                context.TenantId,
-                context.ActorUserId,
-                context.OccurredUtc,
-                context.ImportRunId,
-                context.CreatedPlannerTaskId!),
-            cancellationToken);
+    {
+        var request = new RecordCreditUsageRequest(
+            context.TenantId,
+            context.ActorUserId,
+            context.OccurredUtc,
+            context.ImportRunId,
+            context.CreatedPlannerTaskId!);
+
+        if (complimentaryTenantPolicy.IsComplimentary(context.TenantId))
+        {
+            return ledgerStore.RecordComplimentaryUsageAsync(request, cancellationToken);
+        }
+
+        return ledgerStore.RecordUsageAsync(request, cancellationToken);
+    }
 }
