@@ -21,7 +21,7 @@ var azureAdTenantId = builder.AddParameter("azureAdTenantId");
 var azureAdClientId = builder.AddParameter("azureAdClientId");
 var azureAdHomeTenantId = builder.AddParameter("azureAdHomeTenantId");
 var enableCommercialMode = builder.AddParameter("enableCommercialMode", secret: false);
-var complimentaryTenantIds = builder.AddParameter("complimentaryTenantIds", secret: true);
+var complimentaryTenantIds = builder.AddParameter("complimentaryTenantIds", string.Empty, secret: true);
 var graphClientCertificatePassword = builder.AddParameter("graphClientCertificatePassword", secret: true);
 var graphClientCertificateBase64 = builder.AddParameter("graphClientCertificateBase64", secret: true);
 
