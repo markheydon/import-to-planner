@@ -43,7 +43,7 @@ public static class ProfileCreditPresenter
     /// Activity read failure message.
     /// </summary>
     public static string BuildActivityUnavailableMessage()
-        => "Credit activity is temporarily unavailable. Your balance above may still be correct.";
+        => "Credit activity is temporarily unavailable. Try again shortly.";
 
     /// <summary>
     /// Free monthly lot subsection heading.
