@@ -126,9 +126,8 @@ public partial class Profile
         creditSummary = null;
         creditActivity = null;
 
-        var summaryTask = LoadCreditSummaryAsync(summaryRequest);
-        var activityTask = LoadCreditActivityAsync(activityRequest);
-        await Task.WhenAll(summaryTask, activityTask);
+        await LoadCreditSummaryAsync(summaryRequest);
+        await LoadCreditActivityAsync(activityRequest);
     }
 
     private async Task LoadCreditSummaryAsync(ProfileCreditSummaryRequest request)
