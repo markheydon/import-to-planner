@@ -33,72 +33,91 @@ The workflow preserves operational safeguards:
 4. Validate and preview.
 5. Confirm execution and review results.
 
-The app now has one supported runtime path:
+The app has one supported runtime path:
 
 - Microsoft Graph planner operations with table-backed tenant metadata and blob-backed Data Protection persistence.
 - Authentication remains authority-driven through `AzureAd:HomeTenantId` (`multiple` or a specific tenant value).
 
 ## Documentation
 
-Public end-user documentation is available at https://docs.importplanner.app.
+Public end-user documentation is published at https://docs.importplanner.app.
 
-This site covers onboarding, CSV format, import workflow, troubleshooting, FAQ, privacy and security, plus secondary self-hosted guidance.
+The site covers onboarding, CSV format, import workflow, troubleshooting, FAQ, privacy and security, plus secondary self-hosted guidance.
 
-Repository policy keeps self-hosting as a first-class supported path. Hosted or commercial
-features are expected to be additive rather than prerequisites for running the software
-from your own tenant and infrastructure.
+Repository policy keeps self-hosting as a first-class supported path. Hosted or commercial features are expected to be additive rather than prerequisites for running the software from your own tenant and infrastructure.
 
 Documentation split:
 
-- `docs/`: public end-user and operator guidance published via GitHub Pages
-- `docs/`: internal contributor, engineering, and operational guidance
+- `website/content/`: public end-user and operator pages (Hugo; deploys on release tags)
+- `docs/`: internal contributor, engineering, and operational guidance — see [docs/README.md](docs/README.md)
+- `specs/`: Spec Kit feature specifications, plans, tasks, and contracts
 
 ## Key Features
 
+Core import workflow (validation, preview, execution, reporting):
+
 - Row-level and file-level CSV validation before write actions.
 - Dry-run preview separated from execution.
-- Explicit confirm-and-execute flow with stale-preview protection.
+- Explicit confirm-and-execute flow with stale-preview protection (request and planner-state fingerprints).
 - Existing-task matching by task name (`already exists` outcome).
 - Partial-success execution handling with a single retry for transient row failures.
 - Execution reporting for created items, skipped or reused items, manual actions, and errors.
 - Searchable container and plan selectors for larger tenants.
-- Clearer step-state guidance, CSV field expectations, and concise manual follow-up messaging.
+- Stepped import wizard with clearer step-state guidance and CSV field expectations.
+
+CSV and import ergonomics:
+
+- Delimiter detection and UTF-8 BOM handling ([specs/012-csv-delimiter-bom/spec.md](specs/012-csv-delimiter-bom/spec.md)).
+- Optional due dates from CSV ([specs/013-import-due-dates/spec.md](specs/013-import-due-dates/spec.md)).
+- Optional assignees from CSV ([specs/014-import-assignees/spec.md](specs/014-import-assignees/spec.md)).
+- Sample CSV downloads, column aliases, and remembered mapping layouts ([specs/015-csv-column-mapping/spec.md](specs/015-csv-column-mapping/spec.md)).
+- Download execution report as CSV for offline reconciliation ([specs/016-download-execution-report/spec.md](specs/016-download-execution-report/spec.md)).
+
+Hosting, product surface, and commercial (optional):
+
+- Hosted multi-tenant support alongside self-hosted single-tenant deployments ([specs/004-add-multitenant-hosting/spec.md](specs/004-add-multitenant-hosting/spec.md)).
+- Public Hugo product site and in-app release version / about surface ([specs/017-public-hugo-website/spec.md](specs/017-public-hugo-website/spec.md), [specs/018-in-app-about-version/spec.md](specs/018-in-app-about-version/spec.md)).
+- Optional commercial account mode with profile lifecycle, credit ledger, complimentary tenant allowances, and profile credits activity ([specs/008-commercial-user-accounts/spec.md](specs/008-commercial-user-accounts/spec.md), [specs/009-in-process-commercial/spec.md](specs/009-in-process-commercial/spec.md), [specs/011-commercial-credit-ledger/spec.md](specs/011-commercial-credit-ledger/spec.md), [specs/019-complimentary-tenant-credits/spec.md](specs/019-complimentary-tenant-credits/spec.md), [specs/020-profile-credits-ledger/spec.md](specs/020-profile-credits-ledger/spec.md)).
+
+Foundation and quality:
+
+- Clean Architecture layering and explicit use-case boundaries ([specs/003-align-clean-architecture/spec.md](specs/003-align-clean-architecture/spec.md)).
+- UI/UX stepped workflow redesign ([specs/002-ui-ux-redesign/spec.md](specs/002-ui-ux-redesign/spec.md)).
 - Regression coverage for startup validation, authority handling, and single-path planner registration.
-- Optional commercial account mode with first sign-in account creation, profile page, delete-and-restore lifecycle, and retention sweep support.
 
 Primary feature sources:
 
 - [specs/001-import-planner-csv/spec.md](specs/001-import-planner-csv/spec.md)
 - [specs/001-import-planner-csv/contracts/import-workflow-contract.md](specs/001-import-planner-csv/contracts/import-workflow-contract.md)
-- [specs/002-ui-ux-redesign/spec.md](specs/002-ui-ux-redesign/spec.md)
-- [specs/003-align-clean-architecture/spec.md](specs/003-align-clean-architecture/spec.md)
-- [specs/004-add-multitenant-hosting/spec.md](specs/004-add-multitenant-hosting/spec.md)
+- [specs/010-wizard-stepper-layout/spec.md](specs/010-wizard-stepper-layout/spec.md)
 - [specs/005-simplify-graph-path/spec.md](specs/005-simplify-graph-path/spec.md)
 - [specs/006-refine-import-guidance/spec.md](specs/006-refine-import-guidance/spec.md)
+- [specs/007-end-user-docs-site/spec.md](specs/007-end-user-docs-site/spec.md)
 
 ## Technology Stack
 
 - Platform and language:
-  - .NET SDK 10.0.100
+  - .NET SDK 10.0.300 ([global.json](global.json))
   - C# 14
-  - ASP.NET Core Blazor Web App
+  - ASP.NET Core Blazor Web App (`net10.0`)
 - UI:
-  - MudBlazor 9.5.0
+  - MudBlazor 9.11.0
 - Core libraries:
   - CsvHelper 33.1.0
-  - Microsoft.Graph 6.1.0
-  - Microsoft.Kiota.Abstractions 2.0.0
-  - Microsoft.Identity.Web 4.10.0
-  - Microsoft.Identity.Web.UI 4.10.0
+  - Microsoft.Graph 6.8.0
+  - Microsoft.Kiota.Abstractions 2.1.2
+  - Microsoft.Identity.Web 4.16.0
+  - Microsoft.Identity.Web.UI 4.16.0
 - Hosting and observability:
-  - Aspire AppHost SDK 13.5.3
-  - OpenTelemetry 1.15.x packages
+  - Aspire AppHost SDK 13.6.1
+  - OpenTelemetry 1.19.x packages
   - Shared service defaults for resilience and telemetry
 - Testing:
-  - xUnit v3 4.0.0
-  - NSubstitute
-  - bUnit 2.9.0
-  - Microsoft.NET.Test.Sdk 18.9.0
+  - xUnit v3 4.0.2
+  - NSubstitute 6.2.0
+  - bUnit 2.11.3
+  - Microsoft.NET.Test.Sdk 18.10.1
+  - Microsoft.Playwright 1.63.0 (browser E2E journeys)
 
 Primary version sources:
 
@@ -109,15 +128,16 @@ Primary version sources:
 
 ## Project Architecture
 
-The solution follows layered Clean Architecture. Domain and Application own policy, Infrastructure provides adapters, and Web owns presentation and workflow state.
+The solution follows layered Clean Architecture. Domain and Application own policy; Infrastructure and Commercial provide adapters; Web owns presentation and workflow state.
 
 ```mermaid
 flowchart LR
-    Web[ImportToPlanner.Web\nBlazor UI, presenters, workflow coordination] --> App[ImportToPlanner.Application\nUse cases and contracts]
-    Infra[ImportToPlanner.Infrastructure.Graph\nCSV parser and planner gateways] --> App
+    Web[ImportToPlanner.Web\nBlazor UI, presenters, workflow] --> App[ImportToPlanner.Application\nUse cases and contracts]
+    Infra[ImportToPlanner.Infrastructure.Graph\nCSV parser and Graph gateways] --> App
+    Commercial[ImportToPlanner.Commercial\nHosted commercial accounts and credits] --> App
     App --> Domain[ImportToPlanner.Domain\nBusiness concepts]
-    Web --> Defaults[ImportToPlanner.ServiceDefaults\nTelemetry and resilience defaults]
-    AppHost[ImportToPlanner.AppHost\nAspire AppHost] --> Web
+    Web --> Defaults[ImportToPlanner.ServiceDefaults\nTelemetry and resilience]
+    AppHost[ImportToPlanner.AppHost\nAspire orchestration] --> Web
 ```
 
 Projects in solution:
@@ -125,8 +145,10 @@ Projects in solution:
 - `src/ImportToPlanner.Domain`: domain entities and business concepts.
 - `src/ImportToPlanner.Application`: use-case orchestration and boundary contracts.
 - `src/ImportToPlanner.Infrastructure.Graph`: CSV parsing and planner gateway implementations.
+- `src/ImportToPlanner.Commercial`: commercial account persistence, credit ledger, and related adapters (hosted mode).
 - `src/ImportToPlanner.Web`: Blazor UI, authentication entry behaviour, and stepped workflow.
 - `src/ImportToPlanner.ServiceDefaults`: shared service defaults for resilience and telemetry.
+- `src/ImportToPlanner.AppHost`: Aspire AppHost for local and deployment-oriented orchestration.
 
 Architecture and governance references:
 
@@ -147,8 +169,9 @@ Self-hosting remains a permanent supported delivery path for this repository.
 
 - Commercial mode is controlled by `Features:CommercialMode:Enabled`.
 - When enabled, the app shows a commercial sign-in gate for signed-out visitors and creates an account keyed by `TenantId` + `UserId` on first sign-in.
-- Profile management is available at `/profile`, including delete and restore behaviour during the retention period.
+- Profile management is available at `/profile`, including delete and restore behaviour during the retention period and credits activity when the ledger is enabled.
 - When commercial mode is disabled, self-hosted sign-in behaviour remains unchanged and commercial persistence is bypassed.
+- Product contract for credits and usage: [docs/credits-billing-usage-model.md](docs/credits-billing-usage-model.md).
 
 ### Choose your path
 
@@ -162,13 +185,13 @@ Recommended Entra setup:
 - Self-hosted mode: use a tenant-owned single-tenant app registration, set `AzureAd:TenantId` to that registration tenant, and set `AzureAd:HomeTenantId` to that same tenant.
 - Do not treat the Azure deployment tenant ID as the hosted runtime authority toggle. Runtime authority is controlled by `AzureAd:HomeTenantId`.
 
-For the full internal setup guide, including the recommended separate-registration strategy and troubleshooting for the "Selected user account does not exist in tenant" error, see `docs/entra-app-registration-setup.md`.
+For the full internal setup guide, including the recommended separate-registration strategy and troubleshooting for the "Selected user account does not exist in tenant" error, see [docs/entra-app-registration-setup.md](docs/entra-app-registration-setup.md).
 
 ### Prerequisites
 
 - .NET 10 SDK.
-- Microsoft 365 account with Planner access.
-- Entra ID app registration with required delegated permissions.
+- Microsoft 365 account with Planner access (when testing real Graph calls).
+- Entra ID app registration with required delegated permissions (when testing auth or Graph).
 - Local configuration for `AzureAd` and Graph settings.
 - Container runtime for local Azurite emulation when using Aspire.
 - Optional local tooling:
@@ -192,12 +215,11 @@ git ls-files '*.js' | xargs -n1 node --check
 
 The repository includes ready-made Aspire launch profiles in [.vscode/launch.json](.vscode/launch.json):
 
-- `Aspire: Run (Single Tenant - In Memory)` - recommended first run for contributors and local evaluation.
-- `Aspire: Run (Single Tenant + Graph)` - self-hosted single-tenant sign-in and real Planner calls.
-- `Aspire: Run (Multi Tenant + Hosted Storage)` - hosted shared multi-tenant verification with local hosted-storage emulation.
+- `Aspire: Run (Single Tenant - In Memory)` — recommended first run for contributors and local evaluation.
+- `Aspire: Run (Single Tenant + Graph)` — self-hosted single-tenant sign-in and real Planner calls.
+- `Aspire: Run (Multi Tenant + Hosted Storage)` — hosted shared multi-tenant verification with local hosted-storage emulation.
 
-The first profile is deliberately ordered first so a new VS Code user lands on the simplest path.
-Profile names are historical labels; all supported paths now use Graph plus storage-backed services.
+The first profile is deliberately ordered first so a new VS Code user lands on the simplest path. Profile names are historical labels; all supported paths now use Graph plus storage-backed services.
 
 If you prefer the CLI, run the baseline validation commands above and then start the AppHost with `aspire run`.
 
@@ -251,7 +273,7 @@ aspire stop
 
 Notes:
 
-- The AppHost always starts `storage`, `blobs`, `tables`, and `web`.
+- The AppHost starts `storage`, `blobs`, `tables`, and `web`.
 - A container runtime is needed for local Azurite emulation.
 - For deeper developer guidance, see [docs/developer-quickstart.md](docs/developer-quickstart.md).
 
@@ -260,26 +282,28 @@ Notes:
 ```text
 src/
   ImportToPlanner.Application/
+  ImportToPlanner.Commercial/
   ImportToPlanner.Domain/
   ImportToPlanner.Infrastructure.Graph/
   ImportToPlanner.ServiceDefaults/
   ImportToPlanner.Web/
+  ImportToPlanner.AppHost/
 tests/
   ImportToPlanner.Tests/
   ImportToPlanner.Web.Tests/
+  ImportToPlanner.E2E.Tests/
 docs/
-docs/
+website/
 specs/
-src/ImportToPlanner.AppHost/
 ImportToPlanner.slnx
 ```
 
 Repository areas:
 
 - `src/`: production projects.
-- `tests/`: unit, integration-style, and Blazor UI tests.
-- `docs/`: public-facing documentation.
+- `tests/`: unit, integration-style, Blazor component, and Playwright E2E tests.
 - `docs/`: internal engineering guidance.
+- `website/`: Hugo public site source (`website/content/`).
 - `specs/`: Spec Kit artefacts (specs, plans, tasks, quickstarts, contracts).
 
 ## Development Workflow
@@ -306,31 +330,36 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for full pull request and review-thread g
 Key standards:
 
 - Use UK English in user-facing and contributor-facing wording.
-- Preserve dependency direction and layer boundaries across Web, Application, Domain, and Infrastructure.
+- Preserve dependency direction and layer boundaries across Web, Application, Domain, Infrastructure, and Commercial.
 - Keep provider-specific concepts (Graph, Kiota, transport details) in adapter layers.
 - Prefer MudBlazor components and parameters before custom CSS or HTML workarounds.
 - Use async end-to-end for I/O and avoid blocking calls.
 - Avoid exposing secrets, certificate values, or tenant-sensitive identifiers.
+- Run `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal` before finalising code changes (CI enforces this).
 
 Standards references:
 
 - [AGENTS.md](AGENTS.md)
-- [.github/instructions/blazor-csharp.instructions.md](.github/instructions/blazor-csharp.instructions.md)
-- [.github/instructions/csharp-clean-architecture.instructions.md](.github/instructions/csharp-clean-architecture.instructions.md)
+- [.specify/memory/constitution.md](.specify/memory/constitution.md)
+- [docs/engineering-policies.md](docs/engineering-policies.md)
+- [.agents/skills/mudblazor/SKILL.md](.agents/skills/mudblazor/SKILL.md) (Blazor UI)
 - [docs/microsoft-graph-guidelines.md](docs/microsoft-graph-guidelines.md)
 
 ## Testing
 
 Test projects:
 
-- `tests/ImportToPlanner.Tests`: application and infrastructure tests.
-- `tests/ImportToPlanner.Web.Tests`: Blazor UI and workflow tests.
+- `tests/ImportToPlanner.Tests`: application, infrastructure, and architecture compliance tests.
+- `tests/ImportToPlanner.Web.Tests`: Blazor UI and workflow tests (bUnit).
+- `tests/ImportToPlanner.E2E.Tests`: high-value browser journeys (Playwright).
 
 Run all tests:
 
 ```bash
 dotnet test ImportToPlanner.slnx
 ```
+
+CI runs unit and integration tests in `.github/workflows/ci.yml` and Playwright journeys separately in `.github/workflows/ci-e2e.yml`.
 
 Collect coverage locally:
 
@@ -362,16 +391,15 @@ Recommended contributor flow:
 
 ## Further Reading
 
-- [specs/004-add-multitenant-hosting/quickstart.md](specs/004-add-multitenant-hosting/quickstart.md)
-- [docs/microsoft-graph-guidelines.md](docs/microsoft-graph-guidelines.md)
-- [docs/aspire-production-readiness.md](docs/aspire-production-readiness.md)
-- [tests/README.md](tests/README.md)
 - [docs/README.md](docs/README.md)
-- [docs/README.md](docs/README.md)
-- [docs/roadmap-and-limitations.md](docs/roadmap-and-limitations.md)
 - [specs/001-import-planner-csv/quickstart.md](specs/001-import-planner-csv/quickstart.md)
 - [specs/002-ui-ux-redesign/quickstart.md](specs/002-ui-ux-redesign/quickstart.md)
 - [specs/003-align-clean-architecture/quickstart.md](specs/003-align-clean-architecture/quickstart.md)
+- [specs/004-add-multitenant-hosting/quickstart.md](specs/004-add-multitenant-hosting/quickstart.md)
+- [docs/microsoft-graph-guidelines.md](docs/microsoft-graph-guidelines.md)
+- [docs/aspire-production-readiness.md](docs/aspire-production-readiness.md)
+- [docs/roadmap-and-limitations.md](docs/roadmap-and-limitations.md)
+- [tests/README.md](tests/README.md)
 
 ## Licence
 

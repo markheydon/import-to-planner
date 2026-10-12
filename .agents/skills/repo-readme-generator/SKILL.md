@@ -59,7 +59,7 @@ Generate a comprehensive README.md for this repository by analysing repository-n
 
 ## Coding Standards
 - Summarise key coding standards and conventions.
-- Source from `AGENTS.md` and `.github/instructions/*.instructions.md` files.
+- Source from `AGENTS.md`, `.specify/memory/constitution.md`, and `docs/engineering-policies.md`.
 
 ## Testing
 - Explain testing approach and tools.

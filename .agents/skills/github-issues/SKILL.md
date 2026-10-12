@@ -115,7 +115,7 @@ Only include fields you want to change. Available fields: `title`, `body`, `stat
 
 **Action**: 
 ```bash
-gh api repos/github/awesome-copilot/issues \
+gh api repos/{owner}/{repo}/issues \
   -X POST \
   -f title="Login page crashes when using SSO" \
   -f type="Bug" \
@@ -141,7 +141,7 @@ Page becomes unresponsive and displays error." \
 
 **Action**:
 ```bash
-gh api repos/github/awesome-copilot/issues \
+gh api repos/{owner}/{repo}/issues \
   -X POST \
   -f title="Add dark mode support" \
   -f type="Feature" \

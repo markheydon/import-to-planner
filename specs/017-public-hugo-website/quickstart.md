@@ -104,7 +104,7 @@ inputs).
 ## 7. Repository entry points
 
 Inspect `README.md`, `AGENTS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`, and
-`.github/skills/end-user-docs/SKILL.md`.
+`.agents/skills/end-user-docs/SKILL.md`.
 
 **Expected**: Public docs path is `website/` (or published URL); engineering guidance points
 to `docs/`; no instruction to publish end-user content from Jekyll on main.
