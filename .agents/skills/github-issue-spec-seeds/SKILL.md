@@ -1,12 +1,12 @@
 ---
-name: speckit-github-issues
+name: github-issue-spec-seeds
 description: >-
-  Create or update GitHub issues that kick off Spec Kit (specify → plan → tasks).
-  Use when opening a feature or story that will use /speckit.specify and
-  /speckit.plan, or when splitting product intent from implementation seeds.
+  Structure GitHub issue bodies with fenced specify/plan seeds for the Spec Kit
+  workflow (/speckit.specify, /speckit.plan). Not a Spec Kit skill—pair with
+  github-issues for gh/MCP writes.
 ---
 
-# Spec Kit–aligned GitHub issues
+# GitHub issues with specify/plan seeds
 
 Create issues that humans can triage and agents can execute without mixing WHAT
 and HOW. Works with any agent that can read the issue and run Spec Kit skills;
@@ -88,7 +88,7 @@ Before publishing the seed, verify:
 ## Creating/updating issues
 
 - **Read:** GitHub MCP or `gh issue view`
-- **Write:** `gh issue edit` / `gh api` (see `.github/skills/github-issues/SKILL.md`)
+- **Write:** `gh issue edit` / `gh api` (see `.agents/skills/github-issues/SKILL.md`)
 - When reshaping seeds, update the fenced blocks in place; do not run `/speckit.specify` in the same task unless the user asked.
 
 ## Examples

@@ -315,8 +315,9 @@ Key standards:
 Standards references:
 
 - [AGENTS.md](AGENTS.md)
-- [.github/instructions/blazor-csharp.instructions.md](.github/instructions/blazor-csharp.instructions.md)
-- [.github/instructions/csharp-clean-architecture.instructions.md](.github/instructions/csharp-clean-architecture.instructions.md)
+- [.specify/memory/constitution.md](.specify/memory/constitution.md)
+- [docs/engineering-policies.md](docs/engineering-policies.md)
+- [.agents/skills/mudblazor/SKILL.md](.agents/skills/mudblazor/SKILL.md) (Blazor UI)
 - [docs/microsoft-graph-guidelines.md](docs/microsoft-graph-guidelines.md)
 
 ## Testing

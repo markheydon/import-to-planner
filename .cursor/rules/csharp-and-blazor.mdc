@@ -1,0 +1,19 @@
+---
+description: C#, Blazor, and Clean Architecture pointers for this repository
+globs:
+  - "**/*.cs"
+  - "**/*.csproj"
+  - "**/*.razor"
+  - "**/*.razor.cs"
+  - "**/*.razor.css"
+alwaysApply: false
+---
+
+# C# and Blazor (Import To Planner)
+
+Follow repository governance before generic .NET defaults:
+
+1. **Architecture** — `.specify/memory/constitution.md` and the layer map in `docs/engineering-policies.md`. Preserve dependency direction (Web / Infrastructure.Graph / Commercial → Application → Domain).
+2. **Implementation and tests** — `docs/engineering-policies.md` (xUnit v3, NSubstitute, built-in Assert, bUnit for Blazor unit tests). Run `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal` before finalising code changes (`AGENTS.md`).
+3. **Blazor UI** — Read and follow `.agents/skills/mudblazor/SKILL.md` before custom CSS or raw HTML. Prefer MudBlazor components, parameters, and layout primitives.
+4. **Workflow boundaries** — Keep neutral enums/types in coordinators and workflow state; map framework-specific types at the component edge. User-facing wording belongs in presenters/mappers, not adapter exceptions.
