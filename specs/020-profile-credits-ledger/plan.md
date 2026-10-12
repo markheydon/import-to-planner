@@ -1,113 +1,124 @@
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Profile Credits and Ledger Activity
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Branch**: `020-profile-credits-ledger` | **Date**: 2026-10-12 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Input**: Feature specification from `/specs/020-profile-credits-ledger/spec.md`, clarifications session 2026-10-12, product contract `docs/credits-billing-usage-model.md`, GitHub issue [#138](https://github.com/markheydon/import-to-planner/issues/138) (parent [#124](https://github.com/markheydon/import-to-planner/issues/124)). **Depends on** [#126](https://github.com/markheydon/import-to-planner/issues/126) / spec 011. **Coordinates with** [#129](https://github.com/markheydon/import-to-planner/issues/129) / spec 019 and [#125](https://github.com/markheydon/import-to-planner/issues/125) (paid lots and buy-credits when available).
 
-**Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
+**Note**: Implementation delegates to C# Expert (`AGENTS.md`) with `csharp-async`, `csharp-xunit`, `dotnet-best-practices-repo`, `mudblazor` for profile UI. No AppHost tests. Run `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes` before merge.
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+Add a **credits section on `/profile`** for hosted commercial mode: show ledger-derived **remaining credits after ensure**, **current free monthly lot** (non-complimentary), and a **rolling twelve-month activity report** with import usage **grouped by import run**. Fail closed with friendly UK English when reads fail; never show remaining as zero on errors. Complimentary allowlisted tenants see **Unlimited** and **usage-only** activity. Paid lots, purchases, and buy-credits extend the same section when [#125](https://github.com/markheydon/import-to-planner/issues/125) ships. No Home wallet chrome; import credit gates unchanged.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
+**Language/Version**: C# 14 / .NET 10 (`global.json`)
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
+**Primary Dependencies**: Blazor + MudBlazor (`Profile.razor`), `ImportToPlanner.Commercial` credit module (011/019), `IEnsureCurrentCreditBalanceUseCase`, Azure Tables `TableCreditLedgerStore`, xUnit v3, NSubstitute, bUnit
 
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+**Storage**: Existing `CommercialCreditLedger` table; new read query on transaction rows only. No new Aspire resources.
 
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+**Testing**: Commercial unit tests (list API, grouping, window, complimentary filter); Web bUnit for profile credits visibility and fail-closed; extend `InMemoryCreditLedgerStore`. No `Aspire.Hosting.Testing`. No Playwright unless explicitly requested.
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Target Platform**: Hosted commercial (ACA via Aspire); local Azurite; self-host unchanged (no credit UI)
 
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: Layered Blazor (`Web`, `Commercial`, `Application`, `Domain`, `Infrastructure.Graph`) + AppHost
 
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+**Performance Goals**: One ensure + one partition query per profile load; in-memory aggregation acceptable for twelve-month window; pagination optional if row count is large within window
 
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
+**Constraints**: Clean Architecture inward deps; UK English UI; commercial off registers no profile credit services; balance and activity errors independent; format gate in CI
 
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
-
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Scale/Scope**: Read path + profile UI on existing route; optional `EnsureBalanceReason.Profile`; #125 hooks reserved in contracts/models
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Passes before Phase 0. Re-checked after Phase 1 — passes.*
 
-[Gates determined based on constitution file]
+- **I. Dependency direction**: Ledger list, aggregation, and ensure stay in Commercial. Web maps structured results to MudBlazor; no table access in Web.
+- **II. Technology-neutral core**: Profile results use Commercial records/enums; no MudBlazor in Commercial.
+- **III. Explicit boundaries**: Summary/activity use cases return structured outcomes; `ProfileCreditPresenter` owns user-facing strings.
+- **IV. Replaceable frameworks**: Read use cases depend on `ICreditLedgerStore` abstraction; Azure remains adapter.
+- **V. Traceability**: Maps to spec 020 FR-001–FR-014 and user stories 1–5.
+- **VI. Testable**: In-memory store + bUnit profile scenarios; grouping logic unit-tested without production deploy.
+- **VII. Explicit failures**: Fail-closed codes from Commercial; no silent zero balance.
+- **VIII. Security**: Tenant id from session only; no Stripe ids or diagnostics in UI.
+- **IX. Quality evidence**: Tests + format + architecture scans (Commercial/Web boundaries).
+- **X. Self-hosted viability**: Commercial off → no profile credit registration or UI; import path for self-host unchanged.
+
+No Complexity Tracking entries required.
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature]/
-├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output (/speckit-plan command)
-├── data-model.md        # Phase 1 output (/speckit-plan command)
-├── quickstart.md        # Phase 1 output (/speckit-plan command)
-├── contracts/           # Phase 1 output (/speckit-plan command)
-└── tasks.md             # Phase 2 output (/speckit-tasks command - NOT created by /speckit-plan)
+specs/020-profile-credits-ledger/
+├── spec.md
+├── plan.md
+├── research.md
+├── data-model.md
+├── quickstart.md
+├── contracts/
+│   └── profile-credits-ledger-contracts.md
+└── checklists/
+    └── requirements.md
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+src/ImportToPlanner.Commercial/
+├── Abstractions/
+│   └── ICreditLedgerStore.cs              # add ListTransactionsAsync
+├── Models/
+│   ├── CreditLedgerEnums.cs               # EnsureBalanceReason.Profile
+│   └── ProfileCreditModels.cs             # summary/activity result types (new)
+├── Credits/
+│   ├── EnsureCurrentCreditBalanceUseCase.cs  # unchanged behaviour; new reason only
+│   ├── GetProfileCreditSummaryUseCase.cs  # new
+│   ├── GetProfileCreditActivityUseCase.cs # new (12m window, grouping)
+│   └── Storage/TableCreditLedgerStore.cs  # list implementation
+└── DependencyInjection.cs                 # register profile read use cases
 
-tests/
-├── contract/
-├── integration/
-└── unit/
+src/ImportToPlanner.Web/
+├── Features/CommercialAccounts/Pages/
+│   ├── Profile.razor                      # credits section UI
+│   └── Profile.razor.cs                   # load summary + activity
+└── Features/CommercialAccounts/Presenters/
+    └── ProfileCreditPresenter.cs          # UK English labels
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+tests/ImportToPlanner.Tests/Credits/        # list, grouping, summary, activity
+tests/ImportToPlanner.Web.Tests/            # ProfilePageTests extensions
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: Extend 011/019 Commercial storage and ensure; add profile-specific read use cases and Web presenters. No coordinator or Home changes for this story.
 
 ## Complexity Tracking
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
+> None.
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+## Phase 0 Research
+
+See [research.md](./research.md). No NEEDS CLARIFICATION in Technical Context.
+
+## Phase 1 Design
+
+- [data-model.md](./data-model.md) — summary, activity entries, failure handling.
+- [contracts/profile-credits-ledger-contracts.md](./contracts/profile-credits-ledger-contracts.md) — use cases, store list API, UI rules.
+- [quickstart.md](./quickstart.md) — validation scenarios.
+
+### Constitution re-check (post-design)
+
+Still passes: read-only ledger path; presentation in Web; complimentary and fail-closed rules align with 019 and 011; self-host unaffected; import gates untouched.
+
+## Implementation notes (for `/speckit-tasks`)
+
+1. **Enums** — Add `EnsureBalanceReason.Profile` for audit on profile load.
+2. **Store** — `ListTransactionsAsync` on `ICreditLedgerStore` + table query; update `InMemoryCreditLedgerStore`.
+3. **Summary use case** — Ensure → map balance + current free lot + paid lots (empty until #125).
+4. **Activity use case** — Twelve-month filter, complimentary filter, group usage by `ImportRunId`, set `HasOlderHistory`.
+5. **DI** — Register use cases when commercial on only.
+6. **Profile UI** — MudPaper section; separate alerts for balance vs activity errors; twelve-month omission copy; reuse unlimited formatting from import presenters where appropriate.
+7. **#125 readiness** — Contract slots for paid lots, purchase rows, buy-credits button guarded by feature/checkout availability and non-complimentary policy.
+8. **Tests** — Per [quickstart.md](./quickstart.md); keep 011/019 import tests green.
+9. **Format** — `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes`.
