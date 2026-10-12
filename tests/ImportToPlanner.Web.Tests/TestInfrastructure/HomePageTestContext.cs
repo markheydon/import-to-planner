@@ -25,6 +25,8 @@ internal sealed class HomePageTestContext : BunitContext
         CommercialAccountStoreStub? commercialAccountStoreStub = null,
         CommercialAuditStoreStub? commercialAuditStoreStub = null,
         CreditEnsureUseCaseSubstitute? creditEnsureUseCaseSubstitute = null,
+        ProfileCreditSummaryUseCaseSubstitute? profileCreditSummaryUseCaseSubstitute = null,
+        ProfileCreditActivityUseCaseSubstitute? profileCreditActivityUseCaseSubstitute = null,
         IImportColumnMappingLayoutStore? layoutStore = null,
         ReleaseInformationQueryStub? releaseInformationQueryStub = null,
         string docsBaseUrl = "https://docs.test.importplanner.app")
@@ -125,12 +127,18 @@ internal sealed class HomePageTestContext : BunitContext
             Services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
             CreditEnsureUseCase = creditEnsureUseCaseSubstitute ?? new CreditEnsureUseCaseSubstitute();
             Services.AddScoped<IEnsureCurrentCreditBalanceUseCase>(_ => CreditEnsureUseCase.Instance);
+            ProfileCreditSummaryUseCase = profileCreditSummaryUseCaseSubstitute ?? new ProfileCreditSummaryUseCaseSubstitute();
+            ProfileCreditActivityUseCase = profileCreditActivityUseCaseSubstitute ?? new ProfileCreditActivityUseCaseSubstitute();
+            Services.AddScoped<IGetProfileCreditSummaryUseCase>(_ => ProfileCreditSummaryUseCase.Instance);
+            Services.AddScoped<IGetProfileCreditActivityUseCase>(_ => ProfileCreditActivityUseCase.Instance);
         }
         else
         {
             CommercialAccountStore = commercialAccountStoreStub ?? new CommercialAccountStoreStub();
             CommercialAuditStore = commercialAuditStoreStub ?? new CommercialAuditStoreStub();
             CreditEnsureUseCase = creditEnsureUseCaseSubstitute ?? new CreditEnsureUseCaseSubstitute();
+            ProfileCreditSummaryUseCase = profileCreditSummaryUseCaseSubstitute ?? new ProfileCreditSummaryUseCaseSubstitute();
+            ProfileCreditActivityUseCase = profileCreditActivityUseCaseSubstitute ?? new ProfileCreditActivityUseCaseSubstitute();
         }
 
         Services.AddSingleton(TenantAccessor.Instance);
@@ -157,6 +165,10 @@ internal sealed class HomePageTestContext : BunitContext
     public CommercialAuditStoreStub CommercialAuditStore { get; }
 
     public CreditEnsureUseCaseSubstitute CreditEnsureUseCase { get; }
+
+    public ProfileCreditSummaryUseCaseSubstitute ProfileCreditSummaryUseCase { get; }
+
+    public ProfileCreditActivityUseCaseSubstitute ProfileCreditActivityUseCase { get; }
 
     public ReleaseInformationQueryStub ReleaseInformationQuery { get; }
 

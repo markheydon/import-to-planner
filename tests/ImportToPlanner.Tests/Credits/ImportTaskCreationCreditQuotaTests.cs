@@ -222,5 +222,17 @@ public sealed class ImportTaskCreationCreditQuotaTests
             RecordCreditUsageRequest request,
             CancellationToken cancellationToken)
             => inner.RecordComplimentaryUsageAsync(request, cancellationToken);
+
+        public Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+            string tenantId,
+            DateTimeOffset occurredSinceUtc,
+            CancellationToken cancellationToken)
+            => inner.ListTransactionsAsync(tenantId, occurredSinceUtc, cancellationToken);
+
+        public Task<bool> HasTransactionsBeforeAsync(
+            string tenantId,
+            DateTimeOffset beforeOccurredUtc,
+            CancellationToken cancellationToken)
+            => inner.HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken);
     }
 }

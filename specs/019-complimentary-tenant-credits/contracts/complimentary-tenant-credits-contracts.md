@@ -19,7 +19,7 @@ Rules:
 - Do not commit production tenant GUIDs in source.
 - Document parameter name and empty default for operators (product doc + deployment notes).
 - Invalid tokens: log diagnostic; ignore token; valid GUIDs in the same string remain effective.
-- Membership evaluated on each credit-related action when `TenantId` is known (preview, confirm, execute, sign-in balance ensure).
+- Membership evaluated on each credit-related action when `TenantId` is known (preview, confirm, execute, sign-in balance ensure, hosted `/profile` credits summary and activity load per spec 020).
 
 ## 2. Complimentary tenant policy (Commercial)
 
@@ -44,7 +44,7 @@ For complimentary tenants, `EnsureCurrentCreditBalance` MUST:
 
 For non-complimentary tenants: unchanged 011 contract.
 
-Failure modes unchanged (`credits.ledger_unavailable`, etc.). Fail closed on preview/confirm/execute; sign-in may still succeed when ensure fails (011).
+Failure modes unchanged (`credits.ledger_unavailable`, etc.). Fail closed on preview/confirm/execute and on hosted `/profile` credits load (`EnsureBalanceReason.Profile`, spec 020 / 011 §2); sign-in may still succeed when ensure fails (011).
 
 ## 4. Preview balance comparison (UI contract amendment)
 
@@ -103,7 +103,7 @@ Optional breakdown line: credits used labelled as complimentary usage (not “fr
 When `ComplimentaryUnlimitedAccess` is true on the active snapshot or session credit context:
 
 - MUST NOT show buy-credits as required to continue importing.
-- Future Stripe checkout entry points (#125) MUST honour the same guard.
+- Future Stripe checkout entry points (#125), including the `/profile` credits section (spec 020), MUST honour the same guard.
 
 ## 10. Security
 

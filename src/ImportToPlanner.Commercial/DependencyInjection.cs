@@ -103,6 +103,8 @@ public static class DependencyInjection
             new TableCreditLedgerStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialCreditLedgerTableClientKey)));
         services.AddScoped<IEnsureCurrentCreditBalanceUseCase, EnsureCurrentCreditBalanceUseCase>();
+        services.AddScoped<IGetProfileCreditSummaryUseCase, GetProfileCreditSummaryUseCase>();
+        services.AddScoped<IGetProfileCreditActivityUseCase, GetProfileCreditActivityUseCase>();
 
         foreach (var descriptor in services.Where(descriptor => descriptor.ServiceType == typeof(IImportTaskCreationQuota)).ToList())
         {

@@ -53,6 +53,22 @@ public interface ICreditLedgerStore
     Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
         RecordCreditUsageRequest request,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Lists ledger transactions for a tenant with <paramref name="occurredSinceUtc"/> inclusive.
+    /// </summary>
+    Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+        string tenantId,
+        DateTimeOffset occurredSinceUtc,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Returns whether any transaction occurred strictly before <paramref name="beforeOccurredUtc"/>.
+    /// </summary>
+    Task<bool> HasTransactionsBeforeAsync(
+        string tenantId,
+        DateTimeOffset beforeOccurredUtc,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>

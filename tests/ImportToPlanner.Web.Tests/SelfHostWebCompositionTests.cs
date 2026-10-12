@@ -11,6 +11,8 @@ public sealed class SelfHostWebCompositionTests
 
         Assert.Null(ctx.Services.GetService<ICommercialAccessUseCase>());
         Assert.Null(ctx.Services.GetService<ICommercialProfileUseCase>());
+        Assert.Null(ctx.Services.GetService<IGetProfileCreditSummaryUseCase>());
+        Assert.Null(ctx.Services.GetService<IGetProfileCreditActivityUseCase>());
     }
 
     [Fact]

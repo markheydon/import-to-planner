@@ -2,7 +2,7 @@
 
 **Branch**: `019-complimentary-tenant-credits` | **Date**: 2026-10-12 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/019-complimentary-tenant-credits/spec.md`, clarifications session 2026-10-12, product contract `docs/credits-billing-usage-model.md`, GitHub issue [#129](https://github.com/markheydon/import-to-planner/issues/129). Depends on [#126](https://github.com/markheydon/import-to-planner/issues/126) ledger. Related: [#125](https://github.com/markheydon/import-to-planner/issues/125) buy-CTA guard only.
+**Input**: Feature specification from `/specs/019-complimentary-tenant-credits/spec.md`, clarifications session 2026-10-12, product contract `docs/credits-billing-usage-model.md`, GitHub issue [#129](https://github.com/markheydon/import-to-planner/issues/129). Depends on [#126](https://github.com/markheydon/import-to-planner/issues/126) ledger. Related: [#125](https://github.com/markheydon/import-to-planner/issues/125) buy-CTA guard only. **Coordinates with** [#138](https://github.com/markheydon/import-to-planner/issues/138) / spec 020 for `/profile` Unlimited copy, usage-only activity, and buy-credits hiding.
 
 **Note**: Implementation delegates to C# Expert (`AGENTS.md`) with `csharp-async`, `csharp-xunit`, `dotnet-best-practices-repo`, `mudblazor` for preview/summary copy. No AppHost tests. Run `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes` before merge.
 
