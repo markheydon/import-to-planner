@@ -43,6 +43,24 @@ third-party files do not lose local policy.
   that refinement in `.github/` instead of changing the portable source unless the
   change is intentionally meant to update the shared generic skill.
 
+## Agent asset layout
+
+Policy is **agent-agnostic** at this file (`AGENTS.md`); **paths** are split by tool
+integration, not because migration failed.
+
+| Location | Role |
+|----------|------|
+| `AGENTS.md` | Single policy source: precedence, registry, delegation |
+| `.github/copilot-instructions.md` | GitHub Copilot loader only — pointer to `AGENTS.md` |
+| `.github/skills/`, `.github/agents/`, `.github/instructions/`, `.github/prompts/` | Repo-specific and Copilot-discovered customisations (expected today) |
+| `.agents/skills/` | Portable/upstream bundles (Aspire CLI, Spec Kit git extension, Playwright CLI, `dotnet-inspect`) |
+| `.cursor/skills/speckit-*` | Spec Kit workflow skills (Cursor integration; installer-managed) |
+| `.specify/` | Spec Kit templates, scripts, constitution memory, integration manifests |
+
+PR #114 centralised **policy** and Spec Kit Cursor skills; it did **not** remove
+`.github/skills/`. A future epic may relocate generic skills toward `.agents/` and
+thin GitHub paths to shims only — track in the repository issue for agent layout.
+
 ## Primary instruction files
 
 Refer to the following discipline-specific instruction files aligned with work type:
@@ -142,9 +160,9 @@ Expected delegation:
   `microsoft-docs` skill for authoritative references, API guidance, and official
   examples; do not use it as a replacement for repository-specific policy files or
   local codebase analysis
-- Public end-user documentation authoring under `docs/` → `end-user-docs` skill for
-  structure, tone, UK English, and contract-aligned coverage; do not use it for
-  internal engineering content under `docs/` or for C# implementation work
+- Public end-user documentation (Hugo site under `website/content/`) → `end-user-docs`
+  skill for structure, tone, UK English, and contract-aligned coverage; do not use it
+  for internal engineering content under `docs/` or for C# implementation work
 - Repository (root only) README generation or significant README restructuring →
   `repo-readme-generator` skill for documentation synthesis from repository artefacts;
   do not use it for small targeted content edits where direct manual updates are
@@ -154,8 +172,9 @@ Implementation workflow expectation:
 
 - During `/speckit.implement`, any coding, architecture, and test implementation tasks
   MUST be delegated to the registered C# Expert agent when available.
-- During `/speckit.implement`, public docs authoring or refinement tasks under `docs/`
-  MUST apply the `end-user-docs` skill as the default writing guidance.
+- During `/speckit.implement`, public docs authoring or refinement under
+  `website/content/` MUST apply the `end-user-docs` skill as the default writing
+  guidance.
 - If a task is not suitable for C# Expert, the exception and rationale MUST be recorded
   in the plan/PR notes.
 - When the AppHost is running: After the C# Expert agent completes coding, testing, and
