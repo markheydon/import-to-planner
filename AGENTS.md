@@ -38,7 +38,8 @@ local policy.
 | `.specify/` | Spec Kit templates, scripts, constitution memory, integration manifests |
 
 `.github/` holds CI, issue/PR templates, and repository governance only—not agent skills,
-instructions, or prompts.
+instructions, or prompts. The sole exception is `.github/copilot-instructions.md`, a
+required pointer to this file for GitHub Copilot.
 
 Repository-specific skills live under `.agents/skills/` alongside portable upstream
 bundles. Do not edit upstream skill bodies for local policy; override here in
