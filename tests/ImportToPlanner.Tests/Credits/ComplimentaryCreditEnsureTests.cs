@@ -81,5 +81,17 @@ public sealed class ComplimentaryCreditEnsureTests
             RecordCreditUsageRequest request,
             CancellationToken cancellationToken)
             => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+            string tenantId,
+            DateTimeOffset occurredSinceUtc,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<bool> HasTransactionsBeforeAsync(
+            string tenantId,
+            DateTimeOffset beforeOccurredUtc,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
     }
 }

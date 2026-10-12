@@ -1,6 +1,8 @@
 using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Web.Features.Authentication;
+using ImportToPlanner.Web.Features.CommercialAccounts.Abstractions;
+using ImportToPlanner.Web.Features.CommercialAccounts.Presenters;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -20,6 +22,12 @@ public partial class Profile
 
     private ICommercialProfileUseCase? CommercialProfileUseCase =>
         ServiceProvider.GetService<ICommercialProfileUseCase>();
+
+    private IGetProfileCreditSummaryUseCase? ProfileCreditSummaryUseCase =>
+        ServiceProvider.GetService<IGetProfileCreditSummaryUseCase>();
+
+    private IGetProfileCreditActivityUseCase? ProfileCreditActivityUseCase =>
+        ServiceProvider.GetService<IGetProfileCreditActivityUseCase>();
 
     [Inject]
     internal CommercialModeOptions CommercialModeOptions { get; set; } = default!;
@@ -43,6 +51,14 @@ public partial class Profile
     private bool showDeleteConfirmation;
     private string? statusMessage;
     private Severity statusSeverity = Severity.Info;
+
+    private bool showCreditsSection;
+    private bool creditSummaryLoading;
+    private bool creditActivityLoading;
+    private ProfileCreditSummaryResult? creditSummary;
+    private ProfileCreditActivityResult? creditActivity;
+    private string? creditBalanceErrorMessage;
+    private string? creditActivityErrorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,10 +94,100 @@ public partial class Profile
         try
         {
             account = await CommercialProfileUseCase.GetProfileAsync(sessionIdentity, RequestCancellation);
+            if (account is not null)
+            {
+                await LoadCreditsAsync(sessionIdentity.TenantId, sessionIdentity.UserId);
+            }
         }
         finally
         {
             isBusy = false;
+        }
+    }
+
+    private async Task LoadCreditsAsync(string tenantId, string actorUserId)
+    {
+        showCreditsSection = ProfileCreditSummaryUseCase is not null
+            && ProfileCreditActivityUseCase is not null;
+
+        if (!showCreditsSection)
+        {
+            return;
+        }
+
+        var occurredUtc = DateTimeOffset.UtcNow;
+        var summaryRequest = new ProfileCreditSummaryRequest(tenantId, actorUserId, occurredUtc);
+        var activityRequest = new ProfileCreditActivityRequest(tenantId, actorUserId, occurredUtc);
+
+        creditSummaryLoading = true;
+        creditActivityLoading = true;
+        creditBalanceErrorMessage = null;
+        creditActivityErrorMessage = null;
+        creditSummary = null;
+        creditActivity = null;
+
+        var summaryTask = LoadCreditSummaryAsync(summaryRequest);
+        var activityTask = LoadCreditActivityAsync(activityRequest);
+        await Task.WhenAll(summaryTask, activityTask);
+    }
+
+    private async Task LoadCreditSummaryAsync(ProfileCreditSummaryRequest request)
+    {
+        if (ProfileCreditSummaryUseCase is null)
+        {
+            creditSummaryLoading = false;
+            return;
+        }
+
+        try
+        {
+            var outcome = await ProfileCreditSummaryUseCase.GetAsync(request, RequestCancellation);
+            if (outcome is GetProfileCreditSummaryOutcome.Succeeded succeeded)
+            {
+                creditSummary = succeeded.Result;
+            }
+            else
+            {
+                creditBalanceErrorMessage = ProfileCreditPresenter.BuildBalanceUnavailableMessage();
+            }
+        }
+        catch (Exception)
+        {
+            creditBalanceErrorMessage = ProfileCreditPresenter.BuildBalanceUnavailableMessage();
+        }
+        finally
+        {
+            creditSummaryLoading = false;
+        }
+    }
+
+    private async Task LoadCreditActivityAsync(ProfileCreditActivityRequest request)
+    {
+        if (ProfileCreditActivityUseCase is null)
+        {
+            creditActivityLoading = false;
+            return;
+        }
+
+        try
+        {
+            var outcome = await ProfileCreditActivityUseCase.GetAsync(request, RequestCancellation);
+            if (outcome is GetProfileCreditActivityOutcome.Succeeded succeeded)
+            {
+                creditActivity = succeeded.Result;
+            }
+            else
+            {
+                creditActivityErrorMessage = ProfileCreditPresenter.BuildActivityUnavailableMessage();
+            }
+        }
+        catch (Exception)
+        {
+            creditActivityErrorMessage = ProfileCreditPresenter.BuildActivityUnavailableMessage();
+        }
+        finally
+        {
+            creditActivityLoading = false;
         }
     }
 
@@ -140,5 +246,20 @@ public partial class Profile
 
         var returnUrl = Uri.EscapeDataString("/");
         NavigationManager.NavigateTo($"MicrosoftIdentity/Account/SignOut?returnUrl={returnUrl}", forceLoad: true);
+    }
+
+    private bool ShowBuyCreditsButton =>
+        creditSummary is { ComplimentaryUnlimitedAccess: false }
+        && ServiceProvider.GetService<IBuyCreditsProfileNavigation>() is not null;
+
+    private void OnBuyCreditsClicked()
+    {
+        var navigation = ServiceProvider.GetService<IBuyCreditsProfileNavigation>();
+        if (navigation is null || creditSummary?.ComplimentaryUnlimitedAccess == true)
+        {
+            return;
+        }
+
+        NavigationManager.NavigateTo(navigation.BuyCreditsRelativeUrl);
     }
 }

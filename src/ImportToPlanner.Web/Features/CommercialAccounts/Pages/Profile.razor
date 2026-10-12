@@ -63,6 +63,117 @@
                 </MudStack>
             </MudPaper>
 
+            @if (showCreditsSection)
+            {
+                <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">@ProfileCreditPresenter.BuildCreditsSectionHeading()</MudText>
+
+                        @if (creditSummaryLoading)
+                        {
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                        }
+                        else if (!string.IsNullOrWhiteSpace(creditBalanceErrorMessage))
+                        {
+                            <MudAlert Severity="Severity.Error" Dense="true">
+                                <MudText Typo="Typo.body2">@creditBalanceErrorMessage</MudText>
+                            </MudAlert>
+                        }
+                        else if (creditSummary is not null)
+                        {
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.subtitle2">@ProfileCreditPresenter.BuildRemainingLabel()</MudText>
+                                <MudText Typo="Typo.h5">@ProfileCreditPresenter.FormatRemainingCredits(creditSummary)</MudText>
+                                @if (creditSummary.ComplimentaryUnlimitedAccess)
+                                {
+                                    <MudText Typo="Typo.body2">@ProfileCreditPresenter.BuildComplimentaryRemainingDescription()</MudText>
+                                }
+                            </MudStack>
+
+                            @if (!creditSummary.ComplimentaryUnlimitedAccess && creditSummary.FreeMonthlyLot is not null)
+                            {
+                                <MudDivider Class="my-2" />
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.subtitle2">@ProfileCreditPresenter.BuildFreeMonthlyLotHeading()</MudText>
+                                    <MudText Typo="Typo.body2">@ProfileCreditPresenter.BuildFreeMonthlyGrantedCopy(creditSummary.FreeMonthlyLot.GrantedQuantity)</MudText>
+                                    <MudText Typo="Typo.body2">@ProfileCreditPresenter.BuildFreeMonthlyRemainingCopy(creditSummary.FreeMonthlyLot.RemainingQuantity)</MudText>
+                                    <MudText Typo="Typo.body2">@ProfileCreditPresenter.BuildFreeMonthlyExpiryCopy(creditSummary.FreeMonthlyLot.ExpiresAtUtc)</MudText>
+                                </MudStack>
+                            }
+
+                            @if (!creditSummary.ComplimentaryUnlimitedAccess && creditSummary.PaidLots.Count > 0)
+                            {
+                                <MudDivider Class="my-2" />
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.subtitle2">@ProfileCreditPresenter.BuildPaidLotsHeading()</MudText>
+                                    @foreach (var paidLot in creditSummary.PaidLots)
+                                    {
+                                        <MudText Typo="Typo.body2">@ProfileCreditPresenter.BuildPaidLotCopy(paidLot)</MudText>
+                                    }
+                                </MudStack>
+                            }
+
+                            @if (ShowBuyCreditsButton)
+                            {
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OnBuyCreditsClicked">
+                                    @ProfileCreditPresenter.BuildBuyCreditsLabel()
+                                </MudButton>
+                            }
+                        }
+
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle2">@ProfileCreditPresenter.BuildActivityHeading()</MudText>
+
+                        @if (creditActivityLoading)
+                        {
+                            <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+                        }
+                        else if (!string.IsNullOrWhiteSpace(creditActivityErrorMessage))
+                        {
+                            <MudAlert Severity="Severity.Warning" Dense="true">
+                                <MudText Typo="Typo.body2">@creditActivityErrorMessage</MudText>
+                            </MudAlert>
+                        }
+                        else if (creditActivity is not null)
+                        {
+                            @if (creditActivity.HasOlderHistory)
+                            {
+                                <MudAlert Severity="Severity.Info" Dense="true">
+                                    <MudText Typo="Typo.body2">@ProfileCreditPresenter.BuildOlderHistoryNotice()</MudText>
+                                </MudAlert>
+                            }
+
+                            @if (creditActivity.Entries.Count == 0)
+                            {
+                                <MudText Typo="Typo.body2">No credit activity in the last twelve months.</MudText>
+                            }
+                            else
+                            {
+                                <MudSimpleTable Dense="true" Elevation="0">
+                                    <thead>
+                                        <tr>
+                                            <th>When (UTC)</th>
+                                            <th>Activity</th>
+                                            <th>Credits</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var entry in creditActivity.Entries)
+                                        {
+                                            <tr>
+                                                <td>@entry.OccurredUtc.UtcDateTime.ToString("dd MMM yyyy HH:mm", System.Globalization.CultureInfo.InvariantCulture)</td>
+                                                <td>@ProfileCreditPresenter.BuildActivityKindLabel(entry.ActivityKind)</td>
+                                                <td>@ProfileCreditPresenter.BuildActivityQuantityCopy(entry)</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </MudSimpleTable>
+                            }
+                        }
+                    </MudStack>
+                </MudPaper>
+            }
+
             <MudPaper Elevation="0" Outlined="true" Class="pa-4 pa-md-6">
                 @if (account.Status == CommercialAccountStatus.Deleted)
                 {

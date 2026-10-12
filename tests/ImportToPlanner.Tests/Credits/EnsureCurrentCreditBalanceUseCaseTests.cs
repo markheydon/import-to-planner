@@ -197,6 +197,18 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
             RecordCreditUsageRequest request,
             CancellationToken cancellationToken)
             => inner.RecordComplimentaryUsageAsync(request, cancellationToken);
+
+        public Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+            string tenantId,
+            DateTimeOffset occurredSinceUtc,
+            CancellationToken cancellationToken)
+            => inner.ListTransactionsAsync(tenantId, occurredSinceUtc, cancellationToken);
+
+        public Task<bool> HasTransactionsBeforeAsync(
+            string tenantId,
+            DateTimeOffset beforeOccurredUtc,
+            CancellationToken cancellationToken)
+            => inner.HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken);
     }
 
     private sealed class GrantFailingCreditLedgerStore : ICreditLedgerStore
@@ -229,5 +241,17 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
             CancellationToken cancellationToken)
             => Task.FromResult<RecordCreditUsageOutcome>(
                 new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted));
+
+        public Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+            string tenantId,
+            DateTimeOffset occurredSinceUtc,
+            CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<CreditLedgerTransaction>>([]);
+
+        public Task<bool> HasTransactionsBeforeAsync(
+            string tenantId,
+            DateTimeOffset beforeOccurredUtc,
+            CancellationToken cancellationToken)
+            => Task.FromResult(false);
     }
 }

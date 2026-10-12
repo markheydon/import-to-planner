@@ -14,12 +14,68 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
     private const string LotRowKeyPrefix = "lot|";
     private const string LotRowKeyUpperBound = "lot|~";
     private const string TransactionRowKeyPrefix = "tx|";
+    private const string TransactionRowKeyUpperBound = "tx|~";
     private const string GrantRowKeyPrefix = "grant|";
     private const string UsageIdempotencyRowKeyPrefix = "usage|";
 
     private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);
     private volatile bool tableCreated;
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+        string tenantId,
+        DateTimeOffset occurredSinceUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        var transactions = new List<CreditLedgerTransaction>();
+        var transactionPrefix = TransactionRowKeyPrefix;
+        var transactionUpperBound = TransactionRowKeyUpperBound;
+        await foreach (var entity in tableClient.QueryAsync<TableEntity>(
+                           filter: TableClient.CreateQueryFilter(
+                               $"PartitionKey eq {tenantId} and RowKey ge {transactionPrefix} and RowKey lt {transactionUpperBound}"),
+                           cancellationToken: cancellationToken).ConfigureAwait(false))
+        {
+            var transaction = ToTransaction(entity);
+            if (transaction.OccurredUtc >= occurredSinceUtc)
+            {
+                transactions.Add(transaction);
+            }
+        }
+
+        return transactions;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HasTransactionsBeforeAsync(
+        string tenantId,
+        DateTimeOffset beforeOccurredUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        var transactionPrefix = TransactionRowKeyPrefix;
+        var transactionUpperBound = TransactionRowKeyUpperBound;
+        await foreach (var entity in tableClient.QueryAsync<TableEntity>(
+                           filter: TableClient.CreateQueryFilter(
+                               $"PartitionKey eq {tenantId} and RowKey ge {transactionPrefix} and RowKey lt {transactionUpperBound}"),
+                           cancellationToken: cancellationToken).ConfigureAwait(false))
+        {
+            var occurredUtc = entity.GetDateTimeOffset("OccurredUtc");
+            if (occurredUtc is not null && occurredUtc < beforeOccurredUtc)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <inheritdoc/>
     public async Task<IReadOnlyList<CreditLot>> GetLotsAsync(string tenantId, CancellationToken cancellationToken)
@@ -571,5 +627,20 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
             entity.GetInt32("RemainingQuantity") ?? 0,
             entity.GetDateTimeOffset("GrantedAtUtc") ?? DateTimeOffset.UtcNow,
             entity.GetDateTimeOffset("ExpiresAtUtc") ?? DateTimeOffset.UtcNow);
+    }
+
+    private static CreditLedgerTransaction ToTransaction(TableEntity entity)
+    {
+        return new CreditLedgerTransaction(
+            entity.GetString("TransactionId") ?? entity.RowKey.Split('|', 3)[^1],
+            entity.PartitionKey,
+            entity.GetDateTimeOffset("OccurredUtc") ?? DateTimeOffset.UtcNow,
+            (CreditEntryType)(entity.GetInt32("EntryType") ?? (int)CreditEntryType.Usage),
+            entity.GetInt32("Quantity") ?? 0,
+            entity.GetString("LotId") ?? string.Empty,
+            (LotType)(entity.GetInt32("LotType") ?? (int)LotType.FreeMonthly),
+            entity.GetString("ImportRunId"),
+            entity.GetString("CreatedPlannerTaskId"),
+            entity.GetString("ActorUserId"));
     }
 }

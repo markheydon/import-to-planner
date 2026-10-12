@@ -81,4 +81,9 @@ public enum EnsureBalanceReason
     /// Import execution started.
     /// </summary>
     Execute = 3,
+
+    /// <summary>
+    /// Commercial profile page loaded.
+    /// </summary>
+    Profile = 4,
 }

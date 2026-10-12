@@ -227,6 +227,64 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
         }
     }
 
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+        string tenantId,
+        DateTimeOffset occurredSinceUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var state = GetTenantState(tenantId);
+        lock (state.Sync)
+        {
+            var transactions = state.Transactions
+                .Where(transaction => transaction.OccurredUtc >= occurredSinceUtc)
+                .ToList();
+            return Task.FromResult<IReadOnlyList<CreditLedgerTransaction>>(transactions);
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> HasTransactionsBeforeAsync(
+        string tenantId,
+        DateTimeOffset beforeOccurredUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var state = GetTenantState(tenantId);
+        lock (state.Sync)
+        {
+            var hasOlder = state.Transactions.Any(transaction => transaction.OccurredUtc < beforeOccurredUtc);
+            return Task.FromResult(hasOlder);
+        }
+    }
+
+    /// <summary>
+    /// Seeds a lot for test scenarios (for example paid purchases before store grant APIs exist).
+    /// </summary>
+    public void SeedLot(CreditLot lot)
+    {
+        ArgumentNullException.ThrowIfNull(lot);
+        var state = GetTenantState(lot.TenantId);
+        lock (state.Sync)
+        {
+            state.Lots[lot.LotId] = lot;
+        }
+    }
+
+    /// <summary>
+    /// Seeds a ledger transaction for test scenarios (for example pre-window history or paid entries).
+    /// </summary>
+    public void SeedTransaction(CreditLedgerTransaction transaction)
+    {
+        ArgumentNullException.ThrowIfNull(transaction);
+        var state = GetTenantState(transaction.TenantId);
+        lock (state.Sync)
+        {
+            state.Transactions.Add(transaction);
+        }
+    }
+
     /// <summary>
     /// Gets recorded transactions for assertions.
     /// </summary>

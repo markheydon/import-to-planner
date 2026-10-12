@@ -416,6 +416,18 @@ public sealed class CreditLedgerExecutionIntegrationTests
             RecordCreditUsageRequest request,
             CancellationToken cancellationToken)
             => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+            string tenantId,
+            DateTimeOffset occurredSinceUtc,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<bool> HasTransactionsBeforeAsync(
+            string tenantId,
+            DateTimeOffset beforeOccurredUtc,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
     }
 
     private sealed class AlwaysFailRecordUsageCreditLedgerStore(InMemoryCreditLedgerStore inner) : ICreditLedgerStore
@@ -447,6 +459,18 @@ public sealed class CreditLedgerExecutionIntegrationTests
             CancellationToken cancellationToken)
             => Task.FromResult<RecordCreditUsageOutcome>(
                 new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed));
+
+        public Task<IReadOnlyList<CreditLedgerTransaction>> ListTransactionsAsync(
+            string tenantId,
+            DateTimeOffset occurredSinceUtc,
+            CancellationToken cancellationToken)
+            => inner.ListTransactionsAsync(tenantId, occurredSinceUtc, cancellationToken);
+
+        public Task<bool> HasTransactionsBeforeAsync(
+            string tenantId,
+            DateTimeOffset beforeOccurredUtc,
+            CancellationToken cancellationToken)
+            => inner.HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken);
     }
 
     /// <summary>
