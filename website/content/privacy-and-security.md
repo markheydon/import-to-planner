@@ -36,9 +36,13 @@ Operational telemetry (for example request traces, error diagnostics, and hostin
 logs) may be retained for a limited period to operate and secure the service. Logs are used
 for reliability and incident response, not for advertising.
 
-If you delete your commercial account, access ends immediately. Account and ledger records
-are retained for about **six months** so you can restore the account during that window, or
-so we can meet legal and billing obligations. After that period, eligible records are purged.
+If you delete your commercial account, access ends immediately. Your **account** record
+(sign-in and profile state) is retained for about **six months** so you can restore it
+during that window, after which eligible account data may be purged.
+
+**Credit balances** belong to your Microsoft 365 **organisation (tenant)**, not to your
+individual sign-in. Deleting your account does not reset or remove your organisation's
+credit ledger; other users in the same tenant share the same balance.
 
 ## Subprocessors
 

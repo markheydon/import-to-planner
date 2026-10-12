@@ -111,6 +111,7 @@ delegation rules and precedence are defined above.
 - `microsoft-docs`
 - `mudblazor`
 - `repo-readme-generator`
+- `speckit-github-issues`
 
 Expected delegation:
 
@@ -134,6 +135,9 @@ Expected delegation:
 - Issue / GitHub workflow tasks → `github-issues` skill for issue creation/updates,
   labelling, dependencies, and workflow metadata; do not use it as the default for PR
   code-review implementation or general repository coding tasks
+- GitHub issues that will use Spec Kit (`/speckit.specify`, `/speckit.plan`) →
+  `speckit-github-issues` skill for WHAT/HOW seed separation and issue body structure;
+  use `github-issues` for the actual GitHub API/MCP writes
 - Microsoft/.NET/Azure documentation research and code-sample lookup →
   `microsoft-docs` skill for authoritative references, API guidance, and official
   examples; do not use it as a replacement for repository-specific policy files or
