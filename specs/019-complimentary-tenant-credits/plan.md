@@ -1,113 +1,135 @@
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Complimentary Tenant Credits
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Branch**: `019-complimentary-tenant-credits` | **Date**: 2026-10-12 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
+**Input**: Feature specification from `/specs/019-complimentary-tenant-credits/spec.md`, clarifications session 2026-10-12, product contract `docs/credits-billing-usage-model.md`, GitHub issue [#129](https://github.com/markheydon/import-to-planner/issues/129). Depends on [#126](https://github.com/markheydon/import-to-planner/issues/126) ledger. Related: [#125](https://github.com/markheydon/import-to-planner/issues/125) buy-CTA guard only.
 
-**Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
+**Note**: Implementation delegates to C# Expert (`AGENTS.md`) with `csharp-async`, `csharp-xunit`, `dotnet-best-practices-repo`, `mudblazor` for preview/summary copy. No AppHost tests. Run `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes` before merge.
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+Add a deploy-time comma-separated **Entra tenant GUID allowlist** for hosted commercial mode so operator and tester organisations import with **unlimited credits**: no confirm gate for insufficient credits, no buy-credits path, **Unlimited** remaining in UI, but **full usage metering** on the existing ledger via paired **Usage + ComplimentaryGrant** transactions. Skip monthly free grant/expiry for allowlisted tenants; execution **never stops solely for credit exhaustion**. Non-allowlisted and commercial-off behaviour unchanged.
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
+**Language/Version**: C# 14 / .NET 10 (`global.json`)
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
+**Primary Dependencies**: Existing Blazor + MudBlazor import Home, `ImportWorkflowCoordinator`, `ImportToPlanner.Commercial` credit module (011), Aspire AppHost parameters, Azure Tables ledger store, xUnit v3, NSubstitute, bUnit
 
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+**Storage**: Same `CommercialCreditLedger` table; new entry/lot types only. No new Aspire resources.
 
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+**Testing**: Unit tests (policy, ensure, store pairs, quota); Web bUnit (warning/confirm/summary); extend existing credit integration tests. No `Aspire.Hosting.Testing`. No Playwright unless explicitly requested later.
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Target Platform**: Hosted commercial (ACA via Aspire); local Azurite; self-host unchanged
 
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: Layered Blazor (`Web`, `Commercial`, `Application`, `Domain`, `Infrastructure.Graph`) + AppHost
 
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+**Performance Goals**: Allowlist parse is O(n) on tiny n; no extra Graph calls; one policy check per credit action; complimentary usage still one EGT per create (usage + grant pair)
 
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
+**Constraints**: Clean Architecture inward deps; UK English UI; no tenant GUIDs in repo; commercial off ignores allowlist; `IOptionsMonitor` for live config; issue #129 — no AppHost tests; format gate enforced in CI
 
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
-
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Scale/Scope**: Small delta on 011 — options + policy + ledger enum/store + ensure/quota branches + Web snapshot/presenters + AppHost env + product doc
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+*GATE: Passes before Phase 0. Re-checked after Phase 1 — passes.*
 
-[Gates determined based on constitution file]
+- **I. Dependency direction**: Policy, ledger extensions, and paired recording stay in Commercial. Application quota port behaviour extended via Commercial implementation. Web maps flags to UK English only.
+- **II. Technology-neutral core**: `ComplimentaryUnlimitedAccess` on balance/snapshot results; no MudBlazor in Commercial.
+- **III. Explicit boundaries**: Ensure/quota outcomes remain structured; presenters build “Unlimited” strings.
+- **IV. Replaceable frameworks**: Allowlist is configuration; ledger adapter pattern unchanged.
+- **V. Traceability**: Maps to spec 019 FR-001–FR-017 and issue #129 acceptance criteria.
+- **VI. Testable**: In-memory store + policy tests; bUnit for UI gates.
+- **VII. Explicit failures**: Ledger unavailable unchanged; complimentary does not mask failures as insufficient credits.
+- **VIII. Security**: Tenant id from session; GUID exact match; invalid tokens ignored with logs.
+- **IX. Quality evidence**: Tests + format + architecture scans for Commercial/Web boundaries.
+- **X. Self-hosted viability**: Commercial off → no policy, no UI, no ledger reads for allowlist.
+
+No Complexity Tracking entries required.
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature]/
-├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output (/speckit-plan command)
-├── data-model.md        # Phase 1 output (/speckit-plan command)
-├── quickstart.md        # Phase 1 output (/speckit-plan command)
-├── contracts/           # Phase 1 output (/speckit-plan command)
-└── tasks.md             # Phase 2 output (/speckit-tasks command - NOT created by /speckit-plan)
+specs/019-complimentary-tenant-credits/
+├── spec.md
+├── plan.md
+├── research.md
+├── data-model.md
+├── quickstart.md
+├── contracts/
+│   └── complimentary-tenant-credits-contracts.md
+└── checklists/
+    └── requirements.md
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+src/ImportToPlanner.AppHost/
+└── AppHost.cs                          # parameter complimentaryTenantIds → Features__CommercialMode__ComplimentaryTenantIds
 
-tests/
-├── contract/
-├── integration/
-└── unit/
+src/ImportToPlanner.Commercial/
+├── Configuration/
+│   └── CommercialCreditModeOptions.cs  # ComplimentaryTenantIds; bound in AddCommercial
+├── Models/
+│   ├── CreditLedgerEnums.cs            # ComplimentaryGrant, LotType.Complimentary
+│   └── CommercialCreditBalanceModels.cs  # ComplimentaryUnlimitedAccess on result
+├── Credits/
+│   ├── ComplimentaryTenantPolicy.cs    # IComplimentaryTenantPolicy
+│   ├── EnsureCurrentCreditBalanceUseCase.cs
+│   ├── ImportTaskCreationCreditQuota.cs
+│   └── Storage/TableCreditLedgerStore.cs
+└── DependencyInjection.cs              # register policy + options
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
+src/ImportToPlanner.Web/
+├── Features/Import/Workflows/
+│   ├── ImportWorkflowCoordinator.cs    # skip insufficient path when complimentary
+│   └── WorkflowCreditBalanceSnapshot.cs
+├── Features/Import/Pages/Home/
+│   ├── Home.razor                      # alert / remaining display
+│   ├── Home.WorkflowActions.razor.cs   # canExecute credit clause
+│   └── HomeExecutionReport.razor
+├── Features/Import/Presenters/
+│   ├── ImportCreditPreviewPresenter.cs
+│   └── ImportExecutionPresenter.cs
 
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
+docs/
+└── credits-billing-usage-model.md      # complimentary section
 
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+tests/ImportToPlanner.Tests/Credits/     # policy, ensure, store, quota, regression
+tests/ImportToPlanner.Web.Tests/         # bUnit complimentary + commercial-off
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: Extend 011 touchpoints only; no new projects, routes, or Stripe work.
 
 ## Complexity Tracking
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
+> None.
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+## Phase 0 Research
+
+See [research.md](./research.md). No NEEDS CLARIFICATION in Technical Context.
+
+## Phase 1 Design
+
+- [data-model.md](./data-model.md) — allowlist, complimentary lot/grant, snapshot flags.
+- [contracts/complimentary-tenant-credits-contracts.md](./contracts/complimentary-tenant-credits-contracts.md) — config, ensure, UI, quota, ledger, security.
+- [quickstart.md](./quickstart.md) — validation scenarios.
+
+### Constitution re-check (post-design)
+
+Still passes: complimentary logic remains outer Commercial + Web presentation; single import pipeline; self-host unaffected; fail-closed ledger errors preserved.
+
+## Implementation notes (for `/speckit-tasks`)
+
+1. **Configuration** — AppHost parameter + Commercial `CommercialCreditModeOptions` binding in `AddCommercial`; operator doc in `docs/credits-billing-usage-model.md` (not committed GUIDs).
+2. **Policy** — Parse and `IsComplimentary`; log invalid segments.
+3. **Ensure** — Early complimentary branch before expiry/grant loops.
+4. **Store** — `RecordComplimentaryUsageAsync` or branch inside `RecordUsageAsync` with paired transactions.
+5. **Quota** — Allow + never exhausted for complimentary; keep retry on usage failure.
+6. **Web** — Snapshot flag; coordinator + Home + presenters + execution report unlimited copy.
+7. **Buy CTA** — Guard any existing or stub purchase prompts with complimentary flag (#125-ready).
+8. **Tests** — Per quickstart; keep 011 non-allowlisted cases green.
+9. **Format** — `dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes`.

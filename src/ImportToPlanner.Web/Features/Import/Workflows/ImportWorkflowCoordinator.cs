@@ -372,6 +372,11 @@ public sealed class ImportWorkflowCoordinator(
             var request = new ImportExecutionRequest(state.CurrentPlanningRequest, preview, metering);
             await executionUseCase.HandleAsync(request, executionPresenter, cancellationToken);
             state.ExecutionReport = executionPresenter.ViewModel;
+            if (state.ExecutionReport is not null && creditSnapshot?.ComplimentaryUnlimitedAccess == true)
+            {
+                state.ExecutionReport = state.ExecutionReport with { ComplimentaryUnlimitedAccess = true };
+            }
+
             state.IsPreviewStale = false;
             state.StatusMessage = state.ExecutionReport is null || state.ExecutionReport.Errors.Count == 0
                 ? "Execution completed successfully."
@@ -505,13 +510,15 @@ public sealed class ImportWorkflowCoordinator(
         }
 
         var balance = ((EnsureCurrentCreditBalanceOutcome.Succeeded)ensureOutcome).Result;
-        var shortfall = Math.Max(0, wouldCreateCount - balance.RemainingCredits);
+        var complimentary = balance.ComplimentaryUnlimitedAccess;
+        var shortfall = complimentary ? 0 : Math.Max(0, wouldCreateCount - balance.RemainingCredits);
         return new WorkflowCreditBalanceSnapshot
         {
             WouldCreateCount = wouldCreateCount,
             RemainingCredits = balance.RemainingCredits,
             Shortfall = shortfall,
-            InsufficientCredits = wouldCreateCount > balance.RemainingCredits,
+            InsufficientCredits = !complimentary && wouldCreateCount > balance.RemainingCredits,
+            ComplimentaryUnlimitedAccess = complimentary,
         };
     }
 

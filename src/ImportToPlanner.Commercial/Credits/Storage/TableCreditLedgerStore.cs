@@ -279,7 +279,140 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
     }
 
     /// <inheritdoc/>
+    public async Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+        RecordCreditUsageRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.ImportRunId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.CreatedPlannerTaskId);
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        var idempotencyRowKey = BuildUsageIdempotencyRowKey(request.ImportRunId, request.CreatedPlannerTaskId);
+        if (await HasUsageIdempotencyMarkerAsync(request.TenantId, idempotencyRowKey, cancellationToken).ConfigureAwait(false))
+        {
+            return new RecordCreditUsageOutcome.Success(0);
+        }
+
+        for (var attempt = 0; attempt < MaxOptimisticConcurrencyRetries; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var complimentaryLot = await GetOrCreateComplimentaryLotAsync(request.TenantId, request.OccurredUtc, cancellationToken)
+                .ConfigureAwait(false);
+            if (complimentaryLot is null)
+            {
+                return new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed);
+            }
+
+            var usageTransactionId = Guid.NewGuid().ToString("N");
+            var grantTransactionId = Guid.NewGuid().ToString("N");
+            var usageTransaction = new CreditLedgerTransaction(
+                usageTransactionId,
+                request.TenantId,
+                request.OccurredUtc,
+                CreditEntryType.Usage,
+                1,
+                complimentaryLot.LotId,
+                LotType.Complimentary,
+                request.ImportRunId,
+                request.CreatedPlannerTaskId,
+                request.ActorUserId);
+            var grantTransaction = new CreditLedgerTransaction(
+                grantTransactionId,
+                request.TenantId,
+                request.OccurredUtc,
+                CreditEntryType.ComplimentaryGrant,
+                1,
+                complimentaryLot.LotId,
+                LotType.Complimentary,
+                request.ImportRunId,
+                request.CreatedPlannerTaskId,
+                request.ActorUserId);
+
+            try
+            {
+                var batch = new List<TableTransactionAction>
+                {
+                    new(TableTransactionActionType.Add, ToUsageIdempotencyEntity(request, idempotencyRowKey, usageTransactionId)),
+                    new(TableTransactionActionType.Add, ToTransactionEntity(usageTransaction)),
+                    new(TableTransactionActionType.Add, ToTransactionEntity(grantTransaction)),
+                };
+                await tableClient.SubmitTransactionAsync(batch, cancellationToken).ConfigureAwait(false);
+                return new RecordCreditUsageOutcome.Success(0);
+            }
+            catch (RequestFailedException exception) when (exception.Status == 409)
+            {
+                return new RecordCreditUsageOutcome.Success(0);
+            }
+            catch (RequestFailedException exception) when (exception.Status == 412)
+            {
+                if (attempt == MaxOptimisticConcurrencyRetries - 1)
+                {
+                    return new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed);
+                }
+            }
+            catch (RequestFailedException)
+            {
+                return new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed);
+            }
+        }
+
+        return new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed);
+    }
+
+    /// <inheritdoc/>
     public void Dispose() => initialiseSemaphore.Dispose();
+
+    private async Task<CreditLot?> GetOrCreateComplimentaryLotAsync(
+        string tenantId,
+        DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken)
+    {
+        var lotId = ComplimentaryCreditConstants.ComplimentaryLotId;
+        var rowKey = BuildLotRowKey(lotId);
+
+        try
+        {
+            var response = await tableClient
+                .GetEntityAsync<TableEntity>(tenantId, rowKey, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return ToLot(response.Value);
+        }
+        catch (RequestFailedException exception) when (exception.Status == 404)
+        {
+            var lot = new CreditLot(
+                lotId,
+                tenantId,
+                LotType.Complimentary,
+                0,
+                0,
+                occurredUtc,
+                DateTimeOffset.MaxValue);
+
+            try
+            {
+                await tableClient.AddEntityAsync(ToLotEntity(lot), cancellationToken).ConfigureAwait(false);
+                return lot;
+            }
+            catch (RequestFailedException addException) when (addException.Status == 409)
+            {
+                var response = await tableClient
+                    .GetEntityAsync<TableEntity>(tenantId, rowKey, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                return ToLot(response.Value);
+            }
+            catch (RequestFailedException)
+            {
+                return null;
+            }
+        }
+        catch (RequestFailedException)
+        {
+            return null;
+        }
+    }
 
     private async Task EnsureCreatedAsync(CancellationToken cancellationToken)
     {

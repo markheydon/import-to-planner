@@ -14,6 +14,11 @@ public enum LotType
     /// Reserved for paid purchases (not used in this increment).
     /// </summary>
     Paid = 1,
+
+    /// <summary>
+    /// Complimentary offset lot for allowlisted tenants.
+    /// </summary>
+    Complimentary = 2,
 }
 
 /// <summary>
@@ -45,6 +50,11 @@ public enum CreditEntryType
     /// Reserved for paid lot expiry (not written in this increment).
     /// </summary>
     PaidExpiry = 4,
+
+    /// <summary>
+    /// Complimentary grant paired with usage for allowlisted tenants.
+    /// </summary>
+    ComplimentaryGrant = 5,
 }
 
 /// <summary>

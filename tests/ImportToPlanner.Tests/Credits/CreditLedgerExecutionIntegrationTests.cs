@@ -16,8 +16,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
     public async Task HandleAsync_WithRealCreditQuota_RecordsUsageMatchingLedgerDerivedBalance()
     {
         var store = new InMemoryCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
@@ -65,8 +69,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
     {
         var inner = new InMemoryCreditLedgerStore();
         var store = new AlwaysFailRecordUsageCreditLedgerStore(inner);
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
@@ -106,8 +114,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
     public async Task HandleAsync_WithRealCreditQuota_StopsFurtherCreatesWhenBalanceExhaustedMidRun()
     {
         var store = new InMemoryCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
         await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
@@ -159,8 +171,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
     public async Task HandleAsync_WithRealCreditQuota_WhenNoTasksCreated_ReportsLedgerDerivedRemainingCredits()
     {
         var store = new InMemoryCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
         var backlogBucket = await gateway.CreateBucketAsync("plan-alpha", "Backlog", CancellationToken.None);
@@ -217,8 +233,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
     public async Task HandleAsync_WithRealCreditQuota_WhenNoTasksCreatedAndLedgerUnavailable_ReportsWorkflowWarning()
     {
         var store = new UnavailableCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
         var backlogBucket = await gateway.CreateBucketAsync("plan-alpha", "Backlog", CancellationToken.None);
@@ -266,8 +286,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
     public async Task HandleAsync_WithRealCreditQuota_WhenNoTasksCreatedAndCreditsExhausted_ReportsZeroRemainingCredits()
     {
         var store = new InMemoryCreditLedgerStore();
-        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store);
-        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, new ImportExecutionCreditBalanceCache());
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
 
         var gateway = new ExecutionPlannerGateway();
         gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Self Test");
@@ -315,6 +339,56 @@ public sealed class CreditLedgerExecutionIntegrationTests
         Assert.Empty(output.Response.FailureItems);
     }
 
+    [Fact]
+    public async Task HandleAsync_WithComplimentaryAllowlist_RecordsUsageWithoutMidRunExhaustion()
+    {
+        var tenantId = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+        var store = new InMemoryCreditLedgerStore();
+        var policy = new TestComplimentaryTenantPolicy(tenantId);
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, policy);
+        var quota = new ImportTaskCreationCreditQuota(ensureUseCase, store, policy, new ImportExecutionCreditBalanceCache());
+        var gateway = new ExecutionPlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [
+                new CsvTaskRow(2, "Task A", null, 3, "Ops", null),
+                new CsvTaskRow(3, "Task B", null, 3, "Ops", null),
+                new CsvTaskRow(4, "Task C", null, 3, "Ops", null),
+            ]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                planningOutput.Response!,
+                new ImportExecutionMeteringContext(tenantId, "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal(3, output.Response!.CreatedItems.Count);
+        Assert.Equal(3, output.Response.CreditsUsed);
+        Assert.Equal(0, output.Response.RemainingCredits);
+        Assert.Empty(output.Response.FailureItems);
+        Assert.Equal(
+            3,
+            store.GetTransactions(tenantId).Count(transaction => transaction.EntryType == CreditEntryType.Usage));
+        Assert.Equal(
+            3,
+            store.GetTransactions(tenantId).Count(transaction => transaction.EntryType == CreditEntryType.ComplimentaryGrant));
+    }
+
     private sealed class UnavailableCreditLedgerStore : ICreditLedgerStore
     {
         public Task<IReadOnlyList<CreditLot>> GetLotsAsync(string tenantId, CancellationToken cancellationToken)
@@ -336,6 +410,11 @@ public sealed class CreditLedgerExecutionIntegrationTests
             => throw new InvalidOperationException("Ledger unavailable.");
 
         public Task<RecordCreditUsageOutcome> RecordUsageAsync(RecordCreditUsageRequest request, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+            RecordCreditUsageRequest request,
+            CancellationToken cancellationToken)
             => throw new InvalidOperationException("Ledger unavailable.");
     }
 
@@ -360,6 +439,12 @@ public sealed class CreditLedgerExecutionIntegrationTests
             => inner.TryGrantFreeMonthlyAsync(tenantId, utcYearMonth, grantQuantity, grantedAtUtc, actorUserId, cancellationToken);
 
         public Task<RecordCreditUsageOutcome> RecordUsageAsync(RecordCreditUsageRequest request, CancellationToken cancellationToken)
+            => Task.FromResult<RecordCreditUsageOutcome>(
+                new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed));
+
+        public Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+            RecordCreditUsageRequest request,
+            CancellationToken cancellationToken)
             => Task.FromResult<RecordCreditUsageOutcome>(
                 new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed));
     }

@@ -6,7 +6,9 @@ namespace ImportToPlanner.Commercial.Credits;
 /// <summary>
 /// Lazy expiry and monthly free grant with derived remaining balance.
 /// </summary>
-public sealed class EnsureCurrentCreditBalanceUseCase(ICreditLedgerStore ledgerStore) : IEnsureCurrentCreditBalanceUseCase
+public sealed class EnsureCurrentCreditBalanceUseCase(
+    ICreditLedgerStore ledgerStore,
+    IComplimentaryTenantPolicy complimentaryTenantPolicy) : IEnsureCurrentCreditBalanceUseCase
 {
     /// <inheritdoc/>
     /// <remarks>
@@ -24,6 +26,12 @@ public sealed class EnsureCurrentCreditBalanceUseCase(ICreditLedgerStore ledgerS
         {
             return new EnsureCurrentCreditBalanceOutcome.Failed(
                 new CommercialCreditBalanceFailure(CommercialCreditFailureCodes.LedgerUnavailable));
+        }
+
+        if (complimentaryTenantPolicy.IsComplimentary(request.TenantId))
+        {
+            return new EnsureCurrentCreditBalanceOutcome.Succeeded(
+                CommercialCreditBalanceResult.Success(0, 0, 0, false, false, true));
         }
 
         var expiryApplied = false;

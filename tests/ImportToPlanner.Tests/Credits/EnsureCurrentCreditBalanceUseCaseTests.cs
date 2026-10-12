@@ -11,7 +11,7 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
     public async Task EnsureAsync_FirstCallInUtcMonth_GrantsTwentyFiveAtOccurredUtc()
     {
         var store = new InMemoryCreditLedgerStore();
-        var useCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var useCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
         var occurredUtc = new DateTimeOffset(2026, 9, 15, 14, 30, 0, TimeSpan.Zero);
 
         var outcome = await useCase.EnsureAsync(
@@ -33,7 +33,7 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
     public async Task EnsureAsync_SecondCallSameUtcMonth_DoesNotGrantAgain()
     {
         var store = new InMemoryCreditLedgerStore();
-        var useCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var useCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 9, 0, 0, TimeSpan.Zero);
 
         await useCase.EnsureAsync(
@@ -53,7 +53,7 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
     public async Task EnsureAsync_MonthBoundary_ExpiresLeftoverThenGrantsTwentyFive()
     {
         var store = new InMemoryCreditLedgerStore();
-        var useCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var useCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
         var august = new DateTimeOffset(2026, 8, 31, 23, 0, 0, TimeSpan.Zero);
 
         await useCase.EnsureAsync(
@@ -92,7 +92,7 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
     public async Task EnsureAsync_PreviewAfterGrant_DoesNotWriteUsageTransactions()
     {
         var store = new InMemoryCreditLedgerStore();
-        var useCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var useCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 9, 0, 0, TimeSpan.Zero);
 
         await useCase.EnsureAsync(
@@ -115,7 +115,7 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
     public async Task EnsureAsync_ConcurrentCallsSameMonth_YieldsSingleFreeGrant()
     {
         var store = new InMemoryCreditLedgerStore();
-        var useCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var useCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
         var occurredUtc = new DateTimeOffset(2026, 9, 10, 12, 0, 0, TimeSpan.Zero);
         var request = new EnsureCurrentCreditBalanceRequest("tenant-001", "user-001", occurredUtc, EnsureBalanceReason.Preview);
 
@@ -133,7 +133,7 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
     {
         var inner = new InMemoryCreditLedgerStore();
         var store = new ExpiryFailingCreditLedgerStore(inner);
-        var useCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var useCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
         var august = new DateTimeOffset(2026, 8, 15, 10, 0, 0, TimeSpan.Zero);
 
         await inner.TryGrantFreeMonthlyAsync(
@@ -158,7 +158,7 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
     public async Task EnsureAsync_WhenGrantFails_ReturnsGrantFailedWithoutGrantMarker()
     {
         var store = new GrantFailingCreditLedgerStore();
-        var useCase = new EnsureCurrentCreditBalanceUseCase(store);
+        var useCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
         var occurredUtc = new DateTimeOffset(2026, 9, 2, 10, 0, 0, TimeSpan.Zero);
 
         var outcome = await useCase.EnsureAsync(
@@ -192,6 +192,11 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
 
         public Task<RecordCreditUsageOutcome> RecordUsageAsync(RecordCreditUsageRequest request, CancellationToken cancellationToken)
             => inner.RecordUsageAsync(request, cancellationToken);
+
+        public Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+            RecordCreditUsageRequest request,
+            CancellationToken cancellationToken)
+            => inner.RecordComplimentaryUsageAsync(request, cancellationToken);
     }
 
     private sealed class GrantFailingCreditLedgerStore : ICreditLedgerStore
@@ -216,6 +221,12 @@ public sealed class EnsureCurrentCreditBalanceUseCaseTests
                 new CreditGrantAttemptOutcome.Failure(CommercialCreditFailureCodes.GrantFailed));
 
         public Task<RecordCreditUsageOutcome> RecordUsageAsync(RecordCreditUsageRequest request, CancellationToken cancellationToken)
+            => Task.FromResult<RecordCreditUsageOutcome>(
+                new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted));
+
+        public Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+            RecordCreditUsageRequest request,
+            CancellationToken cancellationToken)
             => Task.FromResult<RecordCreditUsageOutcome>(
                 new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted));
     }

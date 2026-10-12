@@ -62,12 +62,12 @@
                         @if (ExecutionResult.CreditsUsed is not null)
                         {
                             <tr>
-                                <td>Credits used (free monthly)</td>
+                                <td>@ExecutionResult.CreditsUsedLabel</td>
                                 <td>@ExecutionResult.CreditsUsed</td>
                             </tr>
                             <tr>
                                 <td>Remaining credits</td>
-                                <td>@ExecutionResult.RemainingCredits</td>
+                                <td>@ExecutionResult.RemainingCreditsDisplay</td>
                             </tr>
                         }
                         <tr>

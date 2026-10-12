@@ -2,6 +2,7 @@ using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Commercial.Accounts.Storage;
+using ImportToPlanner.Commercial.Configuration;
 using ImportToPlanner.Commercial.Credits;
 using ImportToPlanner.Commercial.Credits.Storage;
 using ImportToPlanner.Commercial.Services;
@@ -93,6 +94,9 @@ public static class DependencyInjection
         services.AddScoped<ICommercialAuditStore>(serviceProvider =>
             new TableCommercialAuditStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAuditTableClientKey)));
+        services.AddOptions<CommercialCreditModeOptions>()
+            .Bind(configuration.GetSection(CommercialCreditModeOptions.ConfigurationSectionName));
+        services.AddSingleton<IComplimentaryTenantPolicy, ComplimentaryTenantPolicy>();
         services.AddSingleton<IUtcClock, SystemUtcClock>();
         services.AddScoped<ImportExecutionCreditBalanceCache>();
         services.AddScoped<ICreditLedgerStore>(serviceProvider =>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Application.Services;
@@ -44,6 +45,7 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
             tasksCreatedCount,
             response.CreditsUsed,
             response.RemainingCredits,
+            ComplimentaryUnlimitedAccess: false,
             response.SourceRowOutcomes,
             response.FailureItems);
 
@@ -225,6 +227,7 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
 /// <param name="TasksCreatedCount">Number of tasks created (not buckets).</param>
 /// <param name="CreditsUsed">Credits used during the run when commercial metering is active.</param>
 /// <param name="RemainingCredits">Remaining credits after the run when commercial metering is active.</param>
+/// <param name="ComplimentaryUnlimitedAccess">Whether remaining credits should be shown as unlimited.</param>
 /// <param name="SourceRowOutcomes">Structured per-row outcomes for CSV export.</param>
 /// <param name="FailureItems">Neutral failures used to align CSV reasons with the errors tab.</param>
 public sealed record ImportExecutionReportViewModel(
@@ -237,9 +240,23 @@ public sealed record ImportExecutionReportViewModel(
     int TasksCreatedCount = 0,
     int? CreditsUsed = null,
     int? RemainingCredits = null,
+    bool ComplimentaryUnlimitedAccess = false,
     IReadOnlyList<ImportSourceRowOutcome>? SourceRowOutcomes = null,
     IReadOnlyList<PlannerOperationFailure>? FailureItems = null)
 {
+    /// <summary>
+    /// Gets the credits-used row label for the execution summary table.
+    /// </summary>
+    public string CreditsUsedLabel => ComplimentaryUnlimitedAccess
+        ? "Credits used (complimentary)"
+        : "Credits used (free monthly)";
+
+    /// <summary>
+    /// Gets the remaining-credits display value for the execution summary table.
+    /// </summary>
+    public string RemainingCreditsDisplay => ComplimentaryUnlimitedAccess
+        ? "Unlimited"
+        : RemainingCredits?.ToString(CultureInfo.InvariantCulture) ?? "—";
     /// <summary>
     /// Gets structured per-row outcomes for CSV export.
     /// </summary>

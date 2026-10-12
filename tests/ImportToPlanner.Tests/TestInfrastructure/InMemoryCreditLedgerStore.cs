@@ -167,6 +167,66 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
         }
     }
 
+    /// <inheritdoc/>
+    public Task<RecordCreditUsageOutcome> RecordComplimentaryUsageAsync(
+        RecordCreditUsageRequest request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.ImportRunId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.CreatedPlannerTaskId);
+
+        var state = GetTenantState(request.TenantId);
+        lock (state.Sync)
+        {
+            var idempotencyKey = BuildUsageIdempotencyKey(request.ImportRunId, request.CreatedPlannerTaskId);
+            if (state.UsageIdempotencyKeys.Contains(idempotencyKey))
+            {
+                return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(0));
+            }
+
+            var lotId = ComplimentaryCreditConstants.ComplimentaryLotId;
+            if (!state.Lots.TryGetValue(lotId, out var complimentaryLot))
+            {
+                complimentaryLot = new CreditLot(
+                    lotId,
+                    request.TenantId,
+                    LotType.Complimentary,
+                    0,
+                    0,
+                    request.OccurredUtc,
+                    DateTimeOffset.MaxValue);
+                state.Lots[lotId] = complimentaryLot;
+            }
+
+            state.UsageIdempotencyKeys.Add(idempotencyKey);
+            state.Transactions.Add(new CreditLedgerTransaction(
+                Guid.NewGuid().ToString("N"),
+                request.TenantId,
+                request.OccurredUtc,
+                CreditEntryType.Usage,
+                1,
+                complimentaryLot.LotId,
+                LotType.Complimentary,
+                request.ImportRunId,
+                request.CreatedPlannerTaskId,
+                request.ActorUserId));
+            state.Transactions.Add(new CreditLedgerTransaction(
+                Guid.NewGuid().ToString("N"),
+                request.TenantId,
+                request.OccurredUtc,
+                CreditEntryType.ComplimentaryGrant,
+                1,
+                complimentaryLot.LotId,
+                LotType.Complimentary,
+                request.ImportRunId,
+                request.CreatedPlannerTaskId,
+                request.ActorUserId));
+
+            return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(0));
+        }
+    }
+
     /// <summary>
     /// Gets recorded transactions for assertions.
     /// </summary>

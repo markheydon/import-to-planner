@@ -34,4 +34,9 @@ public sealed class WorkflowCreditBalanceSnapshot
     /// Gets or sets the structured ledger failure code when unavailable.
     /// </summary>
     public string? LedgerFailureCode { get; set; }
+
+    /// <summary>
+    /// Gets or sets whether the tenant has complimentary unlimited credits.
+    /// </summary>
+    public bool ComplimentaryUnlimitedAccess { get; set; }
 }

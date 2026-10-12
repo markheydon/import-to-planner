@@ -408,6 +408,11 @@ public partial class Home
             return false;
         }
 
+        if (creditBalanceSnapshot.ComplimentaryUnlimitedAccess)
+        {
+            return creditBalanceSnapshot.LedgerUnavailable;
+        }
+
         return creditBalanceSnapshot.LedgerUnavailable || creditBalanceSnapshot.InsufficientCredits;
     }
 

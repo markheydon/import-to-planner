@@ -57,12 +57,14 @@ public sealed record EnsureCurrentCreditBalanceRequest(
 /// <param name="PaidRemaining">Remaining paid credits (0 in V1).</param>
 /// <param name="ExpiryApplied">Whether expiry was applied this call.</param>
 /// <param name="GrantApplied">Whether a new monthly grant was applied this call.</param>
+/// <param name="ComplimentaryUnlimitedAccess">Whether the tenant has complimentary unlimited credits.</param>
 public sealed record CommercialCreditBalanceResult(
     int RemainingCredits,
     int FreeRemaining,
     int PaidRemaining,
     bool ExpiryApplied,
-    bool GrantApplied)
+    bool GrantApplied,
+    bool ComplimentaryUnlimitedAccess = false)
 {
     /// <summary>
     /// Creates a successful balance result.
@@ -72,8 +74,9 @@ public sealed record CommercialCreditBalanceResult(
         int freeRemaining,
         int paidRemaining,
         bool expiryApplied,
-        bool grantApplied)
-        => new(remainingCredits, freeRemaining, paidRemaining, expiryApplied, grantApplied);
+        bool grantApplied,
+        bool complimentaryUnlimitedAccess = false)
+        => new(remainingCredits, freeRemaining, paidRemaining, expiryApplied, grantApplied, complimentaryUnlimitedAccess);
 }
 
 /// <summary>
