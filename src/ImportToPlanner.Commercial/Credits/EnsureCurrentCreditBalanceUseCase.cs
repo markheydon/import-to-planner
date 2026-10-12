@@ -30,6 +30,16 @@ public sealed class EnsureCurrentCreditBalanceUseCase(
 
         if (complimentaryTenantPolicy.IsComplimentary(request.TenantId))
         {
+            try
+            {
+                await ledgerStore.GetLotsAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                return new EnsureCurrentCreditBalanceOutcome.Failed(
+                    new CommercialCreditBalanceFailure(CommercialCreditFailureCodes.LedgerUnavailable));
+            }
+
             return new EnsureCurrentCreditBalanceOutcome.Succeeded(
                 CommercialCreditBalanceResult.Success(0, 0, 0, false, false, true));
         }
