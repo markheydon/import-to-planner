@@ -1,7 +1,5 @@
 using System.Globalization;
 using ImportToPlanner.Commercial.Models;
-using ImportToPlanner.Web.Features.Import.Presenters;
-
 namespace ImportToPlanner.Web.Features.CommercialAccounts.Presenters;
 
 /// <summary>
@@ -23,15 +21,15 @@ public static class ProfileCreditPresenter
     /// Formats remaining credits for profile display.
     /// </summary>
     public static string FormatRemainingCredits(ProfileCreditSummaryResult summary)
-        => ImportCreditPreviewPresenter.FormatRemainingCredits(
-            summary.ComplimentaryUnlimitedAccess ? null : summary.RemainingCredits,
-            summary.ComplimentaryUnlimitedAccess);
+        => summary.ComplimentaryUnlimitedAccess
+            ? "Unlimited"
+            : summary.RemainingCredits.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
     /// Complimentary unlimited helper copy.
     /// </summary>
     public static string BuildComplimentaryRemainingDescription()
-        => ImportCreditPreviewPresenter.BuildComplimentaryRemainingMessage();
+        => "Your organisation has unlimited complimentary credits.";
 
     /// <summary>
     /// Balance read failure message (fail closed).
