@@ -150,7 +150,7 @@ Clock: `DateTimeOffset.UtcNow` (injectable clock in tests).
 3. If no month marker for current UTC `yyyyMM`: insert marker + lot + `FreeGrant` (25) dated at this instant. If marker insert conflicts, skip grant.
 4. Return derived remaining. If any step fails, return structured failure; write no grant.
 
-Called from: successful commercial sign-in (Allow / CreateAccount; failure does not block session), preview, confirm, execute. Not called from: commercial-off, deleted-account gate, CSV validation-only, Profile delete/restore except that restore in a month that already granted must not grant again (Ensure on next balance-needed action is enough).
+Called from: successful commercial sign-in (Allow / CreateAccount; failure does not block session), preview, confirm, execute, and hosted commercial `/profile` credits load (`EnsureBalanceReason.Profile`; fail closed per 020 FR-004). Not called from: commercial-off, deleted-account gate, CSV validation-only, Profile delete/restore except that restore in a month that already granted must not grant again (Ensure on next balance-needed action is enough).
 
 ## 10. Application quota port (not a ledger entity)
 

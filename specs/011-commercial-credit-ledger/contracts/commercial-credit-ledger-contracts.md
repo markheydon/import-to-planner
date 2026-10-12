@@ -34,7 +34,7 @@ Request:
 | `TenantId` | string | Yes | From session; never from the client body as a spoofable wallet id. |
 | `ActorUserId` | string | Yes | Audit only. |
 | `OccurredUtc` | `DateTimeOffset` | Yes | Grant/expiry timestamp. |
-| `Reason` | enum | Yes | `SignIn`, `Preview`, `Confirm`, `Execute`. |
+| `Reason` | enum | Yes | `SignIn`, `Preview`, `Confirm`, `Execute`, `Profile` (020 profile credits; audit only). |
 
 Response (success):
 
@@ -52,6 +52,7 @@ Rules:
 
 - `Reason = SignIn`: caller MAY ignore failure and still establish a session.
 - `Preview` / `Confirm` / `Execute`: caller MUST fail closed (no import, no pretend remaining 0, no grant if the grant step failed).
+- `Reason = Profile` (020): caller MUST fail closed on `/profile` (friendly error; MUST NOT show remaining as zero or insufficient-credits/buy-credits substitute). Same expiry/grant/balance rules as preview for non-complimentary tenants; complimentary tenants follow [019 ensure amendment](../../019-complimentary-tenant-credits/contracts/complimentary-tenant-credits-contracts.md) §3.
 - File validation / CSV parse MUST NOT call this contract.
 - Deleted-account / blocked sign-in MUST NOT grant.
 - Idempotent for the same UTC month.

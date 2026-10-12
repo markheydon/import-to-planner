@@ -14,7 +14,7 @@ All Technical Context items are resolved from spec 020, `docs/credits-billing-us
 
 ## 2. Ledger transaction listing (Azure Tables)
 
-**Decision**: Extend `ICreditLedgerStore` with `ListTransactionsAsync(tenantId, occurredSinceUtc, cancellationToken)` implemented in `TableCreditLedgerStore` by querying the tenant partition for row keys with prefix `tx|`, filtering `OccurredUtc >= occurredSinceUtc`, ordered newest-first in memory (partition query returns lexicographic row key order which is reverse-chronological via reverse ticks). Cap the window at rolling twelve months in the use case, not in storage.
+**Decision**: Extend `ICreditLedgerStore` with `ListTransactionsAsync(tenantId, occurredSinceUtc, cancellationToken)` and `HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken)` implemented in `TableCreditLedgerStore` by querying the tenant partition for row keys with prefix `tx|`, filtering `OccurredUtc >= occurredSinceUtc` for the list (newest-first in memory; partition query returns lexicographic row key order which is reverse-chronological via reverse ticks). Cap the window at rolling twelve months in the use case (`request.OccurredUtc.AddMonths(-12)`), not in storage. Set `HasOlderHistory` via the existence probe at `ActivityWindowStartUtc`, not from the windowed list alone.
 
 **Rationale**: FR-006 requires twelve-month activity. Transactions are already stored with `BuildTransactionRowKey` for time ordering. No new Aspire resources or tables.
 
@@ -28,7 +28,7 @@ All Technical Context items are resolved from spec 020, `docs/credits-billing-us
 
 | Tenant type | Include entry types | Usage presentation |
 |-------------|---------------------|--------------------|
-| Non-complimentary | `FreeGrant`, `FreeExpiry`, `Usage` (grouped), reserved `PaidPurchase` / `PaidExpiry` when [#125](https://github.com/markheydon/import-to-planner/issues/125) writes them | Group `Usage` by `ImportRunId`; sum `Quantity`; one row per run; use latest `OccurredUtc` in group for sort |
+| Non-complimentary | `FreeGrant`, `FreeExpiry`, `Usage` (grouped), reserved `PaidPurchase` / `PaidExpiry` when [#125](https://github.com/markheydon/import-to-planner/issues/125) writes them | Group `Usage` by `ImportRunId` when present; sum `Quantity`; one row per run; use latest `OccurredUtc` in group for sort. Rows with missing `ImportRunId` (legacy): one grouped row per usage transaction (never one row per task in the activity list) |
 | Complimentary allowlist | `Usage` grouped only | Exclude `ComplimentaryGrant`, `FreeGrant`, `FreeExpiry`, purchases from profile activity (clarifications session 2026-10-12) |
 
 Pairing rule: never surface `ComplimentaryGrant` as its own row; it exists for audit only (019).
@@ -52,7 +52,7 @@ Pairing rule: never surface `ComplimentaryGrant` as its own row; it exists for a
 
 **Decision**: Summary and activity use cases return discriminated outcomes (`Succeeded` / `Failed` with `CommercialCreditFailureCodes`). Web shows separate `MudAlert` regions for balance vs activity. On summary failure: no numeric remaining, no “0 credits”, no buy-credits substitute (FR-004). On activity failure with successful summary: show balance/lots; activity section shows error only. Reuse diagnostic codes in logs/activity tags; UK English strings in `ProfileCreditPresenter` only.
 
-**Rationale**: FR-004, FR-007 edge case, constitution VII. Matches import fail-closed pattern (`ImportCreditPreviewPresenter`).
+**Rationale**: FR-004, spec edge case (balance succeeds while activity list fails), constitution VII. Matches import fail-closed pattern (`ImportCreditPreviewPresenter`).
 
 **Alternatives considered**:
 - Single combined error for whole section — rejected (spec requires independent handling).

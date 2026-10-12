@@ -22,7 +22,7 @@ dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity 
 1. **Summary after ensure (SC-001)** — Tenant with known grant and partial usage: profile summary `RemainingCredits` matches ledger after ensure with `Profile` reason.
 2. **Fail closed balance (SC-002)** — Simulated ledger failure on summary: no `0` remaining; UK English error; no buy-credits substitute.
 3. **Free lot row (SC-003)** — Current month free lot shows granted, remaining, month-end expiry aligned with `CreditLot`.
-4. **Activity grouping (SC-004)** — Two import runs with multiple tasks each: exactly two usage rows with correct totals; grants/expiry visible for non-complimentary.
+4. **Activity grouping (SC-004)** — Two import runs with multiple tasks each: exactly two usage rows with correct totals; grants/expiry visible for non-complimentary; legacy usage without `ImportRunId` yields one activity row per usage transaction (never one row per task).
 5. **Twelve-month window (SC-004)** — Seed transaction older than twelve months: omitted from list; `HasOlderHistory` copy visible.
 6. **Complimentary profile (SC-006)** — Allowlisted tenant: Unlimited remaining; activity shows grouped usage only; no free lot section.
 7. **Commercial off (SC-005)** — No credits section; no new Home wallet (regression bUnit).

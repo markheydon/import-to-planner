@@ -88,7 +88,7 @@ An operator or support reviewer needs to see how much complimentary tenants actu
 
 ### Edge Cases
 
-- Allowlist updated at deploy time: complimentary status is re-evaluated on the next credit-related action (sign-in balance refresh, preview, confirm, or execute) using the current configuration; users need not sign out solely for an allowlist change to take effect.
+- Allowlist updated at deploy time: complimentary status is re-evaluated on the next credit-related action (sign-in balance refresh, preview, confirm, execute, or hosted `/profile` credits load) using the current configuration; users need not sign out solely for an allowlist change to take effect.
 - Same organisation has users in multiple sessions: complimentary status is tenant-level; all users in that organisation share the same complimentary metering and UI.
 - Allowlisted tenant with would-create of zero: Confirm import is not blocked for credits; no usage on execution if nothing is created.
 - Preview still never consumes credits for allowlisted or normal tenants.
@@ -104,7 +104,7 @@ An operator or support reviewer needs to see how much complimentary tenants actu
 
 - **FR-001**: Complimentary unlimited treatment MUST apply only when hosted commercial capabilities are on. Self-hosted and commercial-off deployments MUST NOT read the allowlist for credit behaviour and MUST remain unchanged.
 - **FR-002**: Operators MUST be able to configure a deploy-time allowlist of organisation tenant identifiers as a comma-separated list of GUIDs (trimmed entries; empty segments ignored). Default MUST be an empty list (no complimentary tenants).
-- **FR-003**: Complimentary status MUST be determined by exact GUID equality between the signed-in commercial organisation tenant identifier and an allowlist entry. Matching MUST NOT use substring, contains, or case folding that could widen access. The allowlist MUST be evaluated against the current configuration on every credit-related action when commercial tenant context is resolved (sign-in balance refresh, preview, confirm, and execute), not only at process start and not only at sign-in.
+- **FR-003**: Complimentary status MUST be determined by exact GUID equality between the signed-in commercial organisation tenant identifier and an allowlist entry. Matching MUST NOT use substring, contains, or case folding that could widen access. The allowlist MUST be evaluated against the current configuration on every credit-related action when commercial tenant context is resolved (sign-in balance refresh, preview, confirm, execute, and hosted `/profile` credits summary and activity load per [#138](https://github.com/markheydon/import-to-planner/issues/138) / spec 020), not only at process start and not only at sign-in.
 - **FR-004**: Production tenant identifiers MUST NOT be committed in application source; only the configuration mechanism and empty default are documented for operators.
 - **FR-005**: For allowlisted organisations, the credit confirm gate MUST NOT disable or refuse Confirm import for insufficient credits, including when would-create exceeds 25 or exceeds any monthly free allowance.
 - **FR-006**: For allowlisted organisations, preview MUST still run and MUST NOT consume credits. Insufficient-credit warnings and shortfall messaging MUST NOT appear.
@@ -112,12 +112,12 @@ An operator or support reviewer needs to see how much complimentary tenants actu
 - **FR-008**: The product MUST NOT introduce a parallel import path that bypasses the ledger for complimentary tenants.
 - **FR-009**: Ledger accounting for complimentary tenants MUST remain append-only and auditable. Derived balances MUST never be negative. The chosen pattern is: record import usage as today, and for each usage amount record a same-size **complimentary grant** transaction so finite-lot derived balance returns to zero while usage remains visible in history and summaries.
 - **FR-010**: For allowlisted organisations, monthly free credit grants and free-credit expiry processing MUST be skipped. Complimentary status MUST take precedence over the 25-credit monthly cap and expiry rules.
-- **FR-011**: Remaining credits shown in the import journey for allowlisted organisations MUST be presented as unlimited or clearly complimentary UK English copy (for example “Unlimited” with optional “complimentary” context). The UI MUST NOT present numeric zero remaining with Confirm disabled as if credits were exhausted.
+- **FR-011**: Remaining credits shown in the import journey and on hosted `/profile` (spec 020) for allowlisted organisations MUST be presented as unlimited or clearly complimentary UK English copy (for example “Unlimited” with optional “complimentary” context). The UI MUST NOT present numeric zero remaining with Confirm disabled or on profile as if credits were exhausted.
 - **FR-012**: Import summaries for allowlisted organisations MUST still show tasks created and credits used for that run. Credits used MUST reflect actual created tasks.
 - **FR-013**: Buy-credits calls to action MUST be hidden or omitted for allowlisted organisations wherever the product would otherwise prompt purchase when credits are insufficient ([#125](https://github.com/markheydon/import-to-planner/issues/125) must not offer checkout as the only path for these tenants).
 - **FR-014**: Non-allowlisted commercial organisations MUST retain all behaviours from [#126](https://github.com/markheydon/import-to-planner/issues/126) and later paid-credit features without change except where those features explicitly reference complimentary tenants.
 - **FR-015**: Malformed allowlist entries MUST be ignored individually with operator-visible diagnostics (for example structured logs); valid GUIDs in the same configuration string MUST still apply. Malformed entries MUST NOT grant complimentary access and MUST NOT cause the entire allowlist to be discarded or block startup.
-- **FR-016**: If grant, usage, complimentary grant, expiry, or balance read fails for any tenant, preview, confirm, and execute MUST fail closed with UK English errors as in [#126](https://github.com/markheydon/import-to-planner/issues/126); the product MUST NOT treat ledger failure as insufficient credits.
+- **FR-016**: If grant, usage, complimentary grant, expiry, or balance read fails for any tenant, preview, confirm, execute, and hosted `/profile` credits load (spec 020) MUST fail closed with UK English errors as in [#126](https://github.com/markheydon/import-to-planner/issues/126); the product MUST NOT treat ledger failure as insufficient credits or show numeric zero remaining on profile as exhaustion.
 - **FR-017**: The product contract document `docs/credits-billing-usage-model.md` MUST be updated to describe complimentary allowlisted tenants, configuration expectations, ledger metering, UI presentation, and interaction with monthly free credits and paid credits.
 
 ### Key Entities
@@ -166,4 +166,5 @@ An operator or support reviewer needs to see how much complimentary tenants actu
 - **Blocked by / requires**: [#126](https://github.com/markheydon/import-to-planner/issues/126) credit ledger, free monthly allowance, preview and execute gate.
 - **Parent**: [#124](https://github.com/markheydon/import-to-planner/issues/124) commercial credits and billing epic.
 - **Related**: [#125](https://github.com/markheydon/import-to-planner/issues/125) paid credits must hide or skip buy CTAs for allowlisted tenants.
+- **Coordinates with**: [#138](https://github.com/markheydon/import-to-planner/issues/138) / spec 020 (profile credits section: Unlimited remaining, usage-only activity, no buy-credits on profile when paid checkout exists).
 - **Documentation**: `docs/credits-billing-usage-model.md` update is part of this feature’s delivery.

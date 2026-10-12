@@ -13,6 +13,16 @@ Read-only commercial profile projections over the immutable ledger (011). No new
 | `ProfileCreditPresenter` | Web | Maps results to display strings; no ledger access. |
 | `CommercialAccount` | Commercial (008) | Unchanged; credits section is additive on same page. |
 
+## 0. Profile use case requests
+
+`ProfileCreditSummaryRequest` and `ProfileCreditActivityRequest` share the same identity and clock fields (contracts §3–§4):
+
+| Field | Type | Validation |
+|-------|------|------------|
+| `TenantId` | string | Non-empty; from authenticated commercial session only (FR-002). |
+| `ActorUserId` | string | Non-empty; session user for ensure audit. |
+| `OccurredUtc` | `DateTimeOffset` | UTC instant for ensure, free-lot selection, and `ActivityWindowStartUtc = OccurredUtc.AddMonths(-12)`. |
+
 ## 1. Profile credit summary (computed)
 
 Produced after `EnsureCurrentCreditBalance` succeeds for the signed-in tenant.
@@ -35,7 +45,7 @@ Produced after `EnsureCurrentCreditBalance` succeeds for the signed-in tenant.
 | `ExpiresAtUtc` | `DateTimeOffset` | UTC month end for grant month. |
 | `GrantedAtUtc` | `DateTimeOffset` | Actual grant instant. |
 
-Selection rule: after ensure at `occurredUtc`, the lot is the `FreeMonthly` lot whose grant month equals `GetUtcYearMonth(occurredUtc)` with highest `GrantedAtUtc` if duplicates exist (should not happen with marker).
+Selection rule: after ensure at `occurredUtc`, the lot is the `FreeMonthly` lot whose grant month equals `CommercialCreditPolicy.GetUtcYearMonth(occurredUtc)` with highest `GrantedAtUtc` if duplicates exist (should not happen with marker).
 
 ### ProfilePaidLot (reserved for #125)
 
@@ -47,7 +57,17 @@ Selection rule: after ensure at `occurredUtc`, the lot is the `FreeMonthly` lot 
 | `GrantedAtUtc` | `DateTimeOffset` | Purchase instant. |
 | `ExpiresAtUtc` | `DateTimeOffset` | Twelve months from purchase per product doc. |
 
-## 2. Profile credit activity entry (computed)
+## 2. Profile credit activity result (computed)
+
+Produced by `GetProfileCreditActivityUseCase` after listing and aggregating ledger transactions for the signed-in tenant.
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `Entries` | `IReadOnlyList<ProfileCreditActivityEntry>` | Newest-first within the rolling window (contracts §4). |
+| `HasOlderHistory` | bool | True when any ledger event exists before `ActivityWindowStartUtc` (see below). |
+| `ActivityWindowStartUtc` | `DateTimeOffset` | `request.OccurredUtc.AddMonths(-12)`; exposed for tests and presenter copy only. |
+
+### ProfileCreditActivityEntry
 
 | Field | Type | Notes |
 |-------|------|--------|
@@ -59,16 +79,21 @@ Selection rule: after ensure at `occurredUtc`, the lot is the `FreeMonthly` lot 
 
 ### Grouping: import run usage
 
-- Input: `Usage` transactions with same `ImportRunId` within the twelve-month window.
-- Output: one `ImportRunUsage` entry; `Quantity` = sum of usage quantities; exclude complimentary-only pairs from duplicate counting (usage rows still count; grant rows never become profile rows).
+- Input: `Usage` transactions within the twelve-month window.
+- When `ImportRunId` is present: group by run; output one `ImportRunUsage` entry per run; `Quantity` = sum of usage quantities in that run; `OccurredUtc` = latest in the group.
+- When `ImportRunId` is missing (legacy rows): one `ImportRunUsage` entry per usage transaction (still not one row per created task in the activity list).
+- Complimentary grant rows never become profile activity rows; usage rows still count.
+- Allowlist membership for activity filtering: `IComplimentaryTenantPolicy.IsComplimentary(TenantId)` (019); not inferred from ledger rows alone.
 
 ### Window and ordering
 
 - `ActivityWindowStartUtc` = `occurredUtc.AddMonths(-12)` (rolling).
 - Sort: `OccurredUtc` descending.
-- `HasOlderHistory` = any ledger transaction with `OccurredUtc < ActivityWindowStartUtc` (boolean for copy only).
+- `HasOlderHistory` = `ICreditLedgerStore.HasTransactionsBeforeAsync(tenantId, ActivityWindowStartUtc)` is true (any `tx|` row with `OccurredUtc < ActivityWindowStartUtc`; boolean for copy only — not inferred from the windowed list alone).
 
-## 3. Failure models
+## 3. Failure models and use case outcomes
+
+Commercial returns discriminated outcomes (`GetProfileCreditSummaryOutcome`, `GetProfileCreditActivityOutcome`): `Succeeded` with the result types above, or `Failed` with `CommercialCreditBalanceFailure` (stable codes only; no UI strings in Commercial).
 
 | Outcome | Code (examples) | UI rule |
 |---------|-----------------|--------|
@@ -96,7 +121,8 @@ CommercialAccount (1) ── tenantId ──> (1) Credit ledger partition
                                               ├── CreditLot (*)
                                               └── CreditLedgerTransaction (*)
 ProfileCreditSummaryResult ──derived──> Ensure + lots
-ProfileCreditActivityEntry (*) ──derived──> transactions (+ grouping)
+ProfileCreditActivityResult ──derived──> transactions (+ grouping)
+ProfileCreditActivityEntry (*) ──contained in──> ProfileCreditActivityResult.Entries
 ```
 
 Cross-tenant access is forbidden: `TenantId` always from `SessionIdentityContext`, never from client input (FR-002, constitution VIII).

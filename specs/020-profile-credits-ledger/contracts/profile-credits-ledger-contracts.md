@@ -18,14 +18,14 @@ When **false**:
 
 ## 2. Ensure current balance (profile amendment)
 
-Add audit value `EnsureBalanceReason.Profile`.
+Add audit value `EnsureBalanceReason.Profile` (amend 011 `EnsureCurrentCreditBalanceRequest.Reason` enum and [commercial-credit-ledger-contracts.md](../../011-commercial-credit-ledger/contracts/commercial-credit-ledger-contracts.md) §2 when implementing T001).
 
 | Caller | Behaviour |
 |--------|-----------|
-| `/profile` on load | Call ensure with `Profile` reason; same expiry/grant/balance rules as preview (011). |
+| `/profile` on load | Call ensure with `Profile` reason; for non-complimentary tenants, same expiry/grant/balance rules as preview (011). For complimentary tenants, apply [019 §3](../../019-complimentary-tenant-credits/contracts/complimentary-tenant-credits-contracts.md) (skip free grant/expiry; `ComplimentaryUnlimitedAccess`). |
 | Import preview/confirm/execute | Unchanged. |
 
-Complimentary tenants: unchanged 019 ensure contract (unlimited flag; no free grant/expiry on profile).
+Complimentary tenants on profile: ensure follows 019 §3; UI shows unlimited remaining and usage-only activity with no free-monthly or paid lot breakdown (FR-005, FR-006, FR-010).
 
 Failure on profile: structured failure code only from Commercial; Web shows UK English error; MUST NOT show remaining as `0` or insufficient-credits messaging (FR-004).
 
@@ -57,6 +57,8 @@ Response (failure): `CommercialCreditBalanceFailure` with stable code; no UI tex
 
 Request: same identity fields as summary.
 
+Complimentary filtering: resolve allowlist membership via `IComplimentaryTenantPolicy.IsComplimentary(TenantId)` on each call (019 §2); do not infer from ledger rows alone.
+
 Response (success):
 
 | Field | Meaning |
@@ -72,11 +74,12 @@ Entry types by tenant:
 | Free credit expiry | Yes | No |
 | Import run usage (grouped) | Yes | Yes (only type) |
 | Paid purchase | When [#125](https://github.com/markheydon/import-to-planner/issues/125) writes ledger | No |
+| Paid credit lot expiry | When [#125](https://github.com/markheydon/import-to-planner/issues/125) writes `PaidExpiry` ledger rows | No |
 | Complimentary grant | Never as its own row | Never |
 
-Grouping: one row per `ImportRunId` for usage; quantity = total credits consumed in that run (FR-007).
+Grouping: one row per `ImportRunId` for usage when the id is present; quantity = total credits consumed in that run (FR-007). Usage rows without `ImportRunId` appear as one grouped usage row each (legacy fallback; not one row per task).
 
-Response (failure): independent of summary success/failure.
+Response (failure): `CommercialCreditBalanceFailure` with stable code (typically `credits.ledger_unavailable`); independent of summary success/failure; no UI text in Commercial.
 
 ## 5. Ledger store list contract (amendment)
 
@@ -85,6 +88,13 @@ Response (failure): independent of summary success/failure.
 - Scope: single tenant partition.
 - Filter: `OccurredUtc >= occurredSinceUtc`.
 - Ordering: use case sorts newest-first.
+- Read-only; no mutation.
+
+`ICreditLedgerStore.HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken)` → `bool`
+
+- Scope: same tenant partition; `tx|` row prefix.
+- Returns true when any transaction has `OccurredUtc < beforeOccurredUtc`.
+- Used by the activity use case to set `HasOlderHistory` without loading pre-window rows.
 - Read-only; no mutation.
 
 ## 6. Web presentation (`/profile`)

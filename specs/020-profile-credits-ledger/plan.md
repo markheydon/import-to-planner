@@ -28,7 +28,7 @@ Add a **credits section on `/profile`** for hosted commercial mode: show ledger-
 
 **Constraints**: Clean Architecture inward deps; UK English UI; commercial off registers no profile credit services; balance and activity errors independent; format gate in CI
 
-**Scale/Scope**: Read path + profile UI on existing route; optional `EnsureBalanceReason.Profile`; #125 hooks reserved in contracts/models
+**Scale/Scope**: Read path + profile UI on existing route; add `EnsureBalanceReason.Profile` for profile-load ensure audit; #125 hooks reserved in contracts/models
 
 ## Constitution Check
 
@@ -57,6 +57,7 @@ specs/020-profile-credits-ledger/
 ├── plan.md
 ├── research.md
 ├── data-model.md
+├── tasks.md
 ├── quickstart.md
 ├── contracts/
 │   └── profile-credits-ledger-contracts.md
@@ -69,7 +70,7 @@ specs/020-profile-credits-ledger/
 ```text
 src/ImportToPlanner.Commercial/
 ├── Abstractions/
-│   └── ICreditLedgerStore.cs              # add ListTransactionsAsync
+│   └── ICreditLedgerStore.cs              # add ListTransactionsAsync, HasTransactionsBeforeAsync
 ├── Models/
 │   ├── CreditLedgerEnums.cs               # EnsureBalanceReason.Profile
 │   └── ProfileCreditModels.cs             # summary/activity result types (new)
@@ -103,8 +104,8 @@ See [research.md](./research.md). No NEEDS CLARIFICATION in Technical Context.
 
 ## Phase 1 Design
 
-- [data-model.md](./data-model.md) — summary, activity entries, failure handling.
-- [contracts/profile-credits-ledger-contracts.md](./contracts/profile-credits-ledger-contracts.md) — use cases, store list API, UI rules.
+- [data-model.md](./data-model.md) — summary, activity entries, `HasOlderHistory` via `HasTransactionsBeforeAsync` (§2), failure handling.
+- [contracts/profile-credits-ledger-contracts.md](./contracts/profile-credits-ledger-contracts.md) — use cases, store list API (`ListTransactionsAsync`, `HasTransactionsBeforeAsync` §5), UI rules.
 - [quickstart.md](./quickstart.md) — validation scenarios.
 
 ### Constitution re-check (post-design)
@@ -113,10 +114,10 @@ Still passes: read-only ledger path; presentation in Web; complimentary and fail
 
 ## Implementation notes (for `/speckit-tasks`)
 
-1. **Enums** — Add `EnsureBalanceReason.Profile` for audit on profile load.
-2. **Store** — `ListTransactionsAsync` on `ICreditLedgerStore` + table query; update `InMemoryCreditLedgerStore`.
+1. **Enums** — Add `EnsureBalanceReason.Profile` for audit on profile load; amend [011 commercial-credit-ledger-contracts.md](../011-commercial-credit-ledger/contracts/commercial-credit-ledger-contracts.md) §2 `Reason` enum (per T001 and 020 contracts §2).
+2. **Store** — `ListTransactionsAsync` plus `HasTransactionsBeforeAsync` on `ICreditLedgerStore` (lightweight existence check for `HasOlderHistory` without loading pre-window rows); table query + `InMemoryCreditLedgerStore`.
 3. **Summary use case** — Ensure → map balance + current free lot + paid lots (empty until #125).
-4. **Activity use case** — Twelve-month filter, complimentary filter, group usage by `ImportRunId`, set `HasOlderHistory`.
+4. **Activity use case** — Twelve-month filter (`request.OccurredUtc.AddMonths(-12)`), complimentary filter, group usage by `ImportRunId` when present (legacy rows without id: one grouped row per usage transaction), set `HasOlderHistory` via `HasTransactionsBeforeAsync` (not from the windowed list alone).
 5. **DI** — Register use cases when commercial on only.
 6. **Profile UI** — MudPaper section; separate alerts for balance vs activity errors; twelve-month omission copy; reuse unlimited formatting from import presenters where appropriate.
 7. **#125 readiness** — Contract slots for paid lots, purchase rows, buy-credits button guarded by feature/checkout availability and non-complimentary policy.
