@@ -23,11 +23,28 @@ as a long-term file store after your session completes an import or you navigate
 Planner tasks created or updated during a confirmed import remain in your Microsoft 365 tenant
 under your organisation's Microsoft retention policies.
 
+Where the hosted commercial service is enabled, we store **commercial account metadata**
+needed to operate your organisation's access (for example tenant and user identifiers and
+account lifecycle state). We also maintain a **per-tenant credit ledger** that records
+balances, grants, usage, and expiry. The ledger reflects how many import credits your
+organisation has used; it does **not** store the contents of your CSV files or the text of
+Planner tasks you import.
+
 ## Retention and logging
 
 Operational telemetry (for example request traces, error diagnostics, and hosting platform
 logs) may be retained for a limited period to operate and secure the service. Logs are used
 for reliability and incident response, not for advertising.
+
+If you delete your commercial account, access ends immediately. Account and ledger records
+are retained for about **six months** so you can restore the account during that window, or
+so we can meet legal and billing obligations. After that period, eligible records are purged.
+
+## Subprocessors
+
+The hosted service relies on Microsoft **Entra ID** for sign-in and **Microsoft Azure** for
+hosting and operational storage. When paid billing is available, **Stripe** will process
+payments and issue receipts; we will update this page when that ships.
 
 Where commercial mode is enabled, billing-related metadata may be stored according to the
 commercial account configuration described in engineering documentation for operators.
