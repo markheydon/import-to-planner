@@ -55,6 +55,11 @@ public enum CreditEntryType
     /// Complimentary grant paired with usage for allowlisted tenants.
     /// </summary>
     ComplimentaryGrant = 5,
+
+    /// <summary>
+    /// Unused paid credits removed after a confirmed refund or lost dispute.
+    /// </summary>
+    PaidAdjustment = 6,
 }
 
 /// <summary>
@@ -86,4 +91,9 @@ public enum EnsureBalanceReason
     /// Commercial profile page loaded.
     /// </summary>
     Profile = 4,
+
+    /// <summary>
+    /// User returned from external credit checkout.
+    /// </summary>
+    CheckoutReturn = 5,
 }
