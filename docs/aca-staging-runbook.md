@@ -263,6 +263,7 @@ The staging workflow also passes Aspire parameters for hosted web runtime settin
 - `Parameters__graphClientCertificateBase64` from `GRAPH_CLIENT_CERTIFICATE_BASE64`
 - `Parameters__customDomain` from `CUSTOM_DOMAIN` (optional)
 - `Parameters__customDomainCertificateName` from `CUSTOM_DOMAIN_CERTIFICATE_NAME` (optional)
+- `Parameters__complimentaryTenantIds` from a GitHub Environment variable or secret (optional; not passed by default)
 
 If required runtime values are missing, or if `Parameters__azureAdHomeTenantId` is set to an unexpected value, revisions may provision but fail at runtime with startup configuration errors or tenant-specific sign-in failures.
 
@@ -271,6 +272,12 @@ Custom-domain behaviour:
 - If `Parameters__customDomain` is unset or blank, the AppHost skips custom-domain binding.
 - If `Parameters__customDomain` is set, Aspire attempts to bind that hostname.
 - `Parameters__customDomainCertificateName` must match the existing ACA managed-certificate resource name exactly on subsequent deployments.
+
+Complimentary-tenant allowlist behaviour (hosted commercial only):
+
+- If `Parameters__complimentaryTenantIds` is unset or blank, the AppHost omits the parameter and does not create an Azure Container Apps secret for it (empty secrets are invalid). The web app defaults to no complimentary tenants.
+- If `Parameters__complimentaryTenantIds` is set, Aspire maps it to `Features__CommercialMode__ComplimentaryTenantIds` on the web resource as a secret parameter.
+- To allowlist organisations on staging, add `Parameters__complimentaryTenantIds` to the deploy workflow environment (or pass it when running `aspire deploy` locally). Setting values only in the Azure portal without redeploying does not wire the allowlist into the container.
 
 ## 3) Certificate handling for staging
 
