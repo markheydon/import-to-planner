@@ -175,10 +175,9 @@ Some operator and tester organisations need unlimited imports without buying cre
 ### Configuration
 
 - **Configuration key**: `Features:CommercialMode:ComplimentaryTenantIds`
-- **Aspire AppHost parameter**: `complimentaryTenantIds` (mapped to the key above on the web resource)
-- **Default**: empty string (no complimentary tenants)
+- **Aspire AppHost parameter**: `complimentaryTenantIds` (optional). When `Parameters:complimentaryTenantIds` is unset or blank at deploy time, the AppHost omits the parameter so Azure Container Apps is not asked to create an empty secret; the web app then defaults to no complimentary tenants. When set, the parameter is mapped to the configuration key above on the web resource as a secret.
 - **Format**: comma-separated tenant GUIDs; trim whitespace; invalid tokens are logged and ignored
-- **Security**: do not commit production tenant GUIDs in source control; use deployment parameters or user secrets for manual testing
+- **Security**: do not commit production tenant GUIDs in source control; use deployment parameters (for example `Parameters__complimentaryTenantIds` in CI) or user secrets for manual testing
 - **Commercial off**: when `Features:CommercialMode:Enabled` is false, the allowlist is not read and behaviour is unchanged (self-hosted included)
 
 ### Behaviour
