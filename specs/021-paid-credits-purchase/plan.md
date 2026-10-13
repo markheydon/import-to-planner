@@ -28,6 +28,10 @@ Hosted commercial mode gains one-time Stripe Checkout for a configured credit-pa
 
 **Scale/Scope**: One Stripe class library, one Functions project with a single daily timer, one anonymous webhook route, configuration-backed pack list, preview and profile purchase UI, ledger write methods for paid purchase, refund, and expiry. No subscriptions and no Worker. Account-retention sweep stays on the existing web hosted service in this feature.
 
+## Architecture impact statement
+
+*Same content as Constitution Check below; satisfies delivery workflow gate for dependency direction, boundaries, traceability, testability, failures, security, and self-hosted path.*
+
 ## Constitution Check
 
 *GATE: Pre-phase assessment passes. Re-checked after Phase 1 design below — still passes.*
@@ -36,7 +40,7 @@ Hosted commercial mode gains one-time Stripe Checkout for a configured credit-pa
 - **II. Technology-neutral core**: Ledger models use opaque `ExternalPaymentId` and `ExternalAdjustmentId`. Stripe event objects, Checkout Session types, and webhook signatures stay in the Stripe adapter.
 - **III. Explicit boundaries**: Checkout, grant, refund, and expiry use request/response records. Presenters own pack labels, shortfall highlight, and UK English errors. The webhook adapter maps a verified event to those records.
 - **IV. Replaceable frameworks**: Stripe.net is confined to one project. A different provider would replace that project and the webhook parser. Tables remain behind `ICreditLedgerStore` and a new billing-metadata port.
-- **V. Traceability**: Work maps to spec 021 FR-001–FR-021, US1–US7, and issue #125. Profile activity extends spec 020. Privacy copy is FR-014/FR-016.
+- **V. Traceability**: Work maps to spec 021 FR-001–FR-021, US1–US7, and issue #125. Profile activity extends spec 020. Privacy copy is FR-014/FR-016. FR-013 is satisfied by ledger-owned metering (spec 011) plus Stripe limited to checkout, receipts, and tax. FR-020 extends spec 011 fail-closed rules to preview balance refresh and profile buy entry after purchase.
 - **VI. Testable behaviour**: Use cases run against the in-memory ledger and NSubstitute doubles. Webhook tests feed a verified domain event without calling Stripe. The timer function is tested as a delegate. stripe-mock is an extra contract check, not the proof of grant or idempotency. Sandbox journeys are manual evidence, not the unit gate, and they are not live mode.
 - **VII. Explicit failures**: Invalid signature, unknown pack, missing checkout metadata, ledger write failure, and expiry tenant failure are distinct outcomes. The webhook returns a non-success status when the grant did not commit, so Stripe retries. UI never shows raw Stripe errors or customer ids.
 - **VIII. Security**: Webhook is anonymous and fails closed without a valid signature. Tenant id comes from server-written Checkout Session metadata after verification, never from the client. Secrets stay in parameters. Development, CI, and staging accept sandbox keys only. Commercial-off does not expose checkout or require the signing secret. The function has no anonymous HTTP surface. Actor user id is audit-only.
@@ -57,7 +61,7 @@ specs/021-paid-credits-purchase/
 ├── quickstart.md
 ├── contracts/
 │   └── paid-credits-purchase-contracts.md
-└── tasks.md             # /speckit-tasks — not created here
+└── tasks.md             # /speckit-tasks
 ```
 
 ### Source Code (repository root)
