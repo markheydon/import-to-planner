@@ -126,8 +126,9 @@ xUnit v3 and NSubstitute. No Docker.
 | Delete then purge leaves ledger rows and billing customer id in place | US5, FR-014, FR-016, SC-005 |
 | Unknown pack id is rejected | Edge case |
 | Commercial-off registration does not map the webhook | FR-001, US7 |
+| Ledger ensure or balance read unavailable on preview or profile balance-needed action | FR-020, spec 011 FR-030 (fail closed; no invented remaining; insufficient-credits warning not shown as substitute) |
 
-bUnit: preview pre-selection and disabled confirm; profile catalogue without pre-selection; commercial-off has no buy action.
+bUnit: preview pre-selection and disabled confirm; profile catalogue without pre-selection; commercial-off has no buy action; preview and profile fail closed when ledger ensure/read fails (no buy-credits substitute for read failure).
 
 ## 11. stripe-mock (opt-in)
 

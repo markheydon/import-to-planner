@@ -202,13 +202,13 @@ Self-hosted deployments and hosted deployments with commercial mode off do not s
 
 ### Measurable Outcomes
 
-- **SC-001**: At least ninety-five percent of commercial users who start checkout from an insufficient-credits preview can complete purchase and see Confirm import enabled within five minutes when would-create fits the purchased pack (measured in staging or pilot with test payments).
+- **SC-001**: At least ninety-five percent of commercial users who start checkout from an insufficient-credits preview can complete purchase and see Confirm import enabled within five minutes when would-create fits the purchased pack (measured in staging or pilot with test payments). This is a pilot or staging observability target only; it is not a mandatory automated CI gate.
 - **SC-002**: Zero duplicate-payment confirmations in testing produce more than one paid lot for the same payment identifier.
-- **SC-007**: In acceptance tests, confirmed refunds or chargebacks with partial lot consumption remove only the unused portion once per refund identifier; fully consumed lots produce no negative balance.
 - **SC-003**: One hundred percent of paid lots in acceptance tests expire within one scheduled enforcement cycle after their twelve-month instant, with a matching expiry ledger entry and correct remaining balance.
 - **SC-004**: In acceptance tests, one hundred percent of imports that consume both free and paid credits show a summary breakdown that matches ledger consumption order (free first, then oldest paid).
 - **SC-005**: In acceptance tests, commercial account deletion never reduces tenant ledger transaction count or resets derived paid balance; restore within retention preserves the same balance figure as before deletion.
 - **SC-006**: Commercial-off and self-hosted journeys show no buy-credits or checkout affordances in usability checks of preview and profile.
+- **SC-007**: In acceptance tests, confirmed refunds or chargebacks with partial lot consumption remove only the unused portion once per refund identifier; fully consumed lots produce no negative balance.
 
 ## Assumptions
 
