@@ -278,6 +278,36 @@ public sealed class GetProfileCreditActivityUseCaseTests
     }
 
     [Fact]
+    public async Task GetAsync_NonComplimentaryWithPaidAdjustment_IncludesAdjustmentRow()
+    {
+        var store = new InMemoryCreditLedgerStore();
+        var activityUseCase = CreateActivityUseCase(store);
+        const string tenantId = "tenant-001";
+        var occurredUtc = new DateTimeOffset(2026, 9, 20, 16, 0, 0, TimeSpan.Zero);
+        var adjustmentUtc = occurredUtc.AddDays(-2);
+
+        store.SeedTransaction(new CreditLedgerTransaction(
+            "paid-adjustment",
+            tenantId,
+            adjustmentUtc,
+            CreditEntryType.PaidAdjustment,
+            12,
+            "paid-lot-1",
+            LotType.Paid));
+
+        var outcome = await activityUseCase.GetAsync(
+            new ProfileCreditActivityRequest(tenantId, "user-001", occurredUtc),
+            CancellationToken.None);
+
+        var result = Assert.IsType<GetProfileCreditActivityOutcome.Succeeded>(outcome).Result;
+        Assert.Contains(
+            result.Entries,
+            entry => entry.ActivityKind == ProfileCreditActivityKind.PaidAdjustment
+                && entry.Quantity == 12
+                && !entry.IsCreditIncrease);
+    }
+
+    [Fact]
     public async Task GetAsync_NonComplimentaryWithPaidLedgerRows_IncludesPaidPurchaseAndPaidLotExpiry()
     {
         var store = new InMemoryCreditLedgerStore();
@@ -450,5 +480,44 @@ public sealed class GetProfileCreditActivityUseCaseTests
 
             return inner.HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken);
         }
+
+        public Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(DateTimeOffset asOfUtc, CancellationToken cancellationToken)
+            => inner.ListDuePaidCreditLotsAsync(asOfUtc, cancellationToken);
+
+        public Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(string tenantId, string externalPaymentId, CancellationToken cancellationToken)
+            => inner.GetPaidLotByExternalPaymentIdAsync(tenantId, externalPaymentId, cancellationToken);
+
+        public Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalEventId,
+            int grantQuantity,
+            DateTimeOffset grantedAtUtc,
+            string actorUserId,
+            CancellationToken cancellationToken)
+            => inner.TryGrantPaidPurchaseAsync(
+                tenantId,
+                externalPaymentId,
+                externalEventId,
+                grantQuantity,
+                grantedAtUtc,
+                actorUserId,
+                cancellationToken);
+
+        public Task<bool> ExpirePaidLotAsync(CreditLot lot, DateTimeOffset occurredUtc, string? actorUserId, CancellationToken cancellationToken)
+            => inner.ExpirePaidLotAsync(lot, occurredUtc, actorUserId, cancellationToken);
+
+        public Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalAdjustmentId,
+            DateTimeOffset occurredUtc,
+            CancellationToken cancellationToken)
+            => inner.TryAdjustPaidCreditsAsync(
+                tenantId,
+                externalPaymentId,
+                externalAdjustmentId,
+                occurredUtc,
+                cancellationToken);
     }
 }

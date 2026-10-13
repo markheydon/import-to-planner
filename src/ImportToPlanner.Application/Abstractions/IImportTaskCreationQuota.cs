@@ -38,10 +38,12 @@ public sealed record TaskCreationQuotaResult(
 /// <param name="Succeeded">Whether usage was recorded.</param>
 /// <param name="DiagnosticCode">Optional structured diagnostic code when recording failed.</param>
 /// <param name="RemainingCredits">Remaining credits when known after recording.</param>
+/// <param name="ConsumedPaidCredit">Whether the recorded usage debited a paid lot.</param>
 public sealed record TaskCreationQuotaRecordResult(
     bool Succeeded,
     string? DiagnosticCode = null,
-    int? RemainingCredits = null);
+    int? RemainingCredits = null,
+    bool ConsumedPaidCredit = false);
 
 /// <summary>
 /// Context for import execution credit metering.

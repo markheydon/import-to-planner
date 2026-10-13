@@ -108,6 +108,16 @@ if (commercialModeEnabled && tables is not null)
 {
     web.WithReference(tables)
         .WaitFor(tables);
+
+    builder.AddAzureFunctionsProject<Projects.ImportToPlanner_Functions>("paid-credit-expiry")
+        .WithReference(tables)
+        .WaitFor(tables)
+        .WithEnvironment("Features__CommercialMode__Enabled", "true")
+        .WithEnvironment("Storage__TenantMetadataTable", "TenantOperationalMetadata")
+        .WithEnvironment("Storage__CommercialAccountsTable", "CommercialAccounts")
+        .WithEnvironment("Storage__CommercialAuditTable", "CommercialAccountAuditEvents")
+        .WithEnvironment("Storage__CommercialCreditLedgerTable", "CommercialCreditLedger")
+        .WithEnvironment("Storage__CommercialBillingTable", "CommercialBilling");
 }
 
 builder.Build().Run();

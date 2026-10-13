@@ -321,6 +321,28 @@ public sealed class ImportWorkflowCoordinator(
             cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Refreshes the live credit snapshot after returning from external checkout (FR-010, FR-020).
+    /// </summary>
+    public async Task RefreshCreditBalanceSnapshotAfterCheckoutReturnAsync(
+        WorkflowCoordinationState state,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+
+        if (state.PlanningViewModel?.Preview is null)
+        {
+            return;
+        }
+
+        ResolveTenantContext(state);
+        state.CreditBalanceSnapshot = await BuildCreditBalanceSnapshotAsync(
+            state,
+            state.PlanningViewModel.Preview,
+            EnsureBalanceReason.CheckoutReturn,
+            cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task ExecuteAsync(WorkflowCoordinationState state, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(state);
