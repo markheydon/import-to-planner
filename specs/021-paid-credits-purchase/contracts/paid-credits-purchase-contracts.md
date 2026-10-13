@@ -143,7 +143,7 @@ Image: `stripe/stripe-mock:latest`. HTTP port `12111` is sufficient. Do not add 
 Development, CI, staging, and acceptance of this feature use Stripe Sandboxes only. Do not use the live Stripe environment. Do not put live-mode keys (`sk_live_`, `rk_live_`) in user secrets, Aspire parameters, or GitHub secrets for those environments.
 
 - One sandbox for local development and a separate sandbox for staging.
-- Restricted sandbox keys and that sandbox’s webhook signing secret.
+- Restricted sandbox keys and that sandbox’s webhook signing secret. Local Aspire runs use AppHost parameters `stripeApiKey` and `stripeWebhookSecret` (`aspire secret set Parameters:stripeApiKey …`), forwarded to `web` as `Stripe__*` when commercial mode is on.
 - Pack Price ids in configuration are objects created in the same sandbox.
 - `Stripe:AutomaticTaxEnabled` stays false unless that sandbox has an active tax registration.
 - stripe-mock does not replace a Sandbox. It never sees a live or sandbox secret.
