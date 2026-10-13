@@ -45,6 +45,8 @@ public partial class Home
             {
                 hasTokenReauthenticationQuery = true;
             }
+
+            await TryHandleCreditCheckoutReturnAsync(parsedQuery);
         }
 
         var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();

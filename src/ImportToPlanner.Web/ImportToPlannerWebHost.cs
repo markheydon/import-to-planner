@@ -3,8 +3,10 @@ using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
 using ImportToPlanner.Commercial;
 using ImportToPlanner.Infrastructure.Graph;
+using ImportToPlanner.Infrastructure.Stripe;
 using ImportToPlanner.Web.Components;
 using ImportToPlanner.Web.Features.Authentication;
+using ImportToPlanner.Web.Features.Billing;
 using ImportToPlanner.Web.Features.CommercialAccounts;
 using ImportToPlanner.Web.Features.Demo;
 using ImportToPlanner.Web.Infrastructure;
@@ -69,6 +71,7 @@ internal static class ImportToPlannerWebHost
         if (commercialModeEnabled && !isE2ETesting)
         {
             builder.Services.AddCommercial(builder.Configuration);
+            builder.Services.AddStripeInfrastructure(builder.Configuration);
         }
 
         HostedDataProtectionConfigurator.Configure(builder.Services, builder.Environment);
@@ -98,6 +101,13 @@ internal static class ImportToPlannerWebHost
             "ImportToPlanner.Web.staticwebassets.endpoints.json");
         app.MapStaticAssets(staticAssetsManifestPath);
         app.MapControllers();
+        var commercialModeEnabled = CommercialModeOptions.FromConfiguration(app.Configuration).Enabled;
+        if (commercialModeEnabled && !E2ETestingHostEnvironment.IsE2ETesting(app.Environment))
+        {
+            app.MapStripeWebhook();
+            app.MapCreditCheckout();
+        }
+
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
         app.MapDefaultEndpoints();

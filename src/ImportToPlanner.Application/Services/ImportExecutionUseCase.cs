@@ -139,6 +139,8 @@ public sealed class ImportExecutionUseCase(
         var rowsByNumber = planningRequest.Rows.ToDictionary(row => row.RowNumber);
         var importRunId = Guid.NewGuid().ToString("N");
         var creditsUsed = 0;
+        var freeCreditsUsed = 0;
+        var paidCreditsUsed = 0;
         int? remainingCredits = null;
         var stopFurtherCreates = false;
         string? stopDiagnosticCode = null;
@@ -294,6 +296,15 @@ public sealed class ImportExecutionUseCase(
                     else
                     {
                         creditsUsed++;
+                        if (recordResult.ConsumedPaidCredit)
+                        {
+                            paidCreditsUsed++;
+                        }
+                        else
+                        {
+                            freeCreditsUsed++;
+                        }
+
                         remainingCredits = recordResult.RemainingCredits;
                     }
                 }
@@ -375,6 +386,8 @@ public sealed class ImportExecutionUseCase(
             ManualActions = manualActions,
             OutcomeSummary = outcomeSummary,
             CreditsUsed = request.Metering is null ? null : creditsUsed,
+            FreeCreditsUsed = request.Metering is null ? null : freeCreditsUsed,
+            PaidCreditsUsed = request.Metering is null ? null : paidCreditsUsed,
             RemainingCredits = request.Metering is null ? null : remainingCredits,
             SourceRowOutcomes = orderedSourceRowOutcomes,
         };
