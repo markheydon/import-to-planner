@@ -106,8 +106,13 @@ var web = webProject
 
 if (commercialModeEnabled && tables is not null)
 {
+    var stripeApiKey = builder.AddParameter("stripeApiKey", secret: true);
+    var stripeWebhookSecret = builder.AddParameter("stripeWebhookSecret", secret: true);
+
     web.WithReference(tables)
-        .WaitFor(tables);
+        .WaitFor(tables)
+        .WithEnvironment("Stripe__ApiKey", stripeApiKey)
+        .WithEnvironment("Stripe__WebhookSecret", stripeWebhookSecret);
 
     builder.AddAzureFunctionsProject<Projects.ImportToPlanner_Functions>("paid-credit-expiry")
         .WithReference(tables)
