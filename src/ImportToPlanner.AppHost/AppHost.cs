@@ -21,7 +21,6 @@ var azureAdTenantId = builder.AddParameter("azureAdTenantId");
 var azureAdClientId = builder.AddParameter("azureAdClientId");
 var azureAdHomeTenantId = builder.AddParameter("azureAdHomeTenantId");
 var enableCommercialMode = builder.AddParameter("enableCommercialMode", secret: false);
-var complimentaryTenantIds = builder.AddParameter("complimentaryTenantIds", string.Empty, secret: true);
 var graphClientCertificatePassword = builder.AddParameter("graphClientCertificatePassword", secret: true);
 var graphClientCertificateBase64 = builder.AddParameter("graphClientCertificateBase64", secret: true);
 
@@ -35,6 +34,16 @@ if (hasCustomDomainConfigured)
 {
     customDomain = builder.AddParameter("customDomain", secret: false);
     customDomainCertificateName = builder.AddParameter("customDomainCertificateName", secret: false);
+}
+
+// Optional complimentary-tenant allowlist. Omit the parameter when unset so Azure Container Apps
+// is not asked to create an empty secret (invalid). The web app defaults the allowlist to empty.
+var hasComplimentaryTenantIdsConfigured = !string.IsNullOrWhiteSpace(builder.Configuration["Parameters:complimentaryTenantIds"]);
+IResourceBuilder<ParameterResource>? complimentaryTenantIds = null;
+
+if (hasComplimentaryTenantIdsConfigured)
+{
+    complimentaryTenantIds = builder.AddParameter("complimentaryTenantIds", secret: true);
 }
 
 // Azure Container Apps environment that will host published services.
@@ -57,14 +66,20 @@ var dataProtectionContainer = storage.AddBlobContainer("dataprotection", blobCon
 var tables = commercialModeEnabled ? storage.AddTables("tables") : null;
 
 // Configure the web service and wire all dependencies.
-var web = builder.AddProject<Projects.ImportToPlanner_Web>("web")
+var webProject = builder.AddProject<Projects.ImportToPlanner_Web>("web")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", appRuntimeEnvironment)
     .WithEnvironment("DOTNET_ENVIRONMENT", appRuntimeEnvironment)
     .WithEnvironment("AzureAd__TenantId", azureAdTenantId)
     .WithEnvironment("AzureAd__ClientId", azureAdClientId)
     .WithEnvironment("AzureAd__HomeTenantId", azureAdHomeTenantId)
-    .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode)
-    .WithEnvironment("Features__CommercialMode__ComplimentaryTenantIds", complimentaryTenantIds)
+    .WithEnvironment("Features__CommercialMode__Enabled", enableCommercialMode);
+
+if (complimentaryTenantIds is not null)
+{
+    webProject = webProject.WithEnvironment("Features__CommercialMode__ComplimentaryTenantIds", complimentaryTenantIds);
+}
+
+var web = webProject
     // The app currently expects a certificate path; the base64 value is provided
     // so deployment/runtime can materialize the certificate at that location.
     .WithEnvironment("AzureAd__ClientCertificates__0__SourceType", "Path")
