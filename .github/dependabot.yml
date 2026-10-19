@@ -1,104 +1,99 @@
 version: 2
 updates:
-  - package-ecosystem: "nuget"
-    directory: "/"
+  - package-ecosystem: nuget
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
+      day: monday
       time: "04:00"
-      timezone: "Europe/London"
+      timezone: Europe/London
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
+      - type/chore
     assignees:
-      - "markheydon"
-    ignore:
-      # Microsoft.OpenApi 3.x is not compatible with ASP.NET Core 10; stay on 2.x until a future ASP.NET release.
-      - dependency-name: Microsoft.OpenApi
-        update-types:
-          - version-update:semver-major
+      - markheydon
     groups:
       test-packages:
         patterns:
-          - "xunit*"
-          - "bunit"
-          - "NSubstitute*"
-          - "Microsoft.NET.Test.Sdk"
-          - "coverlet*"
+          - xunit*
+          - bunit
+          - NSubstitute*
+          - Microsoft.NET.Test.Sdk
+          - coverlet*
         update-types:
-          - "minor"
-          - "patch"
+          - minor
+          - patch
       microsoft-extensions:
         patterns:
-          - "Microsoft.Extensions.*"
+          - Microsoft.Extensions.*
         update-types:
-          - "minor"
-          - "patch"
+          - minor
+          - patch
       azure:
         patterns:
-          - "Azure.*"
-          - "Microsoft.Azure.*"
-          - "Aspire.*"
+          - Azure.*
+          - Microsoft.Azure.*
+          - Aspire.*
         update-types:
-          - "minor"
-          - "patch"
+          - minor
+          - patch
       opentelemetry:
         patterns:
-          - "OpenTelemetry.*"
+          - OpenTelemetry.*
         update-types:
-          - "minor"
-          - "patch"
+          - minor
+          - patch
       analyzers:
         patterns:
           - "*Analyzers*"
-          - "Microsoft.CodeAnalysis.*"
+          - Microsoft.CodeAnalysis.*
         update-types:
-          - "minor"
-          - "patch"
+          - minor
+          - patch
       other:
         patterns:
           - "*"
         update-types:
-          - "minor"
-          - "patch"
+          - minor
+          - patch
 
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
+      day: monday
       time: "04:00"
-      timezone: "Europe/London"
+      timezone: Europe/London
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
+      - type/chore
     assignees:
-      - "markheydon"
+      - markheydon
     groups:
       github-actions:
         patterns:
           - "*"
         update-types:
-          - "major"
-          - "minor"
-          - "patch"
+          - major
+          - minor
+          - patch
 
-  - package-ecosystem: "devcontainers"
-    directory: "/"
+  - package-ecosystem: devcontainers
+    directory: /
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: weekly
+      day: monday
       time: "04:00"
-      timezone: "Europe/London"
+      timezone: Europe/London
     open-pull-requests-limit: 5
     labels:
-      - "dependencies"
+      - type/chore
     assignees:
-      - "markheydon"
+      - markheydon
     groups:
       devcontainers:
         patterns:
           - "*"
         update-types:
-          - "minor"
-          - "patch"
+          - minor
+          - patch
