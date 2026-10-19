@@ -21,6 +21,7 @@ internal static class CreditLotSelector
             .Where(lot => IsConsumable(lot, occurredUtc))
             .OrderBy(lot => lot.LotType == LotType.FreeMonthly ? 0 : 1)
             .ThenBy(lot => lot.GrantedAtUtc)
+            .ThenBy(lot => lot.LotId, StringComparer.Ordinal)
             .FirstOrDefault();
 
     /// <summary>
