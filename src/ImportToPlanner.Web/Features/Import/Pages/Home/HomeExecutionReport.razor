@@ -61,10 +61,20 @@
                         </tr>
                         @if (ExecutionResult.CreditsUsed is not null)
                         {
-                            <tr>
-                                <td>@ExecutionResult.CreditsUsedLabel</td>
-                                <td>@ExecutionResult.CreditsUsed</td>
-                            </tr>
+                            @if (ExecutionResult.ShowFreeCreditsUsedRow)
+                            {
+                                <tr>
+                                    <td>@ExecutionResult.CreditsUsedLabel</td>
+                                    <td>@ExecutionResult.FreeCreditsUsedDisplay</td>
+                                </tr>
+                            }
+                            @if (ExecutionResult.ShowPaidCreditsUsedRow)
+                            {
+                                <tr>
+                                    <td>@ExecutionResult.PaidCreditsUsedLabel</td>
+                                    <td>@ExecutionResult.PaidCreditsUsed</td>
+                                </tr>
+                            }
                             <tr>
                                 <td>Remaining credits</td>
                                 <td>@ExecutionResult.RemainingCreditsDisplay</td>

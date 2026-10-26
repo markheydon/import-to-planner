@@ -125,7 +125,8 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
             if (state.UsageIdempotencyKeys.Contains(idempotencyKey))
             {
                 var remaining = CreditLotSelector.SumConsumableRemaining(state.Lots.Values.ToList(), request.OccurredUtc);
-                return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(remaining));
+                return Task.FromResult<RecordCreditUsageOutcome>(
+                    new RecordCreditUsageOutcome.Success(remaining, ConsumedPaidCredit: false));
             }
 
             for (var attempt = 0; attempt < 5; attempt++)
@@ -159,12 +160,28 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
                     request.ActorUserId));
 
                 var remaining = CreditLotSelector.SumConsumableRemaining(state.Lots.Values.ToList(), request.OccurredUtc);
-                return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(remaining));
+                return Task.FromResult<RecordCreditUsageOutcome>(
+                    new RecordCreditUsageOutcome.Success(remaining, ConsumedPaidCredit: lot.LotType == LotType.Paid));
             }
 
             return Task.FromResult<RecordCreditUsageOutcome>(
                 new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.Exhausted));
         }
+    }
+
+    /// <inheritdoc/>
+    public Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(
+        DateTimeOffset asOfUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var dueLots = tenants.Values
+            .SelectMany(tenant => tenant.Lots.Values)
+            .Where(lot => lot.LotType == LotType.Paid
+                && lot.RemainingQuantity > 0
+                && lot.ExpiresAtUtc <= asOfUtc)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<CreditLot>>(dueLots);
     }
 
     /// <inheritdoc/>
@@ -182,7 +199,8 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
             var idempotencyKey = BuildUsageIdempotencyKey(request.ImportRunId, request.CreatedPlannerTaskId);
             if (state.UsageIdempotencyKeys.Contains(idempotencyKey))
             {
-                return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(0));
+                return Task.FromResult<RecordCreditUsageOutcome>(
+                    new RecordCreditUsageOutcome.Success(0, ConsumedPaidCredit: false));
             }
 
             var lotId = ComplimentaryCreditConstants.ComplimentaryLotId;
@@ -223,7 +241,7 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
                 request.CreatedPlannerTaskId,
                 request.ActorUserId));
 
-            return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(0));
+            return Task.FromResult<RecordCreditUsageOutcome>(new RecordCreditUsageOutcome.Success(0, ConsumedPaidCredit: false));
         }
     }
 
@@ -256,6 +274,139 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
         {
             var hasOlder = state.Transactions.Any(transaction => transaction.OccurredUtc < beforeOccurredUtc);
             return Task.FromResult(hasOlder);
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(
+        string tenantId,
+        string externalPaymentId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var state = GetTenantState(tenantId);
+        lock (state.Sync)
+        {
+            var lotId = CommercialCreditPolicy.BuildPaidLotId(externalPaymentId);
+            state.Lots.TryGetValue(lotId, out var lot);
+            return Task.FromResult(lot);
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+        string tenantId,
+        string externalPaymentId,
+        string externalEventId,
+        int grantQuantity,
+        DateTimeOffset grantedAtUtc,
+        string actorUserId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var state = GetTenantState(tenantId);
+        lock (state.Sync)
+        {
+            if (state.PaymentMarkers.ContainsKey(externalPaymentId)
+                || state.EventMarkers.ContainsKey(externalEventId))
+            {
+                return Task.FromResult<CreditGrantAttemptOutcome>(new CreditGrantAttemptOutcome.AlreadyGranted());
+            }
+
+            var lotId = CommercialCreditPolicy.BuildPaidLotId(externalPaymentId);
+            state.PaymentMarkers[externalPaymentId] = grantedAtUtc;
+            state.EventMarkers[externalEventId] = grantedAtUtc;
+            state.Lots[lotId] = new CreditLot(
+                lotId,
+                tenantId,
+                LotType.Paid,
+                grantQuantity,
+                grantQuantity,
+                grantedAtUtc,
+                CommercialCreditPolicy.GetPaidLotExpiresAtUtc(grantedAtUtc),
+                externalPaymentId);
+            state.Transactions.Add(new CreditLedgerTransaction(
+                Guid.NewGuid().ToString("N"),
+                tenantId,
+                grantedAtUtc,
+                CreditEntryType.PaidPurchase,
+                grantQuantity,
+                lotId,
+                LotType.Paid,
+                ActorUserId: actorUserId));
+            return Task.FromResult<CreditGrantAttemptOutcome>(new CreditGrantAttemptOutcome.Applied());
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task<bool> ExpirePaidLotAsync(
+        CreditLot lot,
+        DateTimeOffset occurredUtc,
+        string? actorUserId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var state = GetTenantState(lot.TenantId);
+        lock (state.Sync)
+        {
+            if (!state.Lots.TryGetValue(lot.LotId, out var current) || current.RemainingQuantity <= 0)
+            {
+                return Task.FromResult(true);
+            }
+
+            var quantity = current.RemainingQuantity;
+            state.Lots[lot.LotId] = current with { RemainingQuantity = 0 };
+            state.Transactions.Add(new CreditLedgerTransaction(
+                Guid.NewGuid().ToString("N"),
+                lot.TenantId,
+                occurredUtc,
+                CreditEntryType.PaidExpiry,
+                quantity,
+                lot.LotId,
+                lot.LotType,
+                ActorUserId: actorUserId));
+            return Task.FromResult(true);
+        }
+    }
+
+    /// <inheritdoc/>
+    public Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+        string tenantId,
+        string externalPaymentId,
+        string externalAdjustmentId,
+        DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var state = GetTenantState(tenantId);
+        lock (state.Sync)
+        {
+            if (state.AdjustmentMarkers.ContainsKey(externalAdjustmentId))
+            {
+                return Task.FromResult<PaidCreditAdjustmentAttemptOutcome>(
+                    new PaidCreditAdjustmentAttemptOutcome.AlreadyAdjusted());
+            }
+
+            var lotId = CommercialCreditPolicy.BuildPaidLotId(externalPaymentId);
+            if (!state.Lots.TryGetValue(lotId, out var lot))
+            {
+                return Task.FromResult<PaidCreditAdjustmentAttemptOutcome>(
+                    new PaidCreditAdjustmentAttemptOutcome.Failure(PaidCreditPurchaseFailureCodes.PaidLotNotFound));
+            }
+
+            var quantityToRemove = Math.Max(0, lot.RemainingQuantity);
+            state.AdjustmentMarkers[externalAdjustmentId] = occurredUtc;
+            state.Lots[lotId] = lot with { RemainingQuantity = lot.RemainingQuantity - quantityToRemove };
+            state.Transactions.Add(new CreditLedgerTransaction(
+                Guid.NewGuid().ToString("N"),
+                tenantId,
+                occurredUtc,
+                CreditEntryType.PaidAdjustment,
+                quantityToRemove,
+                lotId,
+                LotType.Paid));
+            return Task.FromResult<PaidCreditAdjustmentAttemptOutcome>(
+                new PaidCreditAdjustmentAttemptOutcome.Applied());
         }
     }
 
@@ -312,6 +463,12 @@ public sealed class InMemoryCreditLedgerStore : ICreditLedgerStore
         public Dictionary<string, CreditMonthGrantMarker> Markers { get; } = new(StringComparer.Ordinal);
 
         public HashSet<string> UsageIdempotencyKeys { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, DateTimeOffset> PaymentMarkers { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, DateTimeOffset> EventMarkers { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, DateTimeOffset> AdjustmentMarkers { get; } = new(StringComparer.Ordinal);
 
         public List<CreditLedgerTransaction> Transactions { get; } = [];
     }
