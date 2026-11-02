@@ -1,6 +1,5 @@
 using System.Globalization;
 using CsvHelper;
-using CsvHelper.Configuration;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Import;
 using ImportToPlanner.Application.Models;
@@ -117,19 +116,18 @@ public sealed class CsvImportParser : ICsvImportParser
             return Task.FromResult(new CsvParseResult([], [readerResult.Error]));
         }
 
-        using var reader = readerResult.Reader!;
-        var config = readerResult.Configuration!;
-        using var csv = new CsvReader(reader, config);
+        using var csv = readerResult.Reader!;
 
         var errors = new List<ImportValidationError>();
         var rows = new List<CsvTaskRow>();
 
-        if (!csv.Read() || !csv.ReadHeader() || csv.HeaderRecord is null)
+        csv.ReadHeader();
+        if (csv.Headers.Count == 0)
         {
             return Task.FromResult(new CsvParseResult([], [new ImportValidationError(0, "File", "CSV header row is missing.")]));
         }
 
-        ValidateMappedHeaders(csv.HeaderRecord, columnMapping, errors, ignoreExtraColumns);
+        ValidateMappedHeaders(csv.Headers, columnMapping, errors, ignoreExtraColumns);
 
         var taskNameHeader = ToCsvHelperHeader(columnMapping.Assignments[ImportColumnFieldIds.TaskName]);
         var descriptionHeader = TryGetMappedHeader(columnMapping, ImportColumnFieldIds.Description);
@@ -143,8 +141,8 @@ public sealed class CsvImportParser : ICsvImportParser
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var rowNumber = csv.Parser.Row;
-            var taskName = csv.GetField(taskNameHeader)?.Trim();
+            var rowNumber = (int)csv.LineNumber;
+            var taskName = csv.GetStringOrNull(taskNameHeader)?.Trim();
             var description = Normalise(GetFieldOrNull(csv, descriptionHeader));
             var priorityText = Normalise(GetFieldOrNull(csv, priorityHeader));
             var bucket = Normalise(GetFieldOrNull(csv, bucketHeader));
@@ -222,11 +220,10 @@ public sealed class CsvImportParser : ICsvImportParser
             };
         }
 
-        using var reader = readerResult.Reader!;
-        var config = readerResult.Configuration!;
-        using var csv = new CsvReader(reader, config);
+        using var csv = readerResult.Reader!;
 
-        if (!csv.Read() || !csv.ReadHeader() || csv.HeaderRecord is null)
+        csv.ReadHeader();
+        if (csv.Headers.Count == 0)
         {
             return new CsvHeaderPeekResult
             {
@@ -235,7 +232,7 @@ public sealed class CsvImportParser : ICsvImportParser
             };
         }
 
-        var headers = csv.HeaderRecord.Select(header => header.Trim()).ToArray();
+        var headers = csv.Headers.Select(header => header.Trim()).ToArray();
         var duplicateErrors = FindDuplicateNormalisedHeaderErrors(headers);
         if (duplicateErrors.Count > 0)
         {
@@ -322,9 +319,9 @@ public sealed class CsvImportParser : ICsvImportParser
         => rawHeader.Trim().ToLowerInvariant();
 
     private static string? GetFieldOrNull(CsvReader csv, string? csvHelperHeader)
-        => csvHelperHeader is null ? null : csv.GetField(csvHelperHeader);
+        => csvHelperHeader is null ? null : csv.GetStringOrNull(csvHelperHeader);
 
-    private sealed record CsvReaderOpenResult(StringReader? Reader, CsvConfiguration? Configuration, ImportValidationError? Error);
+    private sealed record CsvReaderOpenResult(CsvReader? Reader, ImportValidationError? Error);
 
     private static CsvReaderOpenResult TryCreateReader(string normalisedContent)
     {
@@ -334,7 +331,6 @@ public sealed class CsvImportParser : ICsvImportParser
         if (separatorDetection == FieldSeparatorDetection.Ambiguous)
         {
             return new CsvReaderOpenResult(
-                null,
                 null,
                 new ImportValidationError(
                     0,
@@ -346,26 +342,26 @@ public sealed class CsvImportParser : ICsvImportParser
         {
             return new CsvReaderOpenResult(
                 null,
-                null,
                 new ImportValidationError(
                     0,
                     "File",
                     "This separator is not supported. Save the file as comma-separated UTF-8 and upload again."));
         }
 
-        var delimiter = separatorDetection == FieldSeparatorDetection.Semicolon ? ";" : ",";
-        var reader = new StringReader(normalisedContent);
-        var config = new CsvConfiguration(CultureInfo.InvariantCulture)
+        var delimiter = separatorDetection == FieldSeparatorDetection.Semicolon ? ';' : ',';
+        var options = new CsvReaderOptions
         {
-            Delimiter = delimiter,
-            IgnoreBlankLines = true,
-            TrimOptions = TrimOptions.Trim,
-            MissingFieldFound = null,
-            HeaderValidated = null,
-            PrepareHeaderForMatch = args => args.Header?.Trim().ToLowerInvariant() ?? string.Empty,
+            FormatProvider = CultureInfo.InvariantCulture,
+            Separator = delimiter,
+            SkipEmptyLines = true,
+            TrimWhitespace = true,
+            MissingField = CsvMissingFieldHandling.ReturnEmpty,
+            NormalizeHeaderName = header => header.Trim().ToLowerInvariant(),
+            TrackLineNumbers = true,
+            DetectSeparatorHint = false,
         };
 
-        return new CsvReaderOpenResult(reader, config, null);
+        return new CsvReaderOpenResult(CsvReader.FromText(normalisedContent, options), null);
     }
 
     /// <summary>
