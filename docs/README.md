@@ -8,7 +8,7 @@ End-user guides live in `website/content/` and deploy via Hugo on SemVer tags. S
 
 ## Start here
 
-- [Developer quick-start](developer-quickstart.md) — run the app and preview the public site
+- [Developer quick-start](developer-quickstart.md) — Aspire AppHost, commercial mode, Stripe Sandbox, helper scripts
 - [Engineering policies](engineering-policies.md) — testing, formatting, and delivery standards
 - [Microsoft Graph guidelines](microsoft-graph-guidelines.md) — Graph adapter conventions
 - [Demonstration mode](demo-mode.md) — operator allowlist and synthetic import journeys

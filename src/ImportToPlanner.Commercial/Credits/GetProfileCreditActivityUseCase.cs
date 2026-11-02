@@ -124,6 +124,12 @@ public sealed class GetProfileCreditActivityUseCase(
                 transaction.Quantity,
                 null,
                 false),
+            CreditEntryType.PaidAdjustment => new ProfileCreditActivityEntry(
+                transaction.OccurredUtc,
+                ProfileCreditActivityKind.PaidAdjustment,
+                transaction.Quantity,
+                null,
+                false),
             _ => null,
         };
     }

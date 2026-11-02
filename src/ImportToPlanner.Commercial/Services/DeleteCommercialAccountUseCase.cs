@@ -6,6 +6,7 @@ namespace ImportToPlanner.Commercial.Services;
 
 /// <summary>
 /// Marks a commercial account as deleted and records a lifecycle audit event.
+/// Ledger and billing metadata are intentionally out of scope (FR-014).
 /// </summary>
 public sealed class DeleteCommercialAccountUseCase(
     ICommercialAccountStore commercialAccountStore,

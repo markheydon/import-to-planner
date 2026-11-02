@@ -234,5 +234,44 @@ public sealed class ImportTaskCreationCreditQuotaTests
             DateTimeOffset beforeOccurredUtc,
             CancellationToken cancellationToken)
             => inner.HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken);
+
+        public Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(DateTimeOffset asOfUtc, CancellationToken cancellationToken)
+            => inner.ListDuePaidCreditLotsAsync(asOfUtc, cancellationToken);
+
+        public Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(string tenantId, string externalPaymentId, CancellationToken cancellationToken)
+            => inner.GetPaidLotByExternalPaymentIdAsync(tenantId, externalPaymentId, cancellationToken);
+
+        public Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalEventId,
+            int grantQuantity,
+            DateTimeOffset grantedAtUtc,
+            string actorUserId,
+            CancellationToken cancellationToken)
+            => inner.TryGrantPaidPurchaseAsync(
+                tenantId,
+                externalPaymentId,
+                externalEventId,
+                grantQuantity,
+                grantedAtUtc,
+                actorUserId,
+                cancellationToken);
+
+        public Task<bool> ExpirePaidLotAsync(CreditLot lot, DateTimeOffset occurredUtc, string? actorUserId, CancellationToken cancellationToken)
+            => inner.ExpirePaidLotAsync(lot, occurredUtc, actorUserId, cancellationToken);
+
+        public Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalAdjustmentId,
+            DateTimeOffset occurredUtc,
+            CancellationToken cancellationToken)
+            => inner.TryAdjustPaidCreditsAsync(
+                tenantId,
+                externalPaymentId,
+                externalAdjustmentId,
+                occurredUtc,
+                cancellationToken);
     }
 }

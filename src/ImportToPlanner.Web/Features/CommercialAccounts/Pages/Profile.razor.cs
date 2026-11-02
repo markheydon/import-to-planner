@@ -1,7 +1,6 @@
 using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Commercial.Models;
 using ImportToPlanner.Web.Features.Authentication;
-using ImportToPlanner.Web.Features.CommercialAccounts.Abstractions;
 using ImportToPlanner.Web.Features.CommercialAccounts.Presenters;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -247,18 +246,4 @@ public partial class Profile
         NavigationManager.NavigateTo($"MicrosoftIdentity/Account/SignOut?returnUrl={returnUrl}", forceLoad: true);
     }
 
-    private bool ShowBuyCreditsButton =>
-        creditSummary is { ComplimentaryUnlimitedAccess: false }
-        && ServiceProvider.GetService<IBuyCreditsProfileNavigation>() is not null;
-
-    private void OnBuyCreditsClicked()
-    {
-        var navigation = ServiceProvider.GetService<IBuyCreditsProfileNavigation>();
-        if (navigation is null || creditSummary?.ComplimentaryUnlimitedAccess == true)
-        {
-            return;
-        }
-
-        NavigationManager.NavigateTo(navigation.BuyCreditsRelativeUrl);
-    }
 }

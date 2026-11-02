@@ -172,6 +172,7 @@ Self-hosting remains a permanent supported delivery path for this repository.
 - Profile management is available at `/profile`, including delete and restore behaviour during the retention period and credits activity when the ledger is enabled.
 - When commercial mode is disabled, self-hosted sign-in behaviour remains unchanged and commercial persistence is bypassed.
 - Product contract for credits and usage: [docs/credits-billing-usage-model.md](docs/credits-billing-usage-model.md).
+- Local commercial mode, credits ledger, and Stripe Sandbox testing via Aspire AppHost: [docs/developer-quickstart.md](docs/developer-quickstart.md#credits-and-stripe-commercial-mode-on).
 
 ### Choose your path
 
@@ -273,7 +274,7 @@ aspire stop
 
 Notes:
 
-- The AppHost starts `storage`, `blobs`, `tables`, and `web`.
+- The AppHost always starts `storage`, `blobs`, and `web`; `tables` and `paid-credit-expiry` are added only when AppHost parameter `enableCommercialMode` is true at startup (see [docs/developer-quickstart.md](docs/developer-quickstart.md)).
 - A container runtime is needed for local Azurite emulation.
 - For deeper developer guidance, see [docs/developer-quickstart.md](docs/developer-quickstart.md).
 

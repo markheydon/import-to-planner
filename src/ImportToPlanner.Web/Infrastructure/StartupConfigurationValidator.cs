@@ -57,6 +57,8 @@ internal static class StartupConfigurationValidator
             ValidateRequiredSetting("Storage:CommercialAccountsTable");
             ValidateRequiredSetting("Storage:CommercialAuditTable");
             ValidateRequiredSetting("Storage:CommercialCreditLedgerTable");
+            ValidateRequiredSetting("Storage:CommercialBillingTable");
+            ValidateStripeCommercialSettings();
         }
 
         ValidateRequiredSetting("Storage:DataProtectionContainer");
@@ -73,6 +75,31 @@ internal static class StartupConfigurationValidator
             if (string.IsNullOrWhiteSpace(configuration[key]))
             {
                 validationErrors.Add($"Set '{key}'.");
+            }
+        }
+
+        void ValidateStripeCommercialSettings()
+        {
+            ValidateRequiredSetting("Stripe:ApiKey");
+            ValidateRequiredSetting("Stripe:WebhookSecret");
+
+            var environmentName = configuration["ASPNETCORE_ENVIRONMENT"] ?? Environments.Production;
+            var isProduction = string.Equals(environmentName, Environments.Production, StringComparison.OrdinalIgnoreCase);
+            var apiKey = configuration["Stripe:ApiKey"];
+            if (!isProduction && !string.IsNullOrWhiteSpace(apiKey)
+                && (apiKey.StartsWith("sk_live_", StringComparison.Ordinal)
+                    || apiKey.StartsWith("rk_live_", StringComparison.Ordinal)))
+            {
+                validationErrors.Add("Use a Stripe sandbox restricted key outside Production. Live-mode keys are not permitted.");
+            }
+
+            var publishedPackCount = configuration
+                .GetSection("Stripe:CreditPacks")
+                .GetChildren()
+                .Count(section => section.GetValue<bool>("Published"));
+            if (publishedPackCount < 1)
+            {
+                validationErrors.Add("Configure at least one published credit pack under 'Stripe:CreditPacks'.");
             }
         }
     }
