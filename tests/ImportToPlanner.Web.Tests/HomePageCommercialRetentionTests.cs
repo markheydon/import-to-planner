@@ -10,18 +10,7 @@ public sealed class HomePageCommercialRetentionTests
     public async Task HomePage_WhenAccountDeleted_ShowsRetentionGuidanceAndRestoreAction()
     {
         var accountStore = new CommercialAccountStoreStub();
-        var deletedUtc = new DateTimeOffset(2026, 5, 1, 8, 0, 0, TimeSpan.Zero);
-        await accountStore.CreateAsync(
-            new CommercialAccount(
-                "tenant-001",
-                "user-001",
-                deletedUtc.AddMonths(-2),
-                CommercialAccountStatus.Deleted,
-                DeletedUtc: deletedUtc,
-                RetentionExpiresUtc: deletedUtc.AddMonths(6),
-                RestoredUtc: null,
-                LastSignInOutcomeUtc: deletedUtc),
-            CancellationToken.None);
+        await accountStore.CreateAsync(CreateDeletedAccountWithinRetention(), CancellationToken.None);
 
         await using var ctx = new HomePageTestContext(
             commercialModeEnabled: true,
@@ -44,18 +33,7 @@ public sealed class HomePageCommercialRetentionTests
     public async Task HomePage_WhenRestoreClicked_ReactivateDeletedAccount()
     {
         var accountStore = new CommercialAccountStoreStub();
-        var deletedUtc = new DateTimeOffset(2026, 5, 1, 8, 0, 0, TimeSpan.Zero);
-        await accountStore.CreateAsync(
-            new CommercialAccount(
-                "tenant-001",
-                "user-001",
-                deletedUtc.AddMonths(-2),
-                CommercialAccountStatus.Deleted,
-                DeletedUtc: deletedUtc,
-                RetentionExpiresUtc: deletedUtc.AddMonths(6),
-                RestoredUtc: null,
-                LastSignInOutcomeUtc: deletedUtc),
-            CancellationToken.None);
+        await accountStore.CreateAsync(CreateDeletedAccountWithinRetention(), CancellationToken.None);
 
         await using var ctx = new HomePageTestContext(
             commercialModeEnabled: true,
@@ -65,11 +43,30 @@ public sealed class HomePageCommercialRetentionTests
         var cut = ctx.Render<Home>();
         cut.WaitForAssertion(() => Assert.Contains("Restore account", cut.Markup, StringComparison.OrdinalIgnoreCase));
 
-        cut.FindAll("button")
-            .First(button => button.TextContent.Contains("Restore account", StringComparison.OrdinalIgnoreCase))
-            .Click();
+        var restoreAccountButton = cut.FindAll("button")
+            .First(button => button.TextContent.Contains("Restore account", StringComparison.OrdinalIgnoreCase));
+        await cut.InvokeAsync(() => restoreAccountButton.Click());
 
-        var restoredAccount = Assert.Single(ctx.CommercialAccountStore.Accounts);
-        Assert.Equal(CommercialAccountStatus.Active, restoredAccount.Status);
+        cut.WaitForAssertion(() =>
+        {
+            var restoredAccount = Assert.Single(ctx.CommercialAccountStore.Accounts);
+            Assert.Equal(CommercialAccountStatus.Active, restoredAccount.Status);
+        });
+    }
+
+    private static CommercialAccount CreateDeletedAccountWithinRetention()
+    {
+        var referenceUtc = DateTimeOffset.UtcNow;
+        var deletedUtc = referenceUtc.AddDays(-14);
+
+        return new CommercialAccount(
+            "tenant-001",
+            "user-001",
+            deletedUtc.AddMonths(-2),
+            CommercialAccountStatus.Deleted,
+            DeletedUtc: deletedUtc,
+            RetentionExpiresUtc: referenceUtc.AddMonths(6),
+            RestoredUtc: null,
+            LastSignInOutcomeUtc: deletedUtc);
     }
 }
