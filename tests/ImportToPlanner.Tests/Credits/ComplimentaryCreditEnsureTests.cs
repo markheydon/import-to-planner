@@ -93,5 +93,32 @@ public sealed class ComplimentaryCreditEnsureTests
             DateTimeOffset beforeOccurredUtc,
             CancellationToken cancellationToken)
             => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(DateTimeOffset asOfUtc, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(string tenantId, string externalPaymentId, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalEventId,
+            int grantQuantity,
+            DateTimeOffset grantedAtUtc,
+            string actorUserId,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<bool> ExpirePaidLotAsync(CreditLot lot, DateTimeOffset occurredUtc, string? actorUserId, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalAdjustmentId,
+            DateTimeOffset occurredUtc,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
     }
 }

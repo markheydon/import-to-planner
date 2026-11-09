@@ -44,6 +44,8 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
             response.OutcomeSummary,
             tasksCreatedCount,
             response.CreditsUsed,
+            response.FreeCreditsUsed,
+            response.PaidCreditsUsed,
             response.RemainingCredits,
             ComplimentaryUnlimitedAccess: false,
             response.SourceRowOutcomes,
@@ -226,6 +228,8 @@ public sealed class ImportExecutionPresenter(ExecutionReportCsvExporter csvExpor
 /// <param name="OutcomeSummary">Aggregate counters.</param>
 /// <param name="TasksCreatedCount">Number of tasks created (not buckets).</param>
 /// <param name="CreditsUsed">Credits used during the run when commercial metering is active.</param>
+/// <param name="FreeCreditsUsed">Free monthly credits used during the run when commercial metering is active.</param>
+/// <param name="PaidCreditsUsed">Paid credits used during the run when commercial metering is active.</param>
 /// <param name="RemainingCredits">Remaining credits after the run when commercial metering is active.</param>
 /// <param name="ComplimentaryUnlimitedAccess">Whether remaining credits should be shown as unlimited.</param>
 /// <param name="SourceRowOutcomes">Structured per-row outcomes for CSV export.</param>
@@ -239,6 +243,8 @@ public sealed record ImportExecutionReportViewModel(
     ImportExecutionOutcomeSummary OutcomeSummary,
     int TasksCreatedCount = 0,
     int? CreditsUsed = null,
+    int? FreeCreditsUsed = null,
+    int? PaidCreditsUsed = null,
     int? RemainingCredits = null,
     bool ComplimentaryUnlimitedAccess = false,
     IReadOnlyList<ImportSourceRowOutcome>? SourceRowOutcomes = null,
@@ -250,6 +256,32 @@ public sealed record ImportExecutionReportViewModel(
     public string CreditsUsedLabel => ComplimentaryUnlimitedAccess
         ? "Credits used (complimentary)"
         : "Credits used (free monthly)";
+
+    /// <summary>
+    /// Gets the paid credits-used row label for the execution summary table.
+    /// </summary>
+    public string PaidCreditsUsedLabel => "Credits used (paid)";
+
+    /// <summary>
+    /// Gets whether the summary should show a free-monthly credits-used row.
+    /// </summary>
+    public bool ShowFreeCreditsUsedRow => CreditsUsed is not null
+        && !ComplimentaryUnlimitedAccess
+        && ((PaidCreditsUsed ?? 0) == 0 || (FreeCreditsUsed ?? 0) > 0);
+
+    /// <summary>
+    /// Gets whether the summary should show a paid credits-used row.
+    /// </summary>
+    public bool ShowPaidCreditsUsedRow => CreditsUsed is not null
+        && !ComplimentaryUnlimitedAccess
+        && (PaidCreditsUsed ?? 0) > 0;
+
+    /// <summary>
+    /// Gets the free credits-used quantity for the summary table.
+    /// </summary>
+    public int FreeCreditsUsedDisplay => (PaidCreditsUsed ?? 0) == 0
+        ? CreditsUsed ?? 0
+        : FreeCreditsUsed ?? 0;
 
     /// <summary>
     /// Gets the remaining-credits display value for the execution summary table.

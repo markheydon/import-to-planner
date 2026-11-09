@@ -41,6 +41,16 @@ public sealed record ImportExecutionResult
     public int? CreditsUsed { get; init; }
 
     /// <summary>
+    /// Gets or sets free monthly credits consumed during this run when commercial metering is active.
+    /// </summary>
+    public int? FreeCreditsUsed { get; init; }
+
+    /// <summary>
+    /// Gets or sets paid credits consumed during this run when commercial metering is active.
+    /// </summary>
+    public int? PaidCreditsUsed { get; init; }
+
+    /// <summary>
     /// Gets or sets remaining credits after this run when commercial metering is active.
     /// </summary>
     public int? RemainingCredits { get; init; }

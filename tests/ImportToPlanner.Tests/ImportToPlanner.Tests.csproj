@@ -29,8 +29,11 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ImportToPlanner.Application\ImportToPlanner.Application.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Commercial\ImportToPlanner.Commercial.csproj" />
+    <ProjectReference Include="..\..\src\ImportToPlanner.Functions\ImportToPlanner.Functions.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Domain\ImportToPlanner.Domain.csproj" />
     <ProjectReference Include="..\..\src\ImportToPlanner.Infrastructure.Graph\ImportToPlanner.Infrastructure.Graph.csproj" />
+    <ProjectReference Include="..\..\src\ImportToPlanner.Infrastructure.Stripe\ImportToPlanner.Infrastructure.Stripe.csproj" />
+    <ProjectReference Include="..\..\src\ImportToPlanner.Web\ImportToPlanner.Web.csproj" />
   </ItemGroup>
   
 </Project>

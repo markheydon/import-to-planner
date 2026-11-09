@@ -49,6 +49,8 @@ public sealed class CreditLedgerExecutionIntegrationTests
             CancellationToken.None);
 
         Assert.Equal(1, output.Response!.CreditsUsed);
+        Assert.Equal(1, output.Response.FreeCreditsUsed);
+        Assert.Equal(0, output.Response.PaidCreditsUsed);
         Assert.Equal(24, output.Response.RemainingCredits);
 
         var clock = ExecutionClockUtc();
@@ -62,6 +64,67 @@ public sealed class CreditLedgerExecutionIntegrationTests
         Assert.Equal(
             1,
             store.GetTransactions("tenant-001").Count(transaction => transaction.EntryType == CreditEntryType.Usage));
+    }
+
+    [Fact]
+    public async Task HandleAsync_WithRealCreditQuota_WhenImportSpansFreeAndPaidLots_ReportsUsageBreakdown()
+    {
+        var store = new InMemoryCreditLedgerStore();
+        var ensureUseCase = new EnsureCurrentCreditBalanceUseCase(store, DisabledComplimentaryTenantPolicy.Instance);
+        var quota = new ImportTaskCreationCreditQuota(
+            ensureUseCase,
+            store,
+            DisabledComplimentaryTenantPolicy.Instance,
+            new ImportExecutionCreditBalanceCache());
+        var gateway = new ExecutionPlannerGateway();
+        gateway.AddPlan("plan-alpha", "group-alpha", ContainerType.Group, "Alpha Team Plan");
+        await gateway.CreateBucketAsync("plan-alpha", "Ops", CancellationToken.None);
+
+        var planningUseCase = CreatePlanningUseCase(gateway);
+        var planningOutput = new CapturePlanningOutputBoundary();
+        var request = new ImportPlanningRequest(
+            "group-alpha",
+            ContainerType.Group,
+            "plan-alpha",
+            "Alpha Team Plan",
+            [
+                new CsvTaskRow(2, "Task A", null, 3, "Ops", null),
+                new CsvTaskRow(3, "Task B", null, 3, "Ops", null),
+            ]);
+
+        await planningUseCase.HandleAsync(request, planningOutput, CancellationToken.None);
+
+        var clock = ExecutionClockUtc();
+        await store.TryGrantFreeMonthlyAsync(
+            "tenant-001",
+            UtcYearMonth(clock),
+            1,
+            clock,
+            "user-001",
+            CancellationToken.None);
+        await store.TryGrantPaidPurchaseAsync(
+            "tenant-001",
+            "pi_fifo",
+            "evt_fifo",
+            5,
+            clock.AddMonths(-1),
+            "user-001",
+            CancellationToken.None);
+
+        var useCase = new ImportExecutionUseCase(gateway, quota);
+        var output = new CaptureExecutionOutputBoundary();
+        await useCase.HandleAsync(
+            new ImportExecutionRequest(
+                request,
+                planningOutput.Response!,
+                new ImportExecutionMeteringContext("tenant-001", "user-001")),
+            output,
+            CancellationToken.None);
+
+        Assert.Equal(2, output.Response!.CreditsUsed);
+        Assert.Equal(1, output.Response.FreeCreditsUsed);
+        Assert.Equal(1, output.Response.PaidCreditsUsed);
+        Assert.Equal(4, output.Response.RemainingCredits);
     }
 
     [Fact]
@@ -428,6 +491,33 @@ public sealed class CreditLedgerExecutionIntegrationTests
             DateTimeOffset beforeOccurredUtc,
             CancellationToken cancellationToken)
             => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(DateTimeOffset asOfUtc, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(string tenantId, string externalPaymentId, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalEventId,
+            int grantQuantity,
+            DateTimeOffset grantedAtUtc,
+            string actorUserId,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<bool> ExpirePaidLotAsync(CreditLot lot, DateTimeOffset occurredUtc, string? actorUserId, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
+
+        public Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalAdjustmentId,
+            DateTimeOffset occurredUtc,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Ledger unavailable.");
     }
 
     private sealed class AlwaysFailRecordUsageCreditLedgerStore(InMemoryCreditLedgerStore inner) : ICreditLedgerStore
@@ -471,6 +561,45 @@ public sealed class CreditLedgerExecutionIntegrationTests
             DateTimeOffset beforeOccurredUtc,
             CancellationToken cancellationToken)
             => inner.HasTransactionsBeforeAsync(tenantId, beforeOccurredUtc, cancellationToken);
+
+        public Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(DateTimeOffset asOfUtc, CancellationToken cancellationToken)
+            => inner.ListDuePaidCreditLotsAsync(asOfUtc, cancellationToken);
+
+        public Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(string tenantId, string externalPaymentId, CancellationToken cancellationToken)
+            => inner.GetPaidLotByExternalPaymentIdAsync(tenantId, externalPaymentId, cancellationToken);
+
+        public Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalEventId,
+            int grantQuantity,
+            DateTimeOffset grantedAtUtc,
+            string actorUserId,
+            CancellationToken cancellationToken)
+            => inner.TryGrantPaidPurchaseAsync(
+                tenantId,
+                externalPaymentId,
+                externalEventId,
+                grantQuantity,
+                grantedAtUtc,
+                actorUserId,
+                cancellationToken);
+
+        public Task<bool> ExpirePaidLotAsync(CreditLot lot, DateTimeOffset occurredUtc, string? actorUserId, CancellationToken cancellationToken)
+            => inner.ExpirePaidLotAsync(lot, occurredUtc, actorUserId, cancellationToken);
+
+        public Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+            string tenantId,
+            string externalPaymentId,
+            string externalAdjustmentId,
+            DateTimeOffset occurredUtc,
+            CancellationToken cancellationToken)
+            => inner.TryAdjustPaidCreditsAsync(
+                tenantId,
+                externalPaymentId,
+                externalAdjustmentId,
+                occurredUtc,
+                cancellationToken);
     }
 
     /// <summary>

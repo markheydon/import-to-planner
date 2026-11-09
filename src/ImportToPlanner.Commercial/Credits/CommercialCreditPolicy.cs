@@ -30,4 +30,16 @@ public static class CommercialCreditPolicy
     /// </summary>
     public static DateTimeOffset GetFreeLotExpiresAtUtc(DateTimeOffset grantedAtUtc)
         => GetUtcMonthStart(grantedAtUtc).AddMonths(1);
+
+    /// <summary>
+    /// Returns the exclusive expiry instant for a paid lot granted at <paramref name="grantedAtUtc"/>.
+    /// </summary>
+    public static DateTimeOffset GetPaidLotExpiresAtUtc(DateTimeOffset grantedAtUtc)
+        => grantedAtUtc.AddMonths(12);
+
+    /// <summary>
+    /// Builds the stable paid lot identifier for an external payment reference.
+    /// </summary>
+    public static string BuildPaidLotId(string externalPaymentId)
+        => $"paid|{externalPaymentId}";
 }

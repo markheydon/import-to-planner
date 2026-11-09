@@ -69,6 +69,52 @@ public interface ICreditLedgerStore
         string tenantId,
         DateTimeOffset beforeOccurredUtc,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Loads the paid lot for <paramref name="externalPaymentId"/>, or <see langword="null"/> when absent.
+    /// </summary>
+    Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(
+        string tenantId,
+        string externalPaymentId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Attempts to grant a paid lot with event and payment idempotency markers.
+    /// </summary>
+    Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+        string tenantId,
+        string externalPaymentId,
+        string externalEventId,
+        int grantQuantity,
+        DateTimeOffset grantedAtUtc,
+        string actorUserId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Lists paid lots with unused quantity whose expiry instant is at or before <paramref name="asOfUtc"/>.
+    /// </summary>
+    Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(
+        DateTimeOffset asOfUtc,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Expires leftover quantity on a paid lot and appends a <see cref="CreditEntryType.PaidExpiry"/> transaction.
+    /// </summary>
+    Task<bool> ExpirePaidLotAsync(
+        CreditLot lot,
+        DateTimeOffset occurredUtc,
+        string? actorUserId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Attempts to remove unused paid credits after a refund or lost dispute.
+    /// </summary>
+    Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+        string tenantId,
+        string externalPaymentId,
+        string externalAdjustmentId,
+        DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken);
 }
 
 /// <summary>

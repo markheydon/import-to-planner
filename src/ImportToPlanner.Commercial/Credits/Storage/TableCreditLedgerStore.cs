@@ -13,10 +13,15 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
     private const int MaxOptimisticConcurrencyRetries = 5;
     private const string LotRowKeyPrefix = "lot|";
     private const string LotRowKeyUpperBound = "lot|~";
+    private const string PaidLotRowKeyPrefix = "lot|paid|";
+    private const string PaidLotRowKeyUpperBound = "lot|paid|~";
     private const string TransactionRowKeyPrefix = "tx|";
     private const string TransactionRowKeyUpperBound = "tx|~";
     private const string GrantRowKeyPrefix = "grant|";
     private const string UsageIdempotencyRowKeyPrefix = "usage|";
+    private const string PaymentIdempotencyRowKeyPrefix = "pay|";
+    private const string EventIdempotencyRowKeyPrefix = "evt|";
+    private const string AdjustmentIdempotencyRowKeyPrefix = "adj|";
 
     private readonly TableClient tableClient = tableClient ?? throw new ArgumentNullException(nameof(tableClient));
     private readonly SemaphoreSlim initialiseSemaphore = new(1, 1);
@@ -312,7 +317,7 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
 
                 var refreshedLots = await GetLotsAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
                 var totalRemaining = CreditLotSelector.SumConsumableRemaining(refreshedLots, request.OccurredUtc);
-                return new RecordCreditUsageOutcome.Success(totalRemaining);
+                return new RecordCreditUsageOutcome.Success(totalRemaining, lot.LotType == LotType.Paid);
             }
             catch (RequestFailedException exception) when (exception.Status == 409)
             {
@@ -348,7 +353,7 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
         var idempotencyRowKey = BuildUsageIdempotencyRowKey(request.ImportRunId, request.CreatedPlannerTaskId);
         if (await HasUsageIdempotencyMarkerAsync(request.TenantId, idempotencyRowKey, cancellationToken).ConfigureAwait(false))
         {
-            return new RecordCreditUsageOutcome.Success(0);
+            return new RecordCreditUsageOutcome.Success(0, ConsumedPaidCredit: false);
         }
 
         for (var attempt = 0; attempt < MaxOptimisticConcurrencyRetries; attempt++)
@@ -396,11 +401,11 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
                     new(TableTransactionActionType.Add, ToTransactionEntity(grantTransaction)),
                 };
                 await tableClient.SubmitTransactionAsync(batch, cancellationToken).ConfigureAwait(false);
-                return new RecordCreditUsageOutcome.Success(0);
+                return new RecordCreditUsageOutcome.Success(0, ConsumedPaidCredit: false);
             }
             catch (RequestFailedException exception) when (exception.Status == 409)
             {
-                return new RecordCreditUsageOutcome.Success(0);
+                return new RecordCreditUsageOutcome.Success(0, ConsumedPaidCredit: false);
             }
             catch (RequestFailedException exception) when (exception.Status == 412)
             {
@@ -416,6 +421,278 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
         }
 
         return new RecordCreditUsageOutcome.Failure(CommercialCreditFailureCodes.UsageRecordFailed);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CreditLot?> GetPaidLotByExternalPaymentIdAsync(
+        string tenantId,
+        string externalPaymentId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalPaymentId);
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        var lotId = CommercialCreditPolicy.BuildPaidLotId(externalPaymentId);
+        try
+        {
+            var response = await tableClient
+                .GetEntityAsync<TableEntity>(tenantId, BuildLotRowKey(lotId), cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return ToLot(response.Value);
+        }
+        catch (RequestFailedException exception) when (exception.Status == 404)
+        {
+            return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<CreditGrantAttemptOutcome> TryGrantPaidPurchaseAsync(
+        string tenantId,
+        string externalPaymentId,
+        string externalEventId,
+        int grantQuantity,
+        DateTimeOffset grantedAtUtc,
+        string actorUserId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalPaymentId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalEventId);
+        if (grantQuantity <= 0)
+        {
+            return new CreditGrantAttemptOutcome.Failure(CommercialCreditFailureCodes.GrantFailed);
+        }
+
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (await HasIdempotencyMarkerAsync(tenantId, BuildEventIdempotencyRowKey(externalEventId), cancellationToken)
+                .ConfigureAwait(false)
+            || await HasIdempotencyMarkerAsync(tenantId, BuildPaymentIdempotencyRowKey(externalPaymentId), cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return new CreditGrantAttemptOutcome.AlreadyGranted();
+        }
+
+        var lotId = CommercialCreditPolicy.BuildPaidLotId(externalPaymentId);
+        var lot = new CreditLot(
+            lotId,
+            tenantId,
+            LotType.Paid,
+            grantQuantity,
+            grantQuantity,
+            grantedAtUtc,
+            CommercialCreditPolicy.GetPaidLotExpiresAtUtc(grantedAtUtc),
+            externalPaymentId);
+        var transaction = new CreditLedgerTransaction(
+            Guid.NewGuid().ToString("N"),
+            tenantId,
+            grantedAtUtc,
+            CreditEntryType.PaidPurchase,
+            grantQuantity,
+            lotId,
+            LotType.Paid,
+            ActorUserId: actorUserId);
+
+        try
+        {
+            var batch = new List<TableTransactionAction>
+            {
+                new(TableTransactionActionType.Add, ToEventIdempotencyEntity(tenantId, externalEventId, grantedAtUtc)),
+                new(TableTransactionActionType.Add, ToPaymentIdempotencyEntity(tenantId, externalPaymentId, grantedAtUtc)),
+                new(TableTransactionActionType.Add, ToLotEntity(lot)),
+                new(TableTransactionActionType.Add, ToTransactionEntity(transaction)),
+            };
+            await tableClient.SubmitTransactionAsync(batch, cancellationToken).ConfigureAwait(false);
+            return new CreditGrantAttemptOutcome.Applied();
+        }
+        catch (RequestFailedException exception) when (exception.Status == 409)
+        {
+            return new CreditGrantAttemptOutcome.AlreadyGranted();
+        }
+        catch (RequestFailedException)
+        {
+            return new CreditGrantAttemptOutcome.Failure(CommercialCreditFailureCodes.GrantFailed);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<CreditLot>> ListDuePaidCreditLotsAsync(
+        DateTimeOffset asOfUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        var dueLots = new List<CreditLot>();
+        var paidLotPrefix = PaidLotRowKeyPrefix;
+        var paidLotUpperBound = PaidLotRowKeyUpperBound;
+        await foreach (var entity in tableClient.QueryAsync<TableEntity>(
+                           filter: TableClient.CreateQueryFilter(
+                               $"RowKey ge {paidLotPrefix} and RowKey lt {paidLotUpperBound}"),
+                           cancellationToken: cancellationToken).ConfigureAwait(false))
+        {
+            var lot = ToLot(entity);
+            if (lot.LotType == LotType.Paid
+                && lot.RemainingQuantity > 0
+                && lot.ExpiresAtUtc <= asOfUtc)
+            {
+                dueLots.Add(lot);
+            }
+        }
+
+        return dueLots;
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> ExpirePaidLotAsync(
+        CreditLot lot,
+        DateTimeOffset occurredUtc,
+        string? actorUserId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(lot);
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (lot.LotType != LotType.Paid || lot.RemainingQuantity <= 0)
+        {
+            return true;
+        }
+
+        var transactionId = Guid.NewGuid().ToString("N");
+        var transaction = new CreditLedgerTransaction(
+            transactionId,
+            lot.TenantId,
+            occurredUtc,
+            CreditEntryType.PaidExpiry,
+            lot.RemainingQuantity,
+            lot.LotId,
+            lot.LotType,
+            ActorUserId: actorUserId);
+
+        for (var attempt = 0; attempt < MaxOptimisticConcurrencyRetries; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var lotEntityResponse = await tableClient
+                    .GetEntityAsync<TableEntity>(lot.TenantId, BuildLotRowKey(lot.LotId), cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                var lotEntity = CloneTableEntity(lotEntityResponse.Value);
+                var remaining = lotEntity.GetInt32("RemainingQuantity") ?? 0;
+                if (remaining <= 0)
+                {
+                    return true;
+                }
+
+                lotEntity["RemainingQuantity"] = 0;
+                var transactionEntity = ToTransactionEntity(transaction with { Quantity = remaining });
+
+                var batch = new List<TableTransactionAction>
+                {
+                    new(TableTransactionActionType.UpdateReplace, lotEntity, lotEntity.ETag),
+                    new(TableTransactionActionType.Add, transactionEntity),
+                };
+                await tableClient.SubmitTransactionAsync(batch, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+            catch (RequestFailedException exception) when (exception.Status == 412)
+            {
+                if (attempt == MaxOptimisticConcurrencyRetries - 1)
+                {
+                    return false;
+                }
+            }
+            catch (RequestFailedException)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /// <inheritdoc/>
+    public async Task<PaidCreditAdjustmentAttemptOutcome> TryAdjustPaidCreditsAsync(
+        string tenantId,
+        string externalPaymentId,
+        string externalAdjustmentId,
+        DateTimeOffset occurredUtc,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalPaymentId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(externalAdjustmentId);
+        await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (await HasIdempotencyMarkerAsync(tenantId, BuildAdjustmentIdempotencyRowKey(externalAdjustmentId), cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return new PaidCreditAdjustmentAttemptOutcome.AlreadyAdjusted();
+        }
+
+        var lotId = CommercialCreditPolicy.BuildPaidLotId(externalPaymentId);
+        for (var attempt = 0; attempt < MaxOptimisticConcurrencyRetries; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                var lotEntityResponse = await tableClient
+                    .GetEntityAsync<TableEntity>(tenantId, BuildLotRowKey(lotId), cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+                var lotEntity = CloneTableEntity(lotEntityResponse.Value);
+                var remaining = lotEntity.GetInt32("RemainingQuantity") ?? 0;
+                var quantityToRemove = Math.Max(0, remaining);
+                lotEntity["RemainingQuantity"] = remaining - quantityToRemove;
+
+                var transaction = new CreditLedgerTransaction(
+                    Guid.NewGuid().ToString("N"),
+                    tenantId,
+                    occurredUtc,
+                    CreditEntryType.PaidAdjustment,
+                    quantityToRemove,
+                    lotId,
+                    LotType.Paid,
+                    ActorUserId: null);
+
+                var batch = new List<TableTransactionAction>
+                {
+                    new(TableTransactionActionType.Add, ToAdjustmentIdempotencyEntity(tenantId, externalAdjustmentId, occurredUtc)),
+                    new(TableTransactionActionType.UpdateReplace, lotEntity, lotEntity.ETag),
+                    new(TableTransactionActionType.Add, ToTransactionEntity(transaction)),
+                };
+                await tableClient.SubmitTransactionAsync(batch, cancellationToken).ConfigureAwait(false);
+                return new PaidCreditAdjustmentAttemptOutcome.Applied();
+            }
+            catch (RequestFailedException exception) when (exception.Status == 404)
+            {
+                return new PaidCreditAdjustmentAttemptOutcome.Failure(PaidCreditPurchaseFailureCodes.PaidLotNotFound);
+            }
+            catch (RequestFailedException exception) when (exception.Status == 409)
+            {
+                return new PaidCreditAdjustmentAttemptOutcome.AlreadyAdjusted();
+            }
+            catch (RequestFailedException exception) when (exception.Status == 412)
+            {
+                if (attempt == MaxOptimisticConcurrencyRetries - 1)
+                {
+                    return new PaidCreditAdjustmentAttemptOutcome.Failure(PaidCreditPurchaseFailureCodes.LedgerCommitFailed);
+                }
+            }
+            catch (RequestFailedException)
+            {
+                return new PaidCreditAdjustmentAttemptOutcome.Failure(PaidCreditPurchaseFailureCodes.LedgerCommitFailed);
+            }
+        }
+
+        return new PaidCreditAdjustmentAttemptOutcome.Failure(PaidCreditPurchaseFailureCodes.LedgerCommitFailed);
     }
 
     /// <inheritdoc/>
@@ -534,7 +811,7 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
     {
         var lots = await GetLotsAsync(request.TenantId, cancellationToken).ConfigureAwait(false);
         var totalRemaining = CreditLotSelector.SumConsumableRemaining(lots, request.OccurredUtc);
-        return new RecordCreditUsageOutcome.Success(totalRemaining);
+        return new RecordCreditUsageOutcome.Success(totalRemaining, ConsumedPaidCredit: false);
     }
 
     private static string BuildLotRowKey(string lotId) => $"{LotRowKeyPrefix}{lotId}";
@@ -552,7 +829,7 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
 
     private static TableEntity ToLotEntity(CreditLot lot)
     {
-        return new TableEntity(lot.TenantId, BuildLotRowKey(lot.LotId))
+        var entity = new TableEntity(lot.TenantId, BuildLotRowKey(lot.LotId))
         {
             ["LotId"] = lot.LotId,
             ["LotType"] = (int)lot.LotType,
@@ -561,6 +838,13 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
             ["GrantedAtUtc"] = lot.GrantedAtUtc,
             ["ExpiresAtUtc"] = lot.ExpiresAtUtc,
         };
+
+        if (!string.IsNullOrWhiteSpace(lot.ExternalPaymentId))
+        {
+            entity["ExternalPaymentId"] = lot.ExternalPaymentId;
+        }
+
+        return entity;
     }
 
     private static TableEntity ToUsageIdempotencyEntity(
@@ -626,7 +910,71 @@ internal sealed class TableCreditLedgerStore(TableClient tableClient) : ICreditL
             entity.GetInt32("GrantedQuantity") ?? 0,
             entity.GetInt32("RemainingQuantity") ?? 0,
             entity.GetDateTimeOffset("GrantedAtUtc") ?? DateTimeOffset.UtcNow,
-            entity.GetDateTimeOffset("ExpiresAtUtc") ?? DateTimeOffset.UtcNow);
+            entity.GetDateTimeOffset("ExpiresAtUtc") ?? DateTimeOffset.UtcNow,
+            entity.GetString("ExternalPaymentId"));
+    }
+
+    private async Task<bool> HasIdempotencyMarkerAsync(
+        string tenantId,
+        string rowKey,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await tableClient
+                .GetEntityAsync<TableEntity>(tenantId, rowKey, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            return true;
+        }
+        catch (RequestFailedException exception) when (exception.Status == 404)
+        {
+            return false;
+        }
+    }
+
+    private static string BuildPaymentIdempotencyRowKey(string externalPaymentId)
+        => $"{PaymentIdempotencyRowKeyPrefix}{externalPaymentId}";
+
+    private static string BuildEventIdempotencyRowKey(string externalEventId)
+        => $"{EventIdempotencyRowKeyPrefix}{externalEventId}";
+
+    private static string BuildAdjustmentIdempotencyRowKey(string externalAdjustmentId)
+        => $"{AdjustmentIdempotencyRowKeyPrefix}{externalAdjustmentId}";
+
+    private static TableEntity ToPaymentIdempotencyEntity(
+        string tenantId,
+        string externalPaymentId,
+        DateTimeOffset occurredUtc)
+    {
+        return new TableEntity(tenantId, BuildPaymentIdempotencyRowKey(externalPaymentId))
+        {
+            ["ExternalPaymentId"] = externalPaymentId,
+            ["OccurredUtc"] = occurredUtc,
+        };
+    }
+
+    private static TableEntity ToEventIdempotencyEntity(
+        string tenantId,
+        string externalEventId,
+        DateTimeOffset occurredUtc)
+    {
+        return new TableEntity(tenantId, BuildEventIdempotencyRowKey(externalEventId))
+        {
+            ["ExternalEventId"] = externalEventId,
+            ["OccurredUtc"] = occurredUtc,
+        };
+    }
+
+    private static TableEntity ToAdjustmentIdempotencyEntity(
+        string tenantId,
+        string externalAdjustmentId,
+        DateTimeOffset occurredUtc)
+    {
+        return new TableEntity(tenantId, BuildAdjustmentIdempotencyRowKey(externalAdjustmentId))
+        {
+            ["ExternalAdjustmentId"] = externalAdjustmentId,
+            ["OccurredUtc"] = occurredUtc,
+        };
     }
 
     private static CreditLedgerTransaction ToTransaction(TableEntity entity)

@@ -41,6 +41,7 @@ public sealed class InfrastructureRegistrationTests
                 ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
                 ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
                 ["Storage:CommercialCreditLedgerTable"] = "CommercialCreditLedger",
+                ["Storage:CommercialBillingTable"] = "CommercialBilling",
             })
             .Build();
 
@@ -97,6 +98,7 @@ public sealed class InfrastructureRegistrationTests
                 ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
                 ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
                 ["Storage:CommercialCreditLedgerTable"] = "CommercialCreditLedger",
+                ["Storage:CommercialBillingTable"] = "CommercialBilling",
             })
             .Build();
 
@@ -154,6 +156,7 @@ public sealed class InfrastructureRegistrationTests
                 ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
                 ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
                 ["Storage:CommercialCreditLedgerTable"] = "CommercialCreditLedger",
+                ["Storage:CommercialBillingTable"] = "CommercialBilling",
             })
             .Build();
 
@@ -178,6 +181,7 @@ public sealed class InfrastructureRegistrationTests
                 ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
                 ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
                 ["Storage:CommercialCreditLedgerTable"] = "CommercialCreditLedger",
+                ["Storage:CommercialBillingTable"] = "CommercialBilling",
             })
             .Build();
 
@@ -188,5 +192,32 @@ public sealed class InfrastructureRegistrationTests
             ImportToPlanner.Commercial.DependencyInjection.CommercialCreditLedgerTableClientKey);
 
         Assert.Equal("CommercialCreditLedger", creditLedgerTableClient.Name);
+    }
+
+    [Fact]
+    public void AddCommercial_WhenCommercialModeEnabled_RegistersBillingTableClient()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton(new TableServiceClient("UseDevelopmentStorage=true"));
+
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Features:CommercialMode:Enabled"] = "true",
+                ["Storage:TenantMetadataTable"] = "TenantOperationalMetadata",
+                ["Storage:CommercialAccountsTable"] = "CommercialAccounts",
+                ["Storage:CommercialAuditTable"] = "CommercialAccountAuditEvents",
+                ["Storage:CommercialCreditLedgerTable"] = "CommercialCreditLedger",
+                ["Storage:CommercialBillingTable"] = "CommercialBilling",
+            })
+            .Build();
+
+        services.AddCommercial(configuration);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var billingTableClient = serviceProvider.GetRequiredKeyedService<TableClient>(
+            ImportToPlanner.Commercial.DependencyInjection.CommercialBillingTableClientKey);
+
+        Assert.Equal("CommercialBilling", billingTableClient.Name);
     }
 }

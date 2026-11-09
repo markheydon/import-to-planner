@@ -139,7 +139,7 @@ public sealed class ArchitectureComplianceTests
         Assert.DoesNotContain("ImportToPlanner.Infrastructure.Graph", projectContent, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.Graph", projectContent, StringComparison.Ordinal);
         Assert.DoesNotContain("MudBlazor", projectContent, StringComparison.Ordinal);
-        Assert.DoesNotContain("Stripe", projectContent, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Stripe.net", projectContent, StringComparison.Ordinal);
 
         var forbiddenTokens = new[]
         {
@@ -147,7 +147,8 @@ public sealed class ArchitectureComplianceTests
             "Microsoft.Graph",
             "Microsoft.Kiota",
             "MudBlazor",
-            "Stripe",
+            "using Stripe",
+            "global::Stripe",
         };
 
         foreach (var file in commercialSourceFiles)
@@ -282,6 +283,70 @@ public sealed class ArchitectureComplianceTests
         Assert.Contains("namespace ImportToPlanner.Web.Features.Import.Pages", presentationContent, StringComparison.Ordinal);
         Assert.Contains("enum HomeWorkflowStepState", stateContent, StringComparison.Ordinal);
         Assert.Contains("record HomeWorkflowStepPresentation", presentationContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void StripeNet_IsReferencedOnlyFromInfrastructureStripeProject()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var infrastructureStripeRoot = Path.Combine(rootPath, "src", "ImportToPlanner.Infrastructure.Stripe");
+        var infrastructureStripeProjectPath = Path.Combine(
+            infrastructureStripeRoot,
+            "ImportToPlanner.Infrastructure.Stripe.csproj");
+
+        var csprojFiles = Directory.EnumerateFiles(Path.Combine(rootPath, "src"), "*.csproj", SearchOption.AllDirectories)
+            .Where(path => !path.Contains("/bin/", StringComparison.Ordinal) && !path.Contains("/obj/", StringComparison.Ordinal));
+
+        var stripeNetPackageReferences = csprojFiles
+            .Where(path => File.ReadAllText(path).Contains("Stripe.net", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.Single(stripeNetPackageReferences);
+        Assert.Equal(infrastructureStripeProjectPath, stripeNetPackageReferences[0]);
+
+        var stripeSdkSourceTokens = new[]
+        {
+            "using Stripe",
+            "global::Stripe",
+        };
+
+        var sourceFiles = Directory.EnumerateFiles(Path.Combine(rootPath, "src"), "*.cs", SearchOption.AllDirectories)
+            .Where(path => !path.Contains("/bin/", StringComparison.Ordinal) && !path.Contains("/obj/", StringComparison.Ordinal))
+            .Where(path => !path.StartsWith(infrastructureStripeRoot, StringComparison.Ordinal));
+
+        foreach (var file in sourceFiles)
+        {
+            var content = File.ReadAllText(file);
+            foreach (var token in stripeSdkSourceTokens)
+            {
+                Assert.DoesNotContain(token, content, StringComparison.Ordinal);
+            }
+        }
+    }
+
+    [Fact]
+    public void CommercialAccountDeletionUseCases_DoNotReferenceLedgerOrBillingStores()
+    {
+        var rootPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../"));
+        var deleteUseCasePath = Path.Combine(
+            rootPath,
+            "src",
+            "ImportToPlanner.Commercial",
+            "Services",
+            "DeleteCommercialAccountUseCase.cs");
+        var purgeUseCasePath = Path.Combine(
+            rootPath,
+            "src",
+            "ImportToPlanner.Commercial",
+            "Services",
+            "PurgeExpiredCommercialAccountsUseCase.cs");
+
+        foreach (var filePath in new[] { deleteUseCasePath, purgeUseCasePath })
+        {
+            var content = File.ReadAllText(filePath);
+            Assert.DoesNotContain("ICreditLedgerStore", content, StringComparison.Ordinal);
+            Assert.DoesNotContain("ITenantBillingStore", content, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

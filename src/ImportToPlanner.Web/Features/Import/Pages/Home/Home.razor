@@ -783,6 +783,44 @@
                             creditBalanceSnapshot.RemainingCredits.Value,
                             creditBalanceSnapshot.Shortfall)
                     </MudAlert>
+                    @if (ShowCreditPackPurchaseSection && EnsureCreditPackSelection() && CreditPackChoices.Count > 0)
+                    {
+                        <MudPaper Elevation="0" Outlined="true" Class="pa-3 mt-2">
+                            <MudStack Spacing="2">
+                                <MudText Typo="Typo.subtitle2">
+                                    @ImportCreditPreviewPresenter.BuildCreditPackSectionHeading()
+                                </MudText>
+                                <MudRadioGroup @bind-Value="selectedCreditPackId" T="string">
+                                    @foreach (var packChoice in CreditPackChoices)
+                                    {
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Wrap="Wrap.Wrap">
+                                            <MudRadio T="string" Value="@packChoice.PackId" Color="Color.Primary" Dense="true">
+                                                @packChoice.DisplayLabel
+                                            </MudRadio>
+                                            @if (packChoice.IsRecommended)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                                                    @ImportCreditPreviewPresenter.BuildRecommendedPackHelper()
+                                                </MudChip>
+                                            }
+                                        </MudStack>
+                                    }
+                                </MudRadioGroup>
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           Disabled="@(isStartingCreditCheckout || string.IsNullOrWhiteSpace(selectedCreditPackId))"
+                                           OnClick="@StartCreditCheckoutAsync">
+                                    @ImportCreditPreviewPresenter.BuildBuyCreditsActionLabel()
+                                </MudButton>
+                                @if (!string.IsNullOrWhiteSpace(creditCheckoutUserMessage))
+                                {
+                                    <MudAlert Severity="Severity.Warning" Dense="true">
+                                        @creditCheckoutUserMessage
+                                    </MudAlert>
+                                }
+                            </MudStack>
+                        </MudPaper>
+                    }
                 }
                 @if (canShowConfirmImport)
                 {
