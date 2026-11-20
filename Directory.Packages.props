@@ -54,7 +54,7 @@
 
     <!-- Aspire AppHost -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="17.0.0" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.4" />
 
     <!-- Resilience & Service Discovery -->
