@@ -44,8 +44,8 @@
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.14" />
 
     <!-- Azure SDKs -->
-    <PackageVersion Include="Aspire.Azure.Data.Tables" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Azure.Storage.Blobs" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Azure.Data.Tables" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Azure.Storage.Blobs" Version="13.6.5" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.13.0" />
     <PackageVersion Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" Version="1.5.5" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
@@ -54,8 +54,8 @@
 
     <!-- Aspire AppHost -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />
-    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.4" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.4" />
+    <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.5" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.5" />
 
     <!-- Resilience & Service Discovery -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
