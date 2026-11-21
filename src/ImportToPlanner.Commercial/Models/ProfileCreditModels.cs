@@ -29,6 +29,11 @@ public enum ProfileCreditActivityKind
     /// Paid lot expiry.
     /// </summary>
     PaidLotExpiry = 4,
+
+    /// <summary>
+    /// Refund or chargeback adjustment on unused paid credits.
+    /// </summary>
+    PaidAdjustment = 5,
 }
 
 /// <summary>

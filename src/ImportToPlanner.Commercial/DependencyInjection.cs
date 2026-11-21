@@ -2,6 +2,7 @@ using Azure.Data.Tables;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Commercial.Abstractions;
 using ImportToPlanner.Commercial.Accounts.Storage;
+using ImportToPlanner.Commercial.Billing;
 using ImportToPlanner.Commercial.Configuration;
 using ImportToPlanner.Commercial.Credits;
 using ImportToPlanner.Commercial.Credits.Storage;
@@ -23,6 +24,8 @@ public static class DependencyInjection
     public const string CommercialAuditTableClientKey = "CommercialAuditTable";
 
     public const string CommercialCreditLedgerTableClientKey = "CommercialCreditLedgerTable";
+
+    public const string CommercialBillingTableClientKey = "CommercialBillingTable";
 
     /// <summary>
     /// Adds Aspire-managed Azure Table Storage client registrations required by commercial adapters.
@@ -73,6 +76,12 @@ public static class DependencyInjection
             throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialCreditLedgerTable'.");
         }
 
+        var commercialBillingTableName = configuration["Storage:CommercialBillingTable"];
+        if (string.IsNullOrWhiteSpace(commercialBillingTableName))
+        {
+            throw new InvalidOperationException("Storage configuration is invalid. Set 'Storage:CommercialBillingTable'.");
+        }
+
         services.AddKeyedSingleton<TableClient>(
             CommercialAccountsTableClientKey,
             (serviceProvider, _) => serviceProvider
@@ -88,6 +97,11 @@ public static class DependencyInjection
             (serviceProvider, _) => serviceProvider
                 .GetRequiredService<TableServiceClient>()
                 .GetTableClient(commercialCreditLedgerTableName));
+        services.AddKeyedSingleton<TableClient>(
+            CommercialBillingTableClientKey,
+            (serviceProvider, _) => serviceProvider
+                .GetRequiredService<TableServiceClient>()
+                .GetTableClient(commercialBillingTableName));
         services.AddScoped<ICommercialAccountStore>(serviceProvider =>
             new TableCommercialAccountStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAccountsTableClientKey)));
@@ -96,12 +110,17 @@ public static class DependencyInjection
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialAuditTableClientKey)));
         services.AddOptions<CommercialCreditModeOptions>()
             .Bind(configuration.GetSection(CommercialCreditModeOptions.ConfigurationSectionName));
+        services.AddOptions<StripeOptions>()
+            .Bind(configuration.GetSection(StripeOptions.ConfigurationSectionName));
         services.AddSingleton<IComplimentaryTenantPolicy, ComplimentaryTenantPolicy>();
         services.AddSingleton<IUtcClock, SystemUtcClock>();
         services.AddScoped<ImportExecutionCreditBalanceCache>();
         services.AddScoped<ICreditLedgerStore>(serviceProvider =>
             new TableCreditLedgerStore(
                 serviceProvider.GetRequiredKeyedService<TableClient>(CommercialCreditLedgerTableClientKey)));
+        services.AddScoped<ITenantBillingStore>(serviceProvider =>
+            new TableTenantBillingStore(
+                serviceProvider.GetRequiredKeyedService<TableClient>(CommercialBillingTableClientKey)));
         services.AddScoped<IEnsureCurrentCreditBalanceUseCase, EnsureCurrentCreditBalanceUseCase>();
         services.AddScoped<IGetProfileCreditSummaryUseCase, GetProfileCreditSummaryUseCase>();
         services.AddScoped<IGetProfileCreditActivityUseCase, GetProfileCreditActivityUseCase>();
@@ -123,6 +142,11 @@ public static class DependencyInjection
         services.AddScoped<RestoreCommercialAccountUseCase>();
         services.AddScoped<PurgeExpiredCommercialAccountsUseCase>();
         services.AddScoped<ICommercialProfileUseCase, GetCommercialProfileUseCase>();
+        services.AddScoped<GrantPaidCreditsUseCase>();
+        services.AddScoped<AdjustPaidCreditsForRefundUseCase>();
+        services.AddScoped<IExpirePaidCreditLotsUseCase, ExpirePaidCreditLotsUseCase>();
+        services.AddScoped<HandleVerifiedPaymentConfirmationUseCase>();
+        services.AddScoped<CreateCreditCheckoutUseCase>();
 
         return services;
     }

@@ -64,14 +64,20 @@ public sealed class ImportTaskCreationCreditQuota(
         if (firstAttempt is RecordCreditUsageOutcome.Success success)
         {
             executionCreditBalanceCache.SetRemaining(context.TenantId, context.OccurredUtc, success.RemainingCredits);
-            return new TaskCreationQuotaRecordResult(true, RemainingCredits: success.RemainingCredits);
+            return new TaskCreationQuotaRecordResult(
+                true,
+                RemainingCredits: success.RemainingCredits,
+                ConsumedPaidCredit: success.ConsumedPaidCredit);
         }
 
         var secondAttempt = await RecordUsageOnceAsync(context, cancellationToken).ConfigureAwait(false);
         if (secondAttempt is RecordCreditUsageOutcome.Success retrySuccess)
         {
             executionCreditBalanceCache.SetRemaining(context.TenantId, context.OccurredUtc, retrySuccess.RemainingCredits);
-            return new TaskCreationQuotaRecordResult(true, RemainingCredits: retrySuccess.RemainingCredits);
+            return new TaskCreationQuotaRecordResult(
+                true,
+                RemainingCredits: retrySuccess.RemainingCredits,
+                ConsumedPaidCredit: retrySuccess.ConsumedPaidCredit);
         }
 
         if (secondAttempt is RecordCreditUsageOutcome.Failure failure)

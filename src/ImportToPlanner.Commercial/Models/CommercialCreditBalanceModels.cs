@@ -127,7 +127,8 @@ public abstract record RecordCreditUsageOutcome
     /// Usage recorded successfully.
     /// </summary>
     /// <param name="RemainingCredits">Remaining credits after usage.</param>
-    public sealed record Success(int RemainingCredits) : RecordCreditUsageOutcome;
+    /// <param name="ConsumedPaidCredit">Whether the debit came from a paid lot.</param>
+    public sealed record Success(int RemainingCredits, bool ConsumedPaidCredit) : RecordCreditUsageOutcome;
 
     /// <summary>
     /// Usage recording failed.
@@ -156,4 +157,26 @@ public abstract record CreditGrantAttemptOutcome
     /// </summary>
     /// <param name="FailureCode">Structured failure code.</param>
     public sealed record Failure(string FailureCode) : CreditGrantAttemptOutcome;
+}
+
+/// <summary>
+/// Outcome of attempting a paid credit adjustment (refund or chargeback).
+/// </summary>
+public abstract record PaidCreditAdjustmentAttemptOutcome
+{
+    /// <summary>
+    /// Adjustment was applied.
+    /// </summary>
+    public sealed record Applied : PaidCreditAdjustmentAttemptOutcome;
+
+    /// <summary>
+    /// Adjustment identifier was already processed.
+    /// </summary>
+    public sealed record AlreadyAdjusted : PaidCreditAdjustmentAttemptOutcome;
+
+    /// <summary>
+    /// Adjustment attempt failed.
+    /// </summary>
+    /// <param name="FailureCode">Structured failure code.</param>
+    public sealed record Failure(string FailureCode) : PaidCreditAdjustmentAttemptOutcome;
 }

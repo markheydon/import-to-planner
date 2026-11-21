@@ -3,6 +3,8 @@ using Bunit;
 using ImportToPlanner.Application;
 using ImportToPlanner.Application.Abstractions;
 using ImportToPlanner.Application.Models;
+using ImportToPlanner.Commercial.Configuration;
+using ImportToPlanner.Commercial.Credits;
 using ImportToPlanner.Commercial.Services;
 using ImportToPlanner.Web.Features.Demo;
 using Microsoft.AspNetCore.Hosting;
@@ -27,6 +29,7 @@ internal sealed class HomePageTestContext : BunitContext
         CreditEnsureUseCaseSubstitute? creditEnsureUseCaseSubstitute = null,
         ProfileCreditSummaryUseCaseSubstitute? profileCreditSummaryUseCaseSubstitute = null,
         ProfileCreditActivityUseCaseSubstitute? profileCreditActivityUseCaseSubstitute = null,
+        IReadOnlyList<CreditPackOptions>? creditPackOptions = null,
         IImportColumnMappingLayoutStore? layoutStore = null,
         ReleaseInformationQueryStub? releaseInformationQueryStub = null,
         string docsBaseUrl = "https://docs.test.importplanner.app")
@@ -131,6 +134,39 @@ internal sealed class HomePageTestContext : BunitContext
             ProfileCreditActivityUseCase = profileCreditActivityUseCaseSubstitute ?? new ProfileCreditActivityUseCaseSubstitute();
             Services.AddScoped<IGetProfileCreditSummaryUseCase>(_ => ProfileCreditSummaryUseCase.Instance);
             Services.AddScoped<IGetProfileCreditActivityUseCase>(_ => ProfileCreditActivityUseCase.Instance);
+
+            CreditCheckoutPaymentPort = new CreditCheckoutPaymentPortSubstitute();
+            TenantBillingStore = new TenantBillingStoreStub();
+            Services.AddSingleton<IComplimentaryTenantPolicy>(DisabledComplimentaryTenantPolicy.Instance);
+            Services.AddScoped<ITenantBillingStore>(_ => TenantBillingStore);
+            Services.AddScoped<ICreditCheckoutPaymentPort>(_ => CreditCheckoutPaymentPort);
+            Services.AddScoped<CreateCreditCheckoutUseCase>();
+            Services.AddOptions<StripeOptions>().Configure(options =>
+            {
+                options.CreditPacks =
+                [
+                    new CreditPackOptions
+                    {
+                        PackId = "pack-50",
+                        CreditQuantity = 50,
+                        StripePriceId = "price_50",
+                        DisplayName = "50 credits",
+                        AmountMinor = 500,
+                        Currency = "gbp",
+                        Published = true,
+                    },
+                    new CreditPackOptions
+                    {
+                        PackId = "pack-100",
+                        CreditQuantity = 100,
+                        StripePriceId = "price_100",
+                        DisplayName = "100 credits",
+                        AmountMinor = 900,
+                        Currency = "gbp",
+                        Published = true,
+                    },
+                ];
+            });
         }
         else
         {
@@ -169,6 +205,10 @@ internal sealed class HomePageTestContext : BunitContext
     public ProfileCreditSummaryUseCaseSubstitute ProfileCreditSummaryUseCase { get; }
 
     public ProfileCreditActivityUseCaseSubstitute ProfileCreditActivityUseCase { get; }
+
+    public CreditCheckoutPaymentPortSubstitute? CreditCheckoutPaymentPort { get; }
+
+    public TenantBillingStoreStub? TenantBillingStore { get; }
 
     public ReleaseInformationQueryStub ReleaseInformationQuery { get; }
 

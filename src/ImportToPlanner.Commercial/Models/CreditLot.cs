@@ -10,6 +10,7 @@ namespace ImportToPlanner.Commercial.Models;
 /// <param name="RemainingQuantity">Remaining quantity (0 when fully used or expired).</param>
 /// <param name="GrantedAtUtc">Actual grant instant.</param>
 /// <param name="ExpiresAtUtc">Exclusive expiry instant.</param>
+/// <param name="ExternalPaymentId">Opaque payment identifier for paid lots; otherwise <see langword="null"/>.</param>
 public sealed record CreditLot(
     string LotId,
     string TenantId,
@@ -17,4 +18,5 @@ public sealed record CreditLot(
     int GrantedQuantity,
     int RemainingQuantity,
     DateTimeOffset GrantedAtUtc,
-    DateTimeOffset ExpiresAtUtc);
+    DateTimeOffset ExpiresAtUtc,
+    string? ExternalPaymentId = null);

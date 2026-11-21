@@ -57,6 +57,15 @@
     <PackageVersion Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.5" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.6.5" />
 
+    <!-- Stripe -->
+    <PackageVersion Include="Stripe.net" Version="53.0.0" />
+
+    <!-- Azure Functions (isolated worker) -->
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.1.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.1.1" />
+
     <!-- Resilience & Service Discovery -->
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.1" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.11.1" />

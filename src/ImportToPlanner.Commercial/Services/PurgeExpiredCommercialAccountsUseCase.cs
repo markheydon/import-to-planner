@@ -4,6 +4,7 @@ namespace ImportToPlanner.Commercial.Services;
 
 /// <summary>
 /// Purges expired deleted commercial accounts and expired audit records.
+/// Does not read or write the credit ledger or tenant billing table (FR-015, FR-016).
 /// </summary>
 public sealed class PurgeExpiredCommercialAccountsUseCase(
     ICommercialAccountStore commercialAccountStore,

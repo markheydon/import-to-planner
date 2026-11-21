@@ -18,7 +18,7 @@ dotnet test ImportToPlanner.slnx
 dotnet format ImportToPlanner.slnx --no-restore --verify-no-changes --verbosity minimal
 ```
 
-Local hosted commercial (existing Aspire commercial flag): enable `Features:CommercialMode:Enabled` / AppHost `enableCommercialMode` as today. Confirm `aspire start` still runs without a Stripe secret and without a new storage resource.
+Local hosted commercial: set AppHost `Parameters:enableCommercialMode` to `true` before starting Aspire (see `docs/developer-quickstart.md`). Paid credit purchase additionally requires Stripe Sandbox settings on the Web project; the ledger and tables path does not.
 
 ## Automated checks (must exist at implement)
 

@@ -178,7 +178,7 @@ public sealed class ProfilePageTests
             Assert.Contains("temporarily unavailable", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("Remaining credits</", cut.Markup, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("insufficient", cut.Markup, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("Buy credits", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Buy credit packs", cut.Markup, StringComparison.OrdinalIgnoreCase);
         });
     }
 

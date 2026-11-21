@@ -38,20 +38,22 @@ for reliability and incident response, not for advertising.
 
 If you delete your commercial account, access ends immediately. Your **account** record
 (sign-in and profile state) is retained for about **six months** so you can restore it
-during that window, after which eligible account data may be purged.
+during that window, after which eligible **account** data may be purged. That six-month
+window applies to your account row only.
 
 **Credit balances** belong to your Microsoft 365 **organisation (tenant)**, not to your
 individual sign-in. Deleting your account does not reset or remove your organisation's
 credit ledger; other users in the same tenant share the same balance.
 
+When paid billing is enabled, we also keep **organisation-scoped payment metadata** (for
+example Stripe customer and receipt references) so we can support receipts, refunds,
+disputes, and tax. That metadata is not removed when one user deletes their account.
+
 ## Subprocessors
 
 The hosted service relies on Microsoft **Entra ID** for sign-in and **Microsoft Azure** for
-hosting and operational storage. When paid billing is available, **Stripe** will process
-payments and issue receipts; we will update this page when that ships.
-
-Where commercial mode is enabled, billing-related metadata may be stored according to the
-commercial account configuration described in engineering documentation for operators.
+hosting and operational storage. Where paid credits are offered, **Stripe** processes
+payments and issues receipts on our behalf.
 
 ## Demonstration mode
 

@@ -113,11 +113,31 @@
                                 </MudStack>
                             }
 
-                            @if (ShowBuyCreditsButton)
+                            @if (ShowCreditPackCatalog && CreditPackCatalog.Count > 0)
                             {
-                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="OnBuyCreditsClicked">
-                                    @ProfileCreditPresenter.BuildBuyCreditsLabel()
-                                </MudButton>
+                                <MudDivider Class="my-2" />
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle2">@ProfileCreditPresenter.BuildBuyCreditsSectionHeading()</MudText>
+                                    @foreach (var packChoice in CreditPackCatalog)
+                                    {
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Wrap="Wrap.Wrap">
+                                            <MudText Typo="Typo.body2">@packChoice.DisplayLabel</MudText>
+                                            <MudButton Variant="Variant.Outlined"
+                                                       Color="Color.Primary"
+                                                       Size="Size.Small"
+                                                       Disabled="@(isStartingCreditCheckout)"
+                                                       OnClick="@(() => StartCreditCheckoutForPackAsync(packChoice.PackId))">
+                                                @ProfileCreditPresenter.BuildBuyPackActionLabel()
+                                            </MudButton>
+                                        </MudStack>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(creditCheckoutUserMessage))
+                                    {
+                                        <MudAlert Severity="Severity.Warning" Dense="true">
+                                            @creditCheckoutUserMessage
+                                        </MudAlert>
+                                    }
+                                </MudStack>
                             }
                         }
 
